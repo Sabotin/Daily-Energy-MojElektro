@@ -1,7 +1,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 MOJ_ELEKTRO_DOMAIN = "mojelektro"
 
@@ -20,6 +20,8 @@ PANEL_TITLE = "Daily Energy"
 
 # Sensor values change a few times a day; these runs are a safety net if a change was missed.
 REFRESH_TIMES = ((6, 30), (12, 0), (20, 0))
+# Minute of every hour at which yesterday's 15-minute curve is requested (skipped once it is complete).
+QUARTERS_MINUTE = 20
 # Moj Elektro data between midnight and 06:00 can be incomplete.
 EARLIEST_HOUR = 6
 # The 15-minute chart only looks back ten days; imported quarter hours older than this are dropped.
