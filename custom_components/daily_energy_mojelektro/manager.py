@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import timedelta
 import logging
 
+import aiohttp
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_change,
@@ -25,6 +29,7 @@ from .const import (
     DOMAIN,
     EARLIEST_HOUR,
     KEEP_Q15_DAYS,
+    QUARTERS_MINUTE,
     REFRESH_TIMES,
     SETTINGS_KEYS,
     STORAGE_VERSION,
@@ -49,6 +54,7 @@ class DailyEnergyManager:
         self.data: dict = {"days": {}, "manual": {}, "settings": {}, "q15": {}}
         self._listeners: set[Callable[[dict], None]] = set()
         self._unsub_watch: CALLBACK_TYPE | None = None
+        self._fetching = False
 
     # ------------------------------------------------------------ storage
 
@@ -116,12 +122,17 @@ class DailyEnergyManager:
             unsubs.append(
                 async_track_time_change(self.hass, self._on_time, hour=hour, minute=minute, second=0)
             )
+        # Yesterday's whole 15-minute curve: tried every hour until it is complete, then skipped for the day.
+        unsubs.append(
+            async_track_time_change(self.hass, self._on_quarters_time, minute=QUARTERS_MINUTE, second=0)
+        )
 
         @callback
         def _started(_hass: HomeAssistant) -> None:
             # Moj Elektro's entities exist once Home Assistant has started.
             self._watch()
             self.hass.async_create_task(self.async_update())
+            self.hass.async_create_task(self.async_fetch_quarters())
 
         unsubs.append(async_at_started(self.hass, _started))
 
@@ -158,6 +169,49 @@ class DailyEnergyManager:
         if self._unsub_watch is None:
             self._watch()
         self.hass.async_create_task(self.async_update())
+
+    @callback
+    def _on_quarters_time(self, _now) -> None:
+        self.hass.async_create_task(self.async_fetch_quarters())
+
+    async def async_fetch_quarters(self) -> None:
+        """Download yesterday's 96 quarter hours from Moj Elektro in one request.
+
+        The Moj Elektro sensor only reveals one of them every 15 minutes; with the whole day the
+        15-minute chart shows all of yesterday shortly after midnight. Uses the API token and meter
+        of the linked Moj Elektro entry, so there is nothing extra to set up.
+        """
+        today = dt_util.now().date()
+        yesterday = (today - timedelta(days=1)).isoformat()
+        if len(self.data["q15"].get(yesterday, [])) >= 92 or self._fetching:
+            return
+        source = self.hass.config_entries.async_get_entry(self.entry.data.get(CONF_SOURCE_ENTRY))
+        token = source.data.get("token") if source else None
+        meter = source.data.get("meter_id") if source else None
+        if not token or not meter:
+            return
+        self._fetching = True
+        try:
+            session = async_get_clientsession(self.hass)
+            async with asyncio.timeout(30):
+                response = await session.get(
+                    logic.quarters_url(meter, today),
+                    headers={"accept": "application/json", "X-API-TOKEN": token},
+                )
+                if response.status != 200:
+                    _LOGGER.debug("Moj Elektro 15-minute request: HTTP %s", response.status)
+                    return
+                payload = await response.json(content_type=None)
+        except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+            _LOGGER.debug("Moj Elektro 15-minute request failed: %s", err)
+            return
+        finally:
+            self._fetching = False
+
+        days = logic.quarters_from_api(payload, today)
+        if days:
+            self.apply_import({"days": {}, "q15": days})
+            _LOGGER.debug("Stored 15-minute data for %s", ", ".join(sorted(days)))
 
     async def async_update(self) -> None:
         """Copy the current Moj Elektro values into the day log (same rules as the original automation)."""

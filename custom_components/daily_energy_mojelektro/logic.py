@@ -103,6 +103,52 @@ def blocks_day(today: date) -> str:
     return (today - timedelta(days=1)).isoformat()
 
 
+# ---------------------------------------------------------------- Moj Elektro API (15-minute data)
+
+API_URL = "https://api.informatika.si/mojelektro/v1/meter-readings"
+READING_A_PLUS_15 = "32.0.2.4.1.2.12.0.0.0.0.0.0.0.0.3.72.0"  # received active energy, 15 min, kWh
+
+
+def quarters_url(meter_id: str, today: date, days_back: int = 2) -> str:
+    """Request for the 15-minute energy of the last days_back days (the API returns whole days)."""
+    start = (today - timedelta(days=days_back)).isoformat()
+    return (
+        f"{API_URL}?usagePoint={meter_id}&startTime={start}&endTime={today.isoformat()}"
+        f"&option=ReadingType%3D{READING_A_PLUS_15}"
+    )
+
+
+def quarters_from_api(payload: dict, today: date) -> dict[str, list[float]]:
+    """Complete past days from a meter-readings response: {date: [kWh per quarter hour from 00:00]}.
+
+    Every reading carries the END time of its quarter hour (00:15 ... next day 00:00).
+    """
+    blocks = (payload or {}).get("intervalBlocks") or []
+    block = next((b for b in blocks if b.get("readingType") == READING_A_PLUS_15), None)
+    if block is None and len(blocks) == 1:
+        block = blocks[0]
+    if block is None:
+        return {}
+    per_day: dict[date, list] = {}
+    for item in block.get("intervalReadings") or []:
+        try:
+            end = datetime.fromisoformat(str(item["timestamp"]))
+        except (KeyError, ValueError):
+            continue
+        value = to_float(item.get("value"))
+        if value is None:
+            continue
+        start = end.replace(tzinfo=None) - timedelta(minutes=15)  # local wall time of the quarter's start
+        per_day.setdefault(start.date(), []).append((start, value))
+    out: dict[str, list[float]] = {}
+    for d, items in per_day.items():
+        if d >= today or len(items) < 92:  # only complete past days (92/100 on DST change days)
+            continue
+        items.sort()
+        out[d.isoformat()] = [round(v, 4) for _, v in items]
+    return out
+
+
 # ---------------------------------------------------------------- CSV import
 
 
