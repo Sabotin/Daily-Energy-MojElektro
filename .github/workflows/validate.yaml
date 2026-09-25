@@ -15,6 +15,8 @@ jobs:
 
   hacs:
     name: HACS
+    # HACS reads the repository from outside, which only works once it is public
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - uses: hacs/action@main
