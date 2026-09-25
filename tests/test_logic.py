@@ -102,3 +102,38 @@ def test_unknown_csv_raises():
     except ValueError:
         return
     raise AssertionError("expected ValueError")
+
+
+def test_quarters_url():
+    url = logic.quarters_url("1-000001", TODAY)
+    assert url.startswith(logic.API_URL + "?usagePoint=1-000001&startTime=2026-09-23&endTime=2026-09-25")
+    assert url.endswith("ReadingType%3D" + logic.READING_A_PLUS_15)
+
+
+def _api_day(day: str, values: list[float]) -> list[dict]:
+    """API readings of one day: each stamped with the END of its quarter hour."""
+    from datetime import datetime, timedelta
+
+    start = datetime.fromisoformat(day + "T00:00:00+02:00")
+    return [
+        {"timestamp": (start + timedelta(minutes=15 * (i + 1))).isoformat(), "value": str(v)}
+        for i, v in enumerate(values)
+    ]
+
+
+def test_quarters_from_api_whole_days_only():
+    full = [round(0.05 + i / 1000, 3) for i in range(96)]
+    readings = _api_day("2026-09-24", full)
+    readings.reverse()  # order must not matter
+    readings.append({"timestamp": "2026-09-25T00:15:00+02:00", "value": "9"})  # today: incomplete, ignored
+    readings.append({"timestamp": "2026-09-23T12:00:00+02:00", "value": "9"})  # lone quarter: ignored
+    payload = {"intervalBlocks": [{"readingType": logic.READING_A_PLUS_15, "intervalReadings": readings}]}
+    out = logic.quarters_from_api(payload, TODAY)
+    assert list(out) == ["2026-09-24"]
+    assert out["2026-09-24"] == full  # first value is 00:00-00:15, last 23:45-24:00
+
+
+def test_quarters_from_api_empty_or_other_type():
+    assert logic.quarters_from_api({}, TODAY) == {}
+    other = {"intervalBlocks": [{"readingType": "x", "intervalReadings": []}, {"readingType": "y"}]}
+    assert logic.quarters_from_api(other, TODAY) == {}
