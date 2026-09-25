@@ -1,0 +1,251 @@
+"""Pure logic for Daily Energy (no Home Assistant imports, so it can be unit-tested on its own).
+
+Date convention used everywhere: a record dated D holds the energy used on calendar day D
+(00:00-24:00, local time).
+
+* A Moj Elektro meter reading dated D ("Dnevna stanja") is taken at 00:00 on D, so
+  reading(D + 1) - reading(D) is the usage of day D. Moj Elektro publishes it about two days later.
+* Tariff blocks and 15-minute data for day D arrive the next day.
+"""
+
+from __future__ import annotations
+
+import csv
+import io
+import re
+from datetime import date, datetime, timedelta
+
+# Moj Elektro measurement names (keys of the integration's data dict) that we use.
+USAGE_KEYS = (
+    "daily_input",
+    "daily_input_peak",
+    "daily_input_offpeak",
+    "monthly_input",
+    "monthly_input_peak",
+    "monthly_input_offpeak",
+)
+BLOCK_KEYS = tuple(f"daily_input_blok_{i}" for i in range(1, 6))
+QUARTER_KEY = "15min_input"
+KNOWN_KEYS = USAGE_KEYS + BLOCK_KEYS + (QUARTER_KEY,)
+
+_UID_MARK = "-sensor.mojelektro_"
+
+
+def measurement_from_unique_id(unique_id: str | None) -> str | None:
+    """Return the Moj Elektro measurement name from an entity unique_id.
+
+    The Moj Elektro integration builds unique ids as "<meter id>-sensor.mojelektro_<measurement>",
+    where Home Assistant may have appended "_2", "_3"... to keep the generated id unique.
+    """
+    if not unique_id or _UID_MARK not in unique_id:
+        return None
+    name = unique_id.split(_UID_MARK, 1)[1]
+    if name in KNOWN_KEYS:
+        return name
+    base = re.sub(r"_\d+$", "", name)
+    return base if base in KNOWN_KEYS else None
+
+
+def measurement_from_name(original_name: str | None) -> str | None:
+    """Fallback: "Moj Elektro daily input peak" -> "daily_input_peak"."""
+    if not original_name:
+        return None
+    name = original_name.strip().lower()
+    if name.startswith("moj elektro "):
+        name = name[len("moj elektro ") :]
+    key = name.replace(" ", "_")
+    return key if key in KNOWN_KEYS else None
+
+
+def to_float(value) -> float | None:
+    """Parse a sensor state or CSV cell; None for unknown/unavailable/empty."""
+    if value is None:
+        return None
+    text = str(value).strip().replace(" ", "")
+    if text in ("", "unknown", "unavailable", "None", "N/A"):
+        return None
+    if "," in text and "." not in text:
+        text = text.replace(",", ".")
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def last_usage_record(days: dict) -> dict | None:
+    """Newest day that has a daily usage value, with its date as "d"."""
+    for d in sorted(days, reverse=True):
+        rec = days[d]
+        if isinstance(rec.get("u"), (int, float)):
+            return {**rec, "d": d}
+    return None
+
+
+def pick_usage_day(last: dict | None, u: float, mo: float, today: date) -> str:
+    """Which calendar day the current daily_input value belongs to.
+
+    monthly_input is month-to-date including the newest day, so (mo - u) is the total before it:
+    * equal to the previous record's (mo - u)  -> the same day again (a repeated update)
+    * equal to the previous record's mo        -> the day after the previous record
+    * anything else (first run, new month, a gap) -> today - 2, when Moj Elektro normally has it.
+    """
+    base = mo - u
+    if last and isinstance(last.get("mo"), (int, float)) and isinstance(last.get("u"), (int, float)):
+        if abs(base - (last["mo"] - last["u"])) < 0.01:
+            return last["d"]
+        if abs(base - last["mo"]) < 0.01:
+            return (date.fromisoformat(last["d"]) + timedelta(days=1)).isoformat()
+    return (today - timedelta(days=2)).isoformat()
+
+
+def blocks_day(today: date) -> str:
+    """Tariff blocks from the sensors always cover yesterday 00:00-24:00."""
+    return (today - timedelta(days=1)).isoformat()
+
+
+# ---------------------------------------------------------------- CSV import
+
+
+def _rows(text: str) -> list[list[str]]:
+    text = text.lstrip("﻿")
+    sample = text[:2000]
+    delim = ";" if sample.count(";") > sample.count(",") else ","
+    return [r for r in csv.reader(io.StringIO(text), delimiter=delim) if any(c.strip() for c in r)]
+
+
+def _col(header: list[str], *needles: str) -> int | None:
+    up = [h.strip().upper() for h in header]
+    for i, h in enumerate(up):
+        if all(n in h for n in needles):
+            return i
+    return None
+
+
+def _date(value: str) -> date | None:
+    value = value.strip()
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d. %m. %Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def parse_moj_elektro_csv(text: str, today: date) -> dict:
+    """Parse a Moj Elektro portal CSV export.
+
+    Returns {"kind": str, "days": {date: patch}, "q15": {date: [kWh x 96]}}. Supported exports:
+    * "Dnevna stanja" (daily meter readings: PREJETA DELOVNA ENERGIJA ET / VT / MT)
+    * "Dnevne količine po časovnih blokih" (daily energy per tariff block)
+    * "15 minutni podatki" (15-minute energy with the tariff block of every quarter hour)
+    """
+    rows = _rows(text)
+    if not rows:
+        raise ValueError("empty file")
+    header, body = rows[0], rows[1:]
+
+    et = _col(header, "PREJETA DELOVNA ENERGIJA ET")
+    if et is not None:
+        return _parse_readings(header, body, et)
+    if _col(header, "BLOKU 1") is not None:
+        return _parse_block_days(header, body, today)
+    if _col(header, "ENERGIJA A+") is not None and (_col(header, "ZNA") is not None or _col(header, "TIMESTAMP") is not None):
+        return _parse_quarters(header, body, today)
+    raise ValueError("unknown CSV format")
+
+
+def _parse_readings(header, body, et) -> dict:
+    vt = _col(header, "PREJETA DELOVNA ENERGIJA VT")
+    mt = _col(header, "PREJETA DELOVNA ENERGIJA MT")
+    dc = _col(header, "DATUM")
+    dc = 0 if dc is None else dc
+    readings: dict[date, tuple] = {}
+    for r in body:
+        d = _date(r[dc]) if len(r) > dc else None
+        t = to_float(r[et]) if len(r) > et else None
+        if d is None or t is None:
+            continue
+        v = to_float(r[vt]) if vt is not None and len(r) > vt else None
+        m = to_float(r[mt]) if mt is not None and len(r) > mt else None
+        readings[d] = (t, v, m)
+
+    days: dict[str, dict] = {}
+    month_run: dict[tuple, list] = {}  # (year, month) -> [mo, mvt, mmt] while complete from day 1
+    for d in sorted(readings):
+        nxt = d + timedelta(days=1)
+        if nxt not in readings:
+            continue
+        (t0, v0, m0), (t1, v1, m1) = readings[d], readings[nxt]
+        u = round(t1 - t0, 3)
+        if u < 0:
+            continue
+        rec = {"u": u}
+        if None not in (v0, v1, m0, m1):
+            rec["vt"] = round(v1 - v0, 3)
+            rec["mt"] = round(m1 - m0, 3)
+        key = (d.year, d.month)
+        run = month_run.get(key)
+        if run is None and d.day == 1:
+            run = month_run[key] = [0.0, 0.0, 0.0]
+        prev = d - timedelta(days=1)
+        if run is not None and (d.day == 1 or prev.isoformat() in days):
+            run[0] += u
+            run[1] += rec.get("vt", 0.0)
+            run[2] += rec.get("mt", 0.0)
+            rec["mo"], rec["mvt"], rec["mmt"] = (round(x, 3) for x in run)
+        else:
+            month_run.pop(key, None)
+        days[d.isoformat()] = rec
+    return {"kind": "readings", "days": days, "q15": {}}
+
+
+def _parse_block_days(header, body, today) -> dict:
+    dc = _col(header, "DATUM")
+    dc = 0 if dc is None else dc
+    cols = [_col(header, f"BLOKU {i}") for i in range(1, 6)]
+    days: dict[str, dict] = {}
+    for r in body:
+        d = _date(r[dc]) if len(r) > dc else None
+        if d is None or d >= today:  # today's row is only the last quarter hour of yesterday
+            continue
+        b = [round(to_float(r[c]) or 0.0, 3) if c is not None and len(r) > c else 0.0 for c in cols]
+        if sum(b) > 0.1:
+            days[d.isoformat()] = {"b": b}
+    return {"kind": "blocks", "days": days, "q15": {}}
+
+
+def _parse_quarters(header, body, today) -> dict:
+    tc = _col(header, "ZNA")  # "Časovna značka"
+    if tc is None:
+        tc = _col(header, "TIMESTAMP")
+    ec = _col(header, "ENERGIJA A+")
+    bc = _col(header, "BLOK")
+    per_day: dict[date, list] = {}
+    for r in body:
+        if len(r) <= max(tc, ec):
+            continue
+        try:
+            end = datetime.fromisoformat(r[tc].strip().replace(" ", "T"))
+        except ValueError:
+            continue
+        e = to_float(r[ec])
+        if e is None:
+            continue
+        start = end - timedelta(minutes=15)  # the portal stamps each quarter hour with its end time
+        blk = int(to_float(r[bc]) or 0) if bc is not None and len(r) > bc else 0
+        per_day.setdefault(start.date(), []).append((start, e, blk))
+
+    days: dict[str, dict] = {}
+    q15: dict[str, list] = {}
+    for d, items in per_day.items():
+        if d >= today or len(items) < 92:  # only complete days (92/100 on DST change days)
+            continue
+        items.sort()
+        q15[d.isoformat()] = [round(e, 4) for _, e, _ in items]
+        b = [0.0] * 5
+        for _, e, blk in items:
+            if 1 <= blk <= 5:
+                b[blk - 1] += e
+        if sum(b) > 0.1:
+            days[d.isoformat()] = {"b": [round(x, 3) for x in b]}
+    return {"kind": "quarters", "days": days, "q15": q15}

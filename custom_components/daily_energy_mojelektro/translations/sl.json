@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Daily Energy za Moj Elektro",
+        "description": "Izberite merilno mesto Moj Elektro. Senzorji se poiščejo samodejno.",
+        "data": {
+          "mojelektro_entry_id": "Merilno mesto Moj Elektro",
+          "pin": "PIN (neobvezno)"
+        },
+        "data_description": {
+          "pin": "Če je nastavljen, ga zahtevata ročni vnos stanja števca in brisanje odčitkov. Pustite prazno za brez PIN-a."
+        }
+      }
+    },
+    "abort": {
+      "mojelektro_missing": "Najprej namestite in nastavite integracijo Moj Elektro (HACS: frlequ/homeassistant-mojelektro).",
+      "already_configured": "Vsa merilna mesta Moj Elektro že imajo nadzorno ploščo Daily Energy."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Možnosti Daily Energy",
+        "data": {
+          "pin": "PIN (neobvezno)",
+          "sidebar": "Prikaži Daily Energy v stranski vrstici",
+          "lite_users": "Lahki način za te uporabnike"
+        },
+        "data_description": {
+          "pin": "Ščiti ročni vnos stanja števca in brisanje odčitkov. Pustite prazno za brez PIN-a.",
+          "lite_users": "Uporabniška imena, ločena z vejico (npr. tablet). Njihova plošča je brez zamegljevanja in animacij, za počasne naprave."
+        }
+      }
+    }
+  }
+}

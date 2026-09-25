@@ -1,0 +1,104 @@
+"""Tests for the pure logic module (no Home Assistant needed)."""
+
+from datetime import date
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "custom_components" / "daily_energy_mojelektro"))
+
+import logic  # noqa: E402
+
+TODAY = date(2026, 9, 25)
+
+
+def test_measurement_from_unique_id():
+    assert logic.measurement_from_unique_id("1000000000001-sensor.mojelektro_daily_input") == "daily_input"
+    assert logic.measurement_from_unique_id("x-sensor.mojelektro_daily_input_blok_2") == "daily_input_blok_2"
+    assert logic.measurement_from_unique_id("x-sensor.mojelektro_15min_input_2") == "15min_input"
+    assert logic.measurement_from_unique_id("x-sensor.mojelektro_daily_output") is None
+    assert logic.measurement_from_unique_id("something-else") is None
+    assert logic.measurement_from_name("Moj Elektro daily input peak") == "daily_input_peak"
+
+
+def test_pick_usage_day_first_run_and_repeats():
+    # first run: the meter-reading total is two days behind
+    assert logic.pick_usage_day(None, 30.5, 500.0, TODAY) == "2026-09-23"
+    last = {"d": "2026-09-23", "u": 30.5, "mo": 500.0}
+    # the same values again stay on the same day
+    assert logic.pick_usage_day(last, 30.5, 500.0, TODAY) == "2026-09-23"
+    # the next day: month total before it equals the previous month-to-date
+    assert logic.pick_usage_day(last, 28.25, 528.25, date(2026, 9, 26)) == "2026-09-24"
+
+
+def test_pick_usage_day_new_month_falls_back():
+    last = {"d": "2026-09-29", "u": 30.0, "mo": 900.0}
+    assert logic.pick_usage_day(last, 25.0, 25.0, date(2026, 10, 3)) == "2026-10-01"
+
+
+def test_last_usage_record_skips_blocks_only_days():
+    days = {"2026-09-23": {"u": 30.5, "mo": 500.0}, "2026-09-24": {"b": [0, 10.0, 5.0, 4.0, 0]}}
+    assert logic.last_usage_record(days)["d"] == "2026-09-23"
+
+
+READINGS = """Datum,Merilno mesto,PREJETA DELOVNA ENERGIJA ET,PREJETA DELOVNA ENERGIJA VT,PREJETA DELOVNA ENERGIJA MT,ODDANA DELOVNA ENERGIJA ET,ODDANA DELOVNA ENERGIJA VT,ODDANA DELOVNA ENERGIJA MT,VRSTA STANJA
+2026-09-01,1-1,100000.0000,60000.0000,40000.0000,0,0,0,Stanje iz MC
+2026-09-02,1-1,100030.0000,60020.0000,40010.0000,0,0,0,Stanje iz MC
+2026-09-03,1-1,100070.5000,60050.0000,40020.5000,0,0,0,Stanje iz MC
+"""
+
+
+def test_readings_csv_dates_usage_by_the_day_it_was_used():
+    parsed = logic.parse_moj_elektro_csv(READINGS, TODAY)
+    assert parsed["kind"] == "readings"
+    assert parsed["days"]["2026-09-01"] == {"u": 30.0, "vt": 20.0, "mt": 10.0, "mo": 30.0, "mvt": 20.0, "mmt": 10.0}
+    assert parsed["days"]["2026-09-02"]["u"] == 40.5
+    assert parsed["days"]["2026-09-02"]["mo"] == 70.5
+    assert "2026-09-03" not in parsed["days"]  # needs the 4 Sep reading
+
+
+def test_readings_csv_partial_month_has_no_month_total():
+    text = READINGS.replace("2026-09-01", "2026-09-10").replace("2026-09-02", "2026-09-11").replace("2026-09-03", "2026-09-12")
+    parsed = logic.parse_moj_elektro_csv(text, TODAY)
+    assert "mo" not in parsed["days"]["2026-09-10"]
+
+
+BLOCKS = """Datum,Prejeta delovna energija v časovnem bloku 1 [kWh],Prejeta delovna energija v časovnem bloku 2 [kWh],Prejeta delovna energija v časovnem bloku 3 [kWh],Prejeta delovna energija v časovnem bloku 4 [kWh],Prejeta delovna energija v časovnem bloku 5 [kWh],Skupaj
+2026-09-23,0.00,10.0000,5.0000,15.0000,0.00,30.0000
+2026-09-24,0.00,12.5000,6.2500,8.2500,0.00,27.0000
+2026-09-25,0.00,0.00,0.00,0.5000,0.00,0.5000
+"""
+
+
+def test_blocks_csv_skips_today():
+    parsed = logic.parse_moj_elektro_csv(BLOCKS, TODAY)
+    assert parsed["kind"] == "blocks"
+    assert parsed["days"]["2026-09-24"]["b"] == [0.0, 12.5, 6.25, 8.25, 0.0]
+    assert "2026-09-25" not in parsed["days"]
+
+
+def _quarter_csv(day: str, value: float, blok: int) -> str:
+    head = "Merilno mesto,GSRN MM,Časovna značka,Leto,Mesec,Energija A+,Energija A-,Energija R+,Energija R-,P+ Prejeta delovna moč,P- Oddana delovna moč,Q+ Prejeta jalova moč,Q- Oddana jalova moč,Blok,Dogovorjena moč\n"
+    rows = []
+    from datetime import datetime, timedelta
+
+    start = datetime.fromisoformat(day + "T00:00")
+    for i in range(96):
+        end = start + timedelta(minutes=15 * (i + 1))
+        rows.append(f"1-1,383,{end.strftime('%Y-%m-%dT%H:%M')},2026,9,{value:.4f},,,,{value * 4:.4f},,,,{blok},0.0")
+    return head + "\n".join(rows) + "\n"
+
+
+def test_quarter_csv_uses_interval_start_and_blocks():
+    parsed = logic.parse_moj_elektro_csv(_quarter_csv("2026-09-23", 0.25, 4), TODAY)
+    assert parsed["kind"] == "quarters"
+    assert len(parsed["q15"]["2026-09-23"]) == 96
+    assert parsed["days"]["2026-09-23"]["b"] == [0.0, 0.0, 0.0, 24.0, 0.0]
+    assert "2026-09-24" not in parsed["q15"]  # the 00:00 stamp of the next day belongs to 23 Sep
+
+
+def test_unknown_csv_raises():
+    try:
+        logic.parse_moj_elektro_csv("a,b\n1,2\n", TODAY)
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError")
