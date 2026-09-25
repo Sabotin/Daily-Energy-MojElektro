@@ -1,0 +1,51 @@
+Daily Energy for Moj Elektro
+Copyright (c) 2026 Sabotin. All rights reserved.
+
+This software, including its source code, the dashboard card, texts, images and
+documentation (the "Software"), is the property of the copyright holder.
+
+1. Permission to use
+   You may download and install the Software through HACS (Home Assistant
+   Community Store) or from this repository, and use it in your own
+   Home Assistant installation for your own personal, non-commercial use.
+
+2. What is not allowed
+   Without prior written permission from the copyright holder, you may not:
+   a) copy the Software or any part of it, except the copy needed to install
+      and use it as described in section 1;
+   b) modify, translate, adapt or create works based on the Software or any
+      part of it;
+   c) publish, distribute, share, sublicense, rent, lend or sell the Software
+      or any part of it, including forks and modified versions made available
+      to others;
+   d) reuse any part of the Software, including its code, design, texts or
+      images, in any other project, product, website or service;
+   e) use the Software for any commercial purpose;
+   f) remove or change this notice or any copyright notice in the Software.
+
+3. Viewing the source
+   The source code is visible because the repository is public, so that it can
+   be installed through HACS. Being able to view the code does not grant any
+   right to copy or use it beyond section 1. Any use of GitHub's "Fork" feature
+   is limited to what GitHub's Terms of Service require; it grants no further
+   rights.
+
+4. Ending
+   Your permission under section 1 ends automatically if you break any part of
+   this license. You must then stop using the Software and delete every copy.
+
+5. Earlier versions
+   Versions of the Software published before this license was added were
+   released under the MIT License. This license applies to this version and
+   every later version.
+
+6. No warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+   IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For permission requests, contact the copyright holder through
+https://github.com/Sabotin
