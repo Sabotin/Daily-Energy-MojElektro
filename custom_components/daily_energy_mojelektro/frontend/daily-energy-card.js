@@ -32,12 +32,308 @@
   const diffD = (a, b) => Math.round((pd(b) - pd(a)) / 864e5);
   const weekStart = s => { const d = pd(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return iso(d); };
   const weekNo = s => { const d = pd(s); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); const w1 = new Date(d.getFullYear(), 0, 4); return 1 + Math.round(((d - w1) / 864e5 - 3 + ((w1.getDay() + 6) % 7)) / 7); };
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const DOWL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const fdate = s => { const d = pd(s); return `${DOW[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`; };
-  const fshort = s => { const d = pd(s); return `${d.getDate()} ${MON[d.getMonth()]}`; };
+  /* ---------- language: English / Slovenian ----------
+     Every text is written in English in the code; t() swaps in the Slovenian text from SL when the card is in
+     Slovenian. {0}, {1}… are filled in from the extra arguments. The card picks the language before each render
+     (Settings > Language: Automatic follows the Home Assistant language). */
+  let LANG = 'en';
+  const DATES = {
+    en: {
+      mon: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      monl: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      dowl: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      dowp: ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'],
+      dow2: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+    },
+    sl: {
+      mon: ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec'],
+      monl: ['januar', 'februar', 'marec', 'april', 'maj', 'junij', 'julij', 'avgust', 'september', 'oktober', 'november', 'december'],
+      dow: ['ned', 'pon', 'tor', 'sre', 'čet', 'pet', 'sob'],
+      dowl: ['nedelja', 'ponedeljek', 'torek', 'sreda', 'četrtek', 'petek', 'sobota'],
+      dowp: ['Nedelje', 'Ponedeljki', 'Torki', 'Srede', 'Četrtki', 'Petki', 'Sobote'],
+      dow2: ['Ne', 'Po', 'To', 'Sr', 'Če', 'Pe', 'So']
+    }
+  };
+  let MON, MONL, DOW, DOWL, DOWP, DOW2;
+  const setLang = l => { LANG = l === 'sl' ? 'sl' : 'en'; ({ mon: MON, monl: MONL, dow: DOW, dowl: DOWL, dowp: DOWP, dow2: DOW2 } = DATES[LANG]); };
+  setLang('en');
+  const SL = {
+    // header, banners
+    'Loading your energy data…': 'Nalagam podatke o energiji…',
+    'Demo preview': 'Demo predogled',
+    'Daily Energy integration not set up': 'Integracija Daily Energy ni nastavljena',
+    'Grid in': 'Odjem',
+    'Grid out': 'Oddaja',
+    'Check for updates': 'Preveri posodobitve',
+    'Settings': 'Nastavitve',
+    'Menu': 'Meni',
+    'Demo preview.': 'Demo predogled.',
+    '150 days of sample readings so you can explore — nothing here is saved.': '150 dni vzorčnih odčitkov za raziskovanje — nič se ne shrani.',
+    'Exit demo': 'Zapri demo',
+    'Daily Energy is not set up yet.': 'Daily Energy še ni nastavljen.',
+    'Add it under Settings → Devices &amp; services → Add integration → “Daily Energy for Moj Elektro”.': 'Dodajte ga pod Nastavitve → Naprave in storitve → Dodaj integracijo → “Daily Energy for Moj Elektro”.',
+    'No grid-out data yet.': 'Še ni podatkov o oddaji.',
+    "Moj Elektro's grid-out days are fetched from now on. For the past, use ⚙ → Moj Elektro history.": 'Dnevi oddaje iz Moj Elektro se prenašajo od zdaj naprej. Za pretekle dni uporabite ⚙ → Zgodovina Moj Elektro.',
+    'Waiting for the first Moj Elektro day.': 'Čakam na prvi dan iz Moj Elektro.',
+    'New days are fetched automatically every morning. For your history, use ⚙ → Moj Elektro history.': 'Novi dnevi se samodejno prenesejo vsako jutro. Za zgodovino uporabite ⚙ → Zgodovina Moj Elektro.',
+    'One more reading to go.': 'Manjka še en odčitek.',
+    'Welcome — log your first meter reading.': 'Dobrodošli — vnesite prvi odčitek števca.',
+    'Usage is the difference between two readings, so charts light up after your next entry.': 'Poraba je razlika med dvema odčitkoma, zato se grafi prikažejo po naslednjem vnosu.',
+    'Your first reading is the baseline; every reading after it becomes usage.': 'Prvi odčitek je izhodišče; vsak naslednji postane poraba.',
+    'Preview with demo data': 'Predogled z demo podatki',
+    // hero
+    'Today': 'Danes',
+    'Used today': 'Porabljena energija danes',
+    'Used yesterday': 'Porabljena energija včeraj',
+    'Used on': 'Porabljena energija',
+    'Sent out today': 'Oddana energija danes',
+    'Sent out yesterday': 'Oddana energija včeraj',
+    'Sent out on': 'Oddana energija',
+    '{0}% vs 30-day avg': '{0}% glede na 30-dnevno povprečje',
+    'From 15-min data · VT / MT tomorrow': 'Iz 15-min podatkov · VT / MT jutri',
+    '15-min data · VT / MT tomorrow': '15-min podatki · VT / MT jutri',
+    '{0} so far · kWh': '{0} do danes · kWh',
+    '{0} sent out · kWh': '{0} oddano · kWh',
+    'Moj Elektro · through {0}': 'Moj Elektro · do {0}',
+    'Energy counter': 'Števec energije',
+    'Last read {0}': 'Zadnji odčitek {0}',
+    'No readings yet': 'Še ni odčitkov',
+    'No grid-out data yet': 'Še ni podatkov o oddaji',
+    'Waiting for the first Moj Elektro day': 'Čakam na prvi dan iz Moj Elektro',
+    'Log two readings to see daily usage': 'Vnesite dva odčitka za prikaz dnevne porabe',
+    'AVG': 'POVPR.',
+    'of your average': 'vašega povprečja',
+    'avg {0} kWh/day': 'povpr. {0} kWh/dan',
+    'kWh/day': 'kWh/dan',
+    // manual meter reading
+    'Manual meter reading': 'Ročni vnos števca',
+    'Optional — Moj Elektro now logs your usage automatically every day': 'Opcijsko - vaša poraba se samodejno beleži vsak dan.',
+    'Open': 'Odpri',
+    'Cancel': 'Prekliči',
+    'Close': 'Zapri',
+    'Log a reading': 'Vnesi odčitek',
+    'Type exactly what your energy counter shows': 'Vpišite točno to, kar kaže vaš števec',
+    'Logged today ✓': 'Vneseno danes ✓',
+    'Editing': 'Urejanje',
+    'New entry': 'Nov vnos',
+    'Date': 'Datum',
+    'Total counter': 'Skupni števec',
+    'kWh used': 'porabljeni kWh',
+    'big tariff': 'velika tarifa',
+    'small tariff': 'mala tarifa',
+    'optional': 'neobvezno',
+    'Update reading': 'Posodobi odčitek',
+    'Save reading': 'Shrani odčitek',
+    'Previous reading {0} on {1}': 'Prejšnji odčitek {0}, {1}',
+    "Enter today's number and I'll work out the usage instantly.": 'Vpišite današnje stanje in porabo izračunam takoj.',
+    'This will be your baseline.': 'To bo vaše izhodišče.',
+    'Usage appears from your second reading onward.': 'Poraba se prikaže od drugega odčitka naprej.',
+    'Baseline reading': 'Izhodiščni odčitek',
+    'earlier than your other readings.': 'starejši od ostalih odčitkov.',
+    'the next reading will show usage.': 'naslednji odčitek bo pokazal porabo.',
+    'Lower than the previous reading': 'Nižje od prejšnjega odčitka',
+    '({0} on {1}).': '({0}, {1}).',
+    'Double-check the digits — counters only go up.': 'Preverite številke — števec se samo povečuje.',
+    'over {0} since {1}': 'v {0} od {1}',
+    'Exit the demo preview to log real readings': 'Za vnos pravih odčitkov zaprite demo predogled',
+    'Pick a date': 'Izberite datum',
+    'Enter the total counter reading': 'Vpišite stanje skupnega števca',
+    'This reading does not fit between your neighbouring readings (counters only go up). Save anyway?': 'Ta odčitek se ne ujema s sosednjima odčitkoma (števec se samo povečuje). Vseeno shranim?',
+    'Saved · +{0} kWh since {1}': 'Shranjeno · +{0} kWh od {1}',
+    'Reading saved': 'Odčitek shranjen',
+    // tiles
+    'Daily average · this month': 'Dnevno povprečje · ta mesec',
+    'Peak {0} kWh on {1}': 'Konica porabe {0} kWh, {1}',
+    'This week': 'Ta teden',
+    'Last week {0} kWh': 'Prejšnji teden {0} kWh',
+    'Projected {0} kWh': 'Predvidena poraba {0} kWh',
+    'Year {0}': 'Leto {0}',
+    // charts
+    'avg {0}': 'povpr. {0}',
+    'Total': 'Skupaj',
+    'Cost': 'Strošek',
+    '{0} of {1} days logged · {2} kWh/day': 'zabeleženih dni: {0} od {1} · {2} kWh/dan',
+    'incl. 15-min data · meter total tomorrow': 'vklj. 15-min podatke · stanje števca jutri',
+    'No data': 'Ni podatkov',
+    '{0} periods': '{0} obdobij',
+    'Average': 'Povprečje',
+    'per period': 'Na obdobje',
+    'Highest': 'Največja poraba',
+    'Lowest': 'Najnižja poraba',
+    'W{0}': 'T{0}',
+    'Week {0} · {1} – {2}': 'Teden {0} · {1} – {2}',
+    'Consumption': 'Poraba',
+    'Sent to the grid': 'Oddano v omrežje',
+    'Last 30 days': 'Zadnjih 30 dni',
+    'Last 12 weeks': 'Zadnjih 12 tednov',
+    'Last 12 months': 'Zadnjih 12 mesecev',
+    'By year': 'Po letih',
+    'Daily': 'Dnevno',
+    'Weekly': 'Tedensko',
+    'Monthly': 'Mesečno',
+    'Yearly': 'Letno',
+    // energy rhythm
+    'Energy rhythm': 'Energijski ritem',
+    'Every day, last {0} weeks': 'Vsak dan, zadnjih {0} tednov',
+    'less': 'manj',
+    'more': 'več',
+    '15-min data · meter total tomorrow': '15-min podatki · stanje števca jutri',
+    'Average by weekday': 'Povprečje po dnevih v tednu',
+    '{0} kWh avg': 'povpr. {0} kWh',
+    'last 12 weeks': 'zadnjih 12 tednov',
+    // Energija VT · MT
+    'Big (VT) and small (MT) tariff split': 'Razdelitev na veliko (VT) in malo (MT) tarifo',
+    'VT · big': 'VT · velika',
+    'MT · small': 'MT · mala',
+    'No tariff data yet': 'Še ni tarifnih podatkov',
+    'Fill in the Energija VT and MT fields when you log a reading{0} to unlock this split.': 'Ob vnosu odčitka izpolnite polji Energija VT in MT{0}, da se prikaže ta razdelitev.',
+    ' (both readings are needed on two consecutive entries)': ' (obe stanji sta potrebni pri dveh zaporednih vnosih)',
+    'This month': 'Ta mesec',
+    '30 days': '30 dni',
+    '12 weeks': '12 tednov',
+    '12 months': '12 mesecev',
+    'MT share': 'Delež MT',
+    'of tariff energy': 'tarifne energije',
+    'Energy cost': 'Strošek energije',
+    'set prices in ⚙': 'nastavite cene v ⚙',
+    // 15-minute power
+    '15-minute power': '15-minutna moč',
+    'grid out': 'oddaja',
+    'Moj Elektro · 24 h delay': 'Moj Elektro · 24 h zamika',
+    'Could not read the 15-minute history': '15-minutne zgodovine ni bilo mogoče prebrati',
+    'Collecting 15-minute data…': 'Zbiram 15-minutne podatke…',
+    'Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.': 'Moj Elektro objavi včerajšnje 15-minutne podatke okoli 6:00. Prikažejo se samodejno, lahko pa tapnete gumb za posodobitev.',
+    'Power': 'Moč',
+    'Energy': 'Energija',
+    'no data': 'ni podatkov',
+    'kW peak': 'kW konica',
+    'Highest 15-min power per block · {0}': 'Najvišja 15-min moč po blokih · {0}',
+    "Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.": 'Obračunska moč na vašem omrežnem računu temelji na 15-minutnih konicah, kot so te, za vsak omrežninski blok. Barve prikazujejo, v kateri blok spada posamezen 15-minutni interval.',
+    '{0} · energy sent to the grid': '{0} · energija, oddana v omrežje',
+    'No grid-out 15-minute data yet': 'Še ni 15-minutnih podatkov o oddaji',
+    'Power out': 'Oddana moč',
+    'Energy out': 'Oddana energija',
+    'kW peak out': 'kW konica oddaje',
+    'nothing sent out': 'nič oddano',
+    'Sent out': 'Oddano',
+    'Net': 'Neto',
+    'Exporting': 'Oddaja',
+    'grid in not known yet': 'odjem še ni znan',
+    'more out than in': 'več oddaje kot odjema',
+    'more in than out': 'več odjema kot oddaje',
+    'best {0} kW · {1}': 'največ {0} kW · {1}',
+    "Energy sent to the grid (A−). What you produce and use yourself never passes the meter, so it isn't shown here.": 'Energija, oddana v omrežje (A−). Kar proizvedete in sami porabite, ne gre skozi števec, zato tu ni prikazano.',
+    // tariff blocks
+    'Časovni bloki · tariff blocks': 'Časovni bloki',
+    'Energy per network tariff block, from Moj Elektro': 'Poraba energije po omrežninskih blokih',
+    'No block data yet': 'Še ni podatkov po blokih',
+    'The daily automation adds it every morning.': 'Dnevna samodejna posodobitev jih doda vsako jutro.',
+    'Yesterday': 'Včeraj',
+    'Blok 1 is the most expensive network block and only applies on working days from November to February. Weekends, holidays and the lower season (March–October) fall into the cheaper blocks 2–5.': 'Blok 1 je najdražji omrežninski blok in velja le ob delovnih dneh od novembra do februarja.',
+    // log
+    'Reading log': 'Dnevnik odčitkov',
+    "Every counter reading you've entered": 'Vsi odčitki števca, ki ste jih vnesli',
+    'Log': 'Dnevnik',
+    '{0} · since {1}': '{0} · od {1}',
+    'Counter / source': 'Števec / vir',
+    'Used': 'Porabljeno',
+    'Span': 'Obdobje',
+    'baseline': 'izhodišče',
+    'tariff blocks only': 'samo časovni bloki',
+    'Show less': 'Pokaži manj',
+    'Show all {0}': 'Pokaži vse ({0})',
+    'Edit': 'Uredi',
+    'Export': 'Izvozi',
+    'Import': 'Uvozi',
+    // settings
+    'Grid': 'Omrežje',
+    'Energy you take from the grid.': 'Odjem iz omrežja',
+    'Grid in &amp; Grid out': 'Odjem in oddaja',
+    'Also the energy you send to the grid (for example from solar panels), with a Grid in / Grid out switch at the top.': 'Energija, ki jo oddajate v omrežje (na primer iz sončnih panelov), s stikalom Odjem / Oddaja na vrhu.',
+    'Counter format': 'Oblika števca',
+    'MWh with 3 decimals': 'MWh s 3 decimalkami',
+    '120.622 on the display = 120 622 kWh. For example 121.334 − 120.622 = 712 kWh.': '120.622 na zaslonu = 120 622 kWh. Na primer 121.334 − 120.622 = 712 kWh.',
+    'Plain kWh': 'Navadni kWh',
+    'The counter already shows kWh (e.g. 120622 or 12.5).': 'Števec že kaže kWh (npr. 120622 ali 12.5).',
+    'Energija VT / MT input': 'Vnos Energija VT / MT',
+    'Counter readings': 'Odčitki števca',
+    'Type the VT and MT registers from the meter; usage is the difference between readings.': 'Vpišite stanji VT in MT s števca; poraba je razlika med odčitki.',
+    'Type how many kWh were used on VT and MT for that day.': 'Vpišite, koliko kWh je bilo tisti dan porabljenih na VT in MT.',
+    'Prices (optional)': 'Cene (neobvezno)',
+    'Currency symbol': 'Simbol valute',
+    'Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).': 'Za oceno stroškov energijskega dela VT/MT (omrežnine in davki niso vključeni).',
+    'Language': 'Jezik',
+    'Automatic': 'Samodejno',
+    'Follows the Home Assistant language.': 'Sledi jeziku Home Assistanta.',
+    'This device': 'Ta naprava',
+    'Light on tablets and on devices that ask for reduced motion.': 'Lahek način na tablicah in napravah, ki zahtevajo manj animacij.',
+    'Light': 'Lahek',
+    'No animations, blur or glow — for slow tablets and wall panels.': 'Brez animacij, zameglitve in sija — za počasne tablice in stenske zaslone.',
+    'Full': 'Poln',
+    'All animations and effects.': 'Vse animacije in učinki.',
+    'Now: {0}': 'Zdaj: {0}',
+    'light': 'lahek',
+    'full': 'poln',
+    ' — automatic': ' — samodejno',
+    ' · signed in as {0}': ' · prijavljeni kot {0}',
+    '. Saved on this device only.': '. Shranjeno samo na tej napravi.',
+    'Moj Elektro history': 'Zgodovina Moj Elektro',
+    "Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks){0}. Days already in the log are updated with Moj Elektro's numbers.": 'Prenese izbrane dni neposredno iz Moj Elektro in jih izpolni: dnevna poraba, VT / MT, mesečni seštevki in časovni bloki (ter 15-minutni graf za zadnje tri tedne){0}. Dnevi, ki so že v dnevniku, se posodobijo s podatki Moj Elektro.',
+    ', for grid in and grid out': ', za odjem in oddajo',
+    'From': 'Od',
+    'To': 'Do',
+    'Importing…': 'Uvažam…',
+    'Export &amp; import from Moj Elektro': 'Uvozi iz Moj Elektro',
+    'Your data': 'Vaši podatki',
+    'Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.': 'Vse shrani integracija Daily Energy v Home Assistantu (vključeno v njegove varnostne kopije) in je skupno vsem uporabnikom; spremembe se takoj prikažejo na vseh odprtih nadzornih ploščah. Novi dnevi Moj Elektro se beležijo samodejno. Uvoz sprejme izvoze CSV iz Moj Elektro (dnevna stanja, dnevno po blokih, 15-minutni podatki) in varnostne kopije JSON iz Daily Energy.',
+    'The Daily Energy integration is not set up, so nothing can be saved.': 'Integracija Daily Energy ni nastavljena, zato ni mogoče ničesar shraniti.',
+    'Export JSON': 'Izvozi JSON',
+    'Import CSV / JSON': 'Uvozi CSV / JSON',
+    'Delete': 'Izbriši',
+    'Delete all data': 'Izbriši vse podatke',
+    'Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed; settings stay. Export JSON first if you want a backup — Moj Elektro days can be fetched again with Moj Elektro history.': 'Izbrišem VSE podatke Daily Energy za vse uporabnike? Odstranjeni bodo vsi dnevi Moj Elektro, 15-minutni podatki in vsi ročni odčitki; nastavitve ostanejo. Če želite varnostno kopijo, najprej izvozite JSON — dneve Moj Elektro lahko znova prenesete z Zgodovino Moj Elektro.',
+    // pop-up messages
+    'Could not save to Home Assistant — {0}': 'Shranjevanje v Home Assistant ni uspelo — {0}',
+    'Checking for updates…': 'Preverjam posodobitve…',
+    'Could not reach Moj Elektro — try again later': 'Moj Elektro ni dosegljiv — poskusite pozneje',
+    'Updated the cards!': 'Kartice so posodobljene!',
+    'Nothing has been updated yet': 'Še ni novih podatkov',
+    'Could not check for updates — {0}': 'Preverjanje posodobitev ni uspelo — {0}',
+    'Pick both dates': 'Izberite oba datuma',
+    'Pick days before today': 'Izberite dneve pred današnjim',
+    'Importing from Moj Elektro · {0}…': 'Uvažam iz Moj Elektro · {0}…',
+    'Only administrators can import': 'Uvoz lahko izvedejo samo skrbniki',
+    'Import stopped — {0}': 'Uvoz ustavljen — {0}',
+    'Imported from Moj Elektro: {0}': 'Uvoženo iz Moj Elektro: {0}',
+    ' · {0} without a meter total': ' · brez stanja števca: {0}',
+    'Moj Elektro has no data for those days': 'Moj Elektro za te dni nima podatkov',
+    'Nothing new — those days are already up to date': 'Nič novega — ti dnevi so že posodobljeni',
+    'Grid out is on — fetching the last days from Moj Elektro. For older days use Moj Elektro history below.': 'Oddaja je vklopljena — prenašam zadnje dni iz Moj Elektro. Za starejše dni uporabite Zgodovino Moj Elektro spodaj.',
+    'Demo data loaded — explore away': 'Demo podatki so naloženi — raziskujte',
+    'Wrong PIN': 'Napačen PIN',
+    'Only administrators can delete data': 'Podatke lahko brišejo samo skrbniki',
+    'Could not delete — {0}': 'Brisanje ni uspelo — {0}',
+    'All data deleted': 'Vsi podatki so izbrisani',
+    'daily meter readings': 'dnevna stanja števca',
+    'daily tariff blocks': 'dnevni časovni bloki',
+    '15-minute data': '15-minutni podatki',
+    'backup': 'varnostna kopija',
+    'Imported {0}: {1}': 'Uvoženo ({0}): {1}',
+    'Could not import — {0}': 'Uvoz ni uspel — {0}',
+    'unknown file': 'neznana datoteka'
+  };
+  const t = (s, ...a) => (LANG === 'sl' && SL[s] || s).replace(/\{(\d)\}/g, (_, i) => a[i]);
+  const tr = t; // for methods where t is a local variable
+  // Slovenian counts have four forms: 1 dan, 2 dneva, 3–4 dnevi, 5+ dni
+  const slN = (n, f) => { const m = n % 100; return m === 1 ? f[0] : m === 2 ? f[1] : m === 3 || m === 4 ? f[2] : f[3]; };
+  const nDays = n => LANG === 'sl' ? `${n} ${slN(n, ['dan', 'dneva', 'dnevi', 'dni'])}` : `${n} day${n === 1 ? '' : 's'}`;
+  const lastDays = n => LANG === 'sl' ? slN(n, ['zadnji dan', `zadnja ${n} dneva`, `zadnji ${n} dnevi`, `zadnjih ${n} dni`]) : `last ${nDays(n)}`;
+  // "7 days updated", "3 manual readings"…: English label with a count, Slovenian "label: count"
+  const count = (n, en1, enN, sl) => LANG === 'sl' ? `${sl}: ${n}` : `${n} ${n === 1 ? en1 : enN}`;
+  const fdate = s => { const d = pd(s); return LANG === 'sl' ? `${DOW[d.getDay()]}, ${d.getDate()}. ${MON[d.getMonth()]}` : `${DOW[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`; };
+  const fshort = s => { const d = pd(s); return LANG === 'sl' ? `${d.getDate()}. ${MON[d.getMonth()]}` : `${d.getDate()} ${MON[d.getMonth()]}`; };
+  const flong = d => LANG === 'sl' ? `${DOWL[d.getDay()]}, ${d.getDate()}. ${MONL[d.getMonth()]} ${d.getFullYear()}` : `${DOWL[d.getDay()]}, ${d.getDate()} ${MONL[d.getMonth()]} ${d.getFullYear()}`;
   const num = v => { if (v == null) return null; const t = String(v).trim().replace(/\s/g, '').replace(',', '.'); if (t === '') return null; const x = Number(t); return isFinite(x) ? x : null; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const grp = s => s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -432,6 +728,17 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     set hass(h) {
       const first = !this._hass; this._hass = h;
       if (first) { this._shell(); this._load(); }
+      else if (this._applyLang() && this._loaded) this._renderAll(true);
+    }
+    // Settings > Language: Automatic (the Home Assistant language: Slovenian if it is Slovenian, otherwise English),
+    // English or Slovenščina, saved per device. Returns true when the language changed.
+    _langPref() { const v = LS.get('daily-energy-lang'); return v === 'en' || v === 'sl' ? v : 'auto'; }
+    _applyLang() {
+      const p = this._langPref(), h = this._hass;
+      const ha = (h && ((h.locale && h.locale.language) || h.language)) || '';
+      const l = p === 'auto' ? (/^sl/i.test(ha) ? 'sl' : 'en') : p;
+      setLang(l);
+      const changed = l !== this._lang; this._lang = l; return changed;
     }
     // Settings > This device: Light, Full or Automatic (light on tablets and on devices that ask for reduced motion)
     _mode() { const v = LS.get('daily-energy-mode'); return v === 'light' || v === 'full' ? v : 'auto'; }
@@ -496,7 +803,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       try {
         if (put.length || del.length) await this._ws('save_manual', { put, delete: del, pin: this._pinOk || '' });
         if (settings) await this._ws('save_settings', { settings: this._data.settings });
-      } catch (err) { this._toast('Could not save to Home Assistant — ' + (err && err.message || err)); }
+      } catch (err) { this._toast(t('Could not save to Home Assistant — {0}', err && err.message || err)); }
     }
 
     /* ----- data ----- */
@@ -570,8 +877,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     _money(v) { return v == null ? '—' : this._c.s.cur + v.toFixed(2); }
     _buckets(unit) {
       const T = this._c.today, out = [];
-      if (unit === 'day') for (let i = 29; i >= 0; i--) { const k = addD(T, -i), d = pd(k); out.push({ label: String(d.getDate()), sub: DOW[d.getDay()].slice(0, 2), title: fdate(k), from: k, to: k, now: i === 0 }); }
-      if (unit === 'week') { const ws = weekStart(T); for (let i = 11; i >= 0; i--) { const k = addD(ws, -7 * i); out.push({ label: 'W' + weekNo(k), sub: fshort(k), title: `Week ${weekNo(k)} · ${fshort(k)} – ${fshort(addD(k, 6))}`, from: k, to: addD(k, 6), now: i === 0 }); } }
+      if (unit === 'day') for (let i = 29; i >= 0; i--) { const k = addD(T, -i), d = pd(k); out.push({ label: String(d.getDate()), sub: DOW2[d.getDay()], title: fdate(k), from: k, to: k, now: i === 0 }); }
+      if (unit === 'week') { const ws = weekStart(T); for (let i = 11; i >= 0; i--) { const k = addD(ws, -7 * i); out.push({ label: t('W{0}', weekNo(k)), sub: fshort(k), title: t('Week {0} · {1} – {2}', weekNo(k), fshort(k), fshort(addD(k, 6))), from: k, to: addD(k, 6), now: i === 0 }); } }
       if (unit === 'month') { const d = pd(T); for (let i = 11; i >= 0; i--) { const m = new Date(d.getFullYear(), d.getMonth() - i, 1); out.push({ label: MON[m.getMonth()], sub: (i === 11 || m.getMonth() === 0) ? String(m.getFullYear()) : '', title: `${MONL[m.getMonth()]} ${m.getFullYear()}`, from: iso(m), to: iso(new Date(m.getFullYear(), m.getMonth() + 1, 0)), now: i === 0 }); } }
       if (unit === 'year') { const cy = pd(T).getFullYear(); const fy = this._c.keys.length ? pd(this._c.keys[0]).getFullYear() : cy; for (let y = Math.min(fy, cy - 2); y <= cy; y++) out.push({ label: String(y), title: String(y), from: `${y}-01-01`, to: `${y}-12-31`, now: y === cy }); }
       for (const b of out) {
@@ -617,12 +924,14 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       this._renderSkeleton();
     }
     _renderSkeleton() {
+      this._applyLang();
       this.$('hdr').innerHTML = this._hdrHtml();
-      this.$('hero').innerHTML = `<div class="empty">${ic('bolt')}<span>Loading your energy data…</span></div>`;
+      this.$('hero').innerHTML = `<div class="empty">${ic('bolt')}<span>${t('Loading your energy data…')}</span></div>`;
     }
 
     _renderAll(remote) {
       if (!this._built) return;
+      this._applyLang();
       this._calc();
       // without Moj Elektro the manual form takes the profile's slot next to the hero
       const pr = this.$('prof'), fm = this.$('form'), out = this._c.out;
@@ -638,29 +947,29 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     _hdrHtml() {
       const d = new Date(), c = this._c || {};
       // only warnings get a chip; normal operation keeps the header clean
-      const chip = this._demo ? `<span class="chip warn"><i></i>Demo preview</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>Daily Energy integration not set up</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div><h1><span>Daily Energy</span></h1><div class="sub">${DOWL[d.getDay()]}, ${d.getDate()} ${MONL[d.getMonth()]} ${d.getFullYear()}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? `<div class="gsw">${[['in', 'bolt', 'Grid in'], ['out', 'sun', 'Grid out']].map(([v, i, l]) => `<button class="${v}${(this._isOut() ? 'out' : 'in') === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${l}</button>`).join('')}</div>` : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="Check for updates">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="Settings">${ic('gear')}</button>`;
+      const chip = this._demo ? `<span class="chip warn"><i></i>${t('Demo preview')}</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>${t('Daily Energy integration not set up')}</span>` : '';
+      return `<div class="logo">${ic('bolt')}</div><div><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? `<div class="gsw">${[['in', 'bolt', 'Grid in'], ['out', 'sun', 'Grid out']].map(([v, i, l]) => `<button class="${v}${(this._isOut() ? 'out' : 'in') === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`).join('')}</div>` : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
     _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); }
     // Update button: asks the Moj Elektro API for new data now (the integration also checks every hour by itself).
     async _checkUpdates() {
       if (this._checking || !this._entry) return;
-      this._checking = true; this._renderHdr(); this._toast('Checking for updates…', { hold: true, icon: 'sync' });
+      this._checking = true; this._renderHdr(); this._toast(t('Checking for updates…'), { hold: true, icon: 'sync' });
       const t0 = Date.now(); let msg;
       try {
         const res = await this._ws('check_updates');
-        msg = res && res.error ? 'Could not reach Moj Elektro — try again later' : res && res.changed ? 'Updated the cards!' : 'Nothing has been updated yet';
-      } catch (e) { msg = 'Could not check for updates — ' + (e && e.message || e); }
+        msg = t(res && res.error ? 'Could not reach Moj Elektro — try again later' : res && res.changed ? 'Updated the cards!' : 'Nothing has been updated yet');
+      } catch (e) { msg = t('Could not check for updates — {0}', e && e.message || e); }
       await new Promise(r => setTimeout(r, Math.max(0, 1200 - (Date.now() - t0))));
       this._checking = false; this._renderHdr(); this._toast(msg, { ms: 3500 });
     }
     _renderBanner() {
       const b = this.$('banner');
-      if (this._demo) b.innerHTML = `<div class="banner demo">${ic('spark')}<div><b>Demo preview.</b> <span>150 days of sample readings so you can explore — nothing here is saved.</span></div><div class="sp"></div><button class="btn sm gh" data-act="demo-off">Exit demo</button></div>`;
-      else if (this._sync === 'none') b.innerHTML = `<div class="banner demo">${ic('bolt')}<div><b>Daily Energy is not set up yet.</b> <span>Add it under Settings → Devices &amp; services → Add integration → “Daily Energy for Moj Elektro”.</span></div></div>`;
-      else if (this._c.out && !this._c.keys.length) b.innerHTML = `<div class="banner">${ic('sun')}<div><b>No grid-out data yet.</b> <span>Moj Elektro's grid-out days are fetched from now on. For the past, use ⚙ → Moj Elektro history.</span></div></div>`;
-      else if (this._me && !this._c.keys.length) b.innerHTML = `<div class="banner">${ic('bolt')}<div><b>Waiting for the first Moj Elektro day.</b> <span>New days are fetched automatically every morning. For your history, use ⚙ → Moj Elektro history.</span></div></div>`;
-      else if (this._c.E.length < 2 && !this._c.meLast && !this._me) b.innerHTML = `<div class="banner">${ic('bolt')}<div><b>${this._c.E.length ? 'One more reading to go.' : 'Welcome — log your first meter reading.'}</b> <span>${this._c.E.length ? 'Usage is the difference between two readings, so charts light up after your next entry.' : 'Your first reading is the baseline; every reading after it becomes usage.'}</span></div><div class="sp"></div><button class="btn sm gh" data-act="demo-on">${ic('spark')} Preview with demo data</button></div>`;
+      if (this._demo) b.innerHTML = `<div class="banner demo">${ic('spark')}<div><b>${t('Demo preview.')}</b> <span>${t('150 days of sample readings so you can explore — nothing here is saved.')}</span></div><div class="sp"></div><button class="btn sm gh" data-act="demo-off">${t('Exit demo')}</button></div>`;
+      else if (this._sync === 'none') b.innerHTML = `<div class="banner demo">${ic('bolt')}<div><b>${t('Daily Energy is not set up yet.')}</b> <span>${t('Add it under Settings → Devices &amp; services → Add integration → “Daily Energy for Moj Elektro”.')}</span></div></div>`;
+      else if (this._c.out && !this._c.keys.length) b.innerHTML = `<div class="banner">${ic('sun')}<div><b>${t('No grid-out data yet.')}</b> <span>${t("Moj Elektro's grid-out days are fetched from now on. For the past, use ⚙ → Moj Elektro history.")}</span></div></div>`;
+      else if (this._me && !this._c.keys.length) b.innerHTML = `<div class="banner">${ic('bolt')}<div><b>${t('Waiting for the first Moj Elektro day.')}</b> <span>${t('New days are fetched automatically every morning. For your history, use ⚙ → Moj Elektro history.')}</span></div></div>`;
+      else if (this._c.E.length < 2 && !this._c.meLast && !this._me) b.innerHTML = `<div class="banner">${ic('bolt')}<div><b>${t(this._c.E.length ? 'One more reading to go.' : 'Welcome — log your first meter reading.')}</b> <span>${t(this._c.E.length ? 'Usage is the difference between two readings, so charts light up after your next entry.' : 'Your first reading is the baseline; every reading after it becomes usage.')}</span></div><div class="sp"></div><button class="btn sm gh" data-act="demo-on">${ic('spark')} ${t('Preview with demo data')}</button></div>`;
       else b.innerHTML = '';
     }
 
@@ -675,11 +984,11 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const avg = pv.length ? pv.reduce((a, b) => a + b, 0) / pv.length : null;
       const ratio = hv && avg ? hv.t / avg : null;
       const out = this._c.out, verb = out ? 'Sent out' : 'Used';
-      const lbl = !hk ? 'Today' : hk === today ? `${verb} today` : hk === addD(today, -1) ? `${verb} yesterday` : `${verb} on`;
+      const lbl = t(!hk ? 'Today' : hk === today ? `${verb} today` : hk === addD(today, -1) ? `${verb} yesterday` : `${verb} on`);
       const pills = [];
       // more energy used is shown in red; more energy sent out is good, so it is shown in green
-      if (ratio != null) { const p = (ratio - 1) * 100; pills.push(`<span class="pill ${(p > 0) !== out ? 'up' : 'down'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(0)}% vs 30-day avg</span>`); }
-      if (q15) pills.push(`<span class="pill">From 15-min data · VT / MT tomorrow</span>`);
+      if (ratio != null) { const p = (ratio - 1) * 100; pills.push(`<span class="pill ${(p > 0) !== out ? 'up' : 'down'}">${p > 0 ? '▲' : '▼'} ${t('{0}% vs 30-day avg', Math.abs(p).toFixed(0))}</span>`); }
+      if (q15) pills.push(`<span class="pill">${t('From 15-min data · VT / MT tomorrow')}</span>`);
       if (hv && hv.has) pills.push(`<span class="pill"><i class="d" style="background:var(--vt1)"></i>VT ${fk(hv.vt)}</span><span class="pill"><i class="d" style="background:var(--mt1)"></i>MT ${fk(hv.mt)}</span>`);
       const c = hv ? this._cost(hv) : null; if (c != null) pills.push(`<span class="pill">≈ ${this._money(c)}</span>`);
       const ml = this._c.meLast, mm = ml && this._c.months[ml.slice(0, 7)];
@@ -687,14 +996,14 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const thru = mm && keys.filter(k => k.slice(0, 7) === ml.slice(0, 7)).pop();
       const odo = mm ? this._odo(mv.t.toFixed(1)) : last ? this._odo(rawStr(last.t, s.mult)) : '<span class="od-sep" style="color:var(--dim)">— — —</span>';
       const meter = mm
-        ? `<div><div class="meter-l">${MONL[pd(ml).getMonth()]} ${out ? 'sent out' : 'so far'} · kWh</div><div class="meter-s">Moj Elektro · through ${fdate(thru)}</div></div>`
-        : `<div><div class="meter-l">Energy counter</div><div class="meter-s">${last ? 'Last read ' + fdate(last.d) : 'No readings yet'}</div></div>`;
+        ? `<div><div class="meter-l">${t(out ? '{0} sent out · kWh' : '{0} so far · kWh', MONL[pd(ml).getMonth()])}</div><div class="meter-s">${t('Moj Elektro · through {0}', fdate(thru))}</div></div>`
+        : `<div><div class="meter-l">${t('Energy counter')}</div><div class="meter-s">${last ? t('Last read {0}', fdate(last.d)) : t('No readings yet')}</div></div>`;
       const C = 2 * Math.PI * 80, arc = C * 0.75, f = ratio == null ? 0 : Math.min(ratio / 2, 1);
       let ticks = ''; for (let i = 0; i <= 30; i++) { const a = (135 + i * 9) * Math.PI / 180, r1 = 98, r2 = i % 5 ? 102 : 106; ticks += `<line x1="${100 + r1 * Math.cos(a)}" y1="${100 + r1 * Math.sin(a)}" x2="${100 + r2 * Math.cos(a)}" y2="${100 + r2 * Math.sin(a)}" stroke="rgba(255,255,255,${i % 5 ? .12 : .3})" stroke-width="1.4"/>`; }
       el.innerHTML = `<div>
  <div class="eyebrow"><span class="pulse"></span>${lbl}${hk ? ' · ' + fdate(hk) : ''}</div>
  <div class="big"><span class="bignum" id="bignum">${hv ? fk(this._shown) : '0'}</span><span class="unit">kWh</span></div>
- <div class="pills">${pills.join('') || `<span class="pill">${out ? 'No grid-out data yet' : this._me ? 'Waiting for the first Moj Elektro day' : 'Log two readings to see daily usage'}</span>`}</div>
+ <div class="pills">${pills.join('') || `<span class="pill">${t(out ? 'No grid-out data yet' : this._me ? 'Waiting for the first Moj Elektro day' : 'Log two readings to see daily usage')}</span>`}</div>
  <div class="meter">${meter}<div class="odo">${odo}</div></div>
 </div>
 <div class="gwrap"><svg class="gauge" viewBox="0 0 200 200">
@@ -704,8 +1013,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
  <circle class="g-spin" cx="100" cy="100" r="64" fill="none" stroke="rgba(123,107,255,.35)" stroke-width="1.5" stroke-dasharray="1 7"/>
  <g transform="rotate(135 100 100)"><circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="13" stroke-linecap="round" stroke-dasharray="${arc} ${C}"/>
  <circle class="g-val" id="gval" cx="100" cy="100" r="80" fill="none" stroke="url(#gG)" stroke-width="13" stroke-linecap="round" stroke-dasharray="0 ${C}" filter="url(#gl)" opacity="${f > 0 ? 1 : 0}" data-to="${arc * f} ${C}"/></g>
- <circle cx="100" cy="11" r="3.5" fill="#fff" opacity=".85"/><text x="100" y="-2" fill="#8f98c2" font-size="8" text-anchor="middle" letter-spacing="1">AVG</text>
-</svg><div class="g-c"><div class="g-v">${ratio == null ? '—' : Math.round(ratio * 100)}<small>%</small></div><div class="g-l">of your average</div><div class="g-a">avg ${avg == null ? '—' : fk(avg)} kWh/day</div></div></div>`;
+ <circle cx="100" cy="11" r="3.5" fill="#fff" opacity=".85"/><text x="100" y="-2" fill="#8f98c2" font-size="8" text-anchor="middle" letter-spacing="1">${t('AVG')}</text>
+</svg><div class="g-c"><div class="g-v">${ratio == null ? '—' : Math.round(ratio * 100)}<small>%</small></div><div class="g-l">${t('of your average')}</div><div class="g-a">${t('avg {0} kWh/day', avg == null ? '—' : fk(avg))}</div></div></div>`;
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const g = this.$('gval'); if (g) g.setAttribute('stroke-dasharray', g.dataset.to);
         this.shadowRoot.querySelectorAll('.od-r').forEach(r => r.style.transform = `translateY(-${r.dataset.v * 10}%)`);
@@ -737,20 +1046,20 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       this._dirty = false;
       const host = this.$(this._me ? 'form' : 'prof');
       if (this._me && !this._ui.formOpen) {
-        host.innerHTML = `<div class="fold"><div><div class="h-t">Manual meter reading</div><div class="h-s">Optional — Moj Elektro now logs your usage automatically every day</div></div>${this._ui.formPin
-          ? `<div class="row" style="align-items:center"><input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN"><button class="btn sm gh" data-act="form-pin-ok">${ic('edit')}Open</button><button class="btn sm gh" data-act="form-pin-no">Cancel</button></div>`
-          : `<button class="btn sm gh" data-act="form-toggle">${ic('edit')}Open</button>`}</div>`;
+        host.innerHTML = `<div class="fold"><div><div class="h-t">${t('Manual meter reading')}</div><div class="h-s">${t('Optional — Moj Elektro now logs your usage automatically every day')}</div></div>${this._ui.formPin
+          ? `<div class="row" style="align-items:center"><input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN"><button class="btn sm gh" data-act="form-pin-ok">${ic('edit')}${t('Open')}</button><button class="btn sm gh" data-act="form-pin-no">${t('Cancel')}</button></div>`
+          : `<button class="btn sm gh" data-act="form-toggle">${ic('edit')}${t('Open')}</button>`}</div>`;
         return;
       }
-      host.innerHTML = `<div class="ch-h" style="margin-bottom:4px"><div><div class="h-t">${this._me ? 'Manual meter reading' : 'Log a reading'}</div><div class="h-s">Type exactly what your energy counter shows</div></div><div class="row" style="align-items:center"><span class="badge ${ex ? 'ed' : ''}" id="f-badge">${ex ? (d === today ? 'Logged today ✓' : 'Editing') : 'New entry'}</span>${this._me ? `<button class="btn sm gh" data-act="form-toggle">Close</button>` : ''}</div></div>
-<label class="fld"><span>Date</span><input class="in" type="date" id="f-d" value="${d}" max="${today}"></label>
-<label class="fld"><span>${ic('meter')} Total counter</span><div class="iw"><input class="in mono" id="f-t" inputmode="decimal" autocomplete="off" placeholder="${s.mult === 1000 ? '121.334' : '121334'}" value="${ex ? rawStr(ex.t, s.mult) : ''}"><em>${u}</em></div></label>
+      host.innerHTML = `<div class="ch-h" style="margin-bottom:4px"><div><div class="h-t">${t(this._me ? 'Manual meter reading' : 'Log a reading')}</div><div class="h-s">${t('Type exactly what your energy counter shows')}</div></div><div class="row" style="align-items:center"><span class="badge ${ex ? 'ed' : ''}" id="f-badge">${t(ex ? (d === today ? 'Logged today ✓' : 'Editing') : 'New entry')}</span>${this._me ? `<button class="btn sm gh" data-act="form-toggle">${t('Close')}</button>` : ''}</div></div>
+<label class="fld"><span>${t('Date')}</span><input class="in" type="date" id="f-d" value="${d}" max="${today}"></label>
+<label class="fld"><span>${ic('meter')} ${t('Total counter')}</span><div class="iw"><input class="in mono" id="f-t" inputmode="decimal" autocomplete="off" placeholder="${s.mult === 1000 ? '121.334' : '121334'}" value="${ex ? rawStr(ex.t, s.mult) : ''}"><em>${u}</em></div></label>
 <div class="two">
- <label class="fld vt"><span><i class="dot vt"></i>Energija VT <small>${usage ? 'kWh used' : 'big tariff'}</small></span><div class="iw"><input class="in" id="f-vt" inputmode="decimal" autocomplete="off" placeholder="optional" value="${ex && ex.vt != null ? (usage ? ex.vt : rawStr(ex.vt, s.mult)) : ''}"><em>${tu}</em></div></label>
- <label class="fld mt"><span><i class="dot mt"></i>Energija MT <small>${usage ? 'kWh used' : 'small tariff'}</small></span><div class="iw"><input class="in" id="f-mt" inputmode="decimal" autocomplete="off" placeholder="optional" value="${ex && ex.mt != null ? (usage ? ex.mt : rawStr(ex.mt, s.mult)) : ''}"><em>${tu}</em></div></label>
+ <label class="fld vt"><span><i class="dot vt"></i>Energija VT <small>${t(usage ? 'kWh used' : 'big tariff')}</small></span><div class="iw"><input class="in" id="f-vt" inputmode="decimal" autocomplete="off" placeholder="${t('optional')}" value="${ex && ex.vt != null ? (usage ? ex.vt : rawStr(ex.vt, s.mult)) : ''}"><em>${tu}</em></div></label>
+ <label class="fld mt"><span><i class="dot mt"></i>Energija MT <small>${t(usage ? 'kWh used' : 'small tariff')}</small></span><div class="iw"><input class="in" id="f-mt" inputmode="decimal" autocomplete="off" placeholder="${t('optional')}" value="${ex && ex.mt != null ? (usage ? ex.mt : rawStr(ex.mt, s.mult)) : ''}"><em>${tu}</em></div></label>
 </div>
 <div class="prev" id="f-prev"></div>
-<div class="acts"><button class="btn pri" data-act="save">${ic('bolt')}${ex ? 'Update reading' : 'Save reading'}</button>${ex ? `<button class="btn gh" data-act="new">Cancel</button>` : ''}</div>`;
+<div class="acts"><button class="btn pri" data-act="save">${ic('bolt')}${t(ex ? 'Update reading' : 'Save reading')}</button>${ex ? `<button class="btn gh" data-act="new">${t('Cancel')}</button>` : ''}</div>`;
       this._preview();
     }
     _fv() { const g = id => this.$(id); return { d: g('f-d').value, t: num(g('f-t').value), vt: num(g('f-vt').value), mt: num(g('f-mt').value) }; }
@@ -759,28 +1068,28 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const { s, E } = this._c; const v = this._fv();
       const prev = [...E].reverse().find(e => e.d < v.d), next = E.find(e => e.d > v.d);
       P.className = 'prev';
-      if (v.t == null) { P.innerHTML = prev ? `<div>Previous reading <b style="color:var(--txt);font-family:'JetBrains Mono',monospace">${rawStr(prev.t, s.mult)}</b> on ${fdate(prev.d)}</div><div>Enter today's number and I'll work out the usage instantly.</div>` : `<div><b style="color:var(--txt)">This will be your baseline.</b></div><div>Usage appears from your second reading onward.</div>`; return; }
-      if (!prev) { P.innerHTML = `<div><b style="color:var(--txt)">Baseline reading</b> — ${next ? 'earlier than your other readings.' : 'the next reading will show usage.'}</div>`; return; }
+      if (v.t == null) { P.innerHTML = prev ? `<div>${t('Previous reading {0} on {1}', `<b style="color:var(--txt);font-family:'JetBrains Mono',monospace">${rawStr(prev.t, s.mult)}</b>`, fdate(prev.d))}</div><div>${t("Enter today's number and I'll work out the usage instantly.")}</div>` : `<div><b style="color:var(--txt)">${t('This will be your baseline.')}</b></div><div>${t('Usage appears from your second reading onward.')}</div>`; return; }
+      if (!prev) { P.innerHTML = `<div><b style="color:var(--txt)">${t('Baseline reading')}</b> — ${t(next ? 'earlier than your other readings.' : 'the next reading will show usage.')}</div>`; return; }
       const n = diffD(prev.d, v.d), dt = (v.t - prev.t) * s.mult;
-      if (dt < 0) { P.className = 'prev bad'; P.innerHTML = `<div><b>Lower than the previous reading</b> (${rawStr(prev.t, s.mult)} on ${fshort(prev.d)}).</div><div>Double-check the digits — counters only go up.</div>`; return; }
+      if (dt < 0) { P.className = 'prev bad'; P.innerHTML = `<div><b>${t('Lower than the previous reading')}</b> ${t('({0} on {1}).', rawStr(prev.t, s.mult), fshort(prev.d))}</div><div>${t('Double-check the digits — counters only go up.')}</div>`; return; }
       let tr = '';
       if (s.tmode === 'reading' && v.vt != null && v.mt != null && prev.vt != null && prev.mt != null) tr = `<div class="tr"><span><i class="dot vt"></i>VT +${fk((v.vt - prev.vt) * s.mult)} kWh</span><span><i class="dot mt"></i>MT +${fk((v.mt - prev.mt) * s.mult)} kWh</span></div>`;
       if (s.tmode === 'usage' && (v.vt != null || v.mt != null)) tr = `<div class="tr"><span><i class="dot vt"></i>VT ${fk(v.vt || 0)} kWh</span><span><i class="dot mt"></i>MT ${fk(v.mt || 0)} kWh</span></div>`;
-      P.innerHTML = `<div class="pv">+${fk(dt)} <small>kWh</small></div><div>over ${n} day${n > 1 ? 's' : ''} since ${fdate(prev.d)}${n > 1 ? ` · ${fk(dt / n)} kWh/day` : ''}</div>${tr}`;
+      P.innerHTML = `<div class="pv">+${fk(dt)} <small>kWh</small></div><div>${t('over {0} since {1}', LANG === 'sl' ? `${n} ${n === 1 ? 'dnevu' : 'dneh'}` : nDays(n), fdate(prev.d))}${n > 1 ? ` · ${fk(dt / n)} ${t('kWh/day')}` : ''}</div>${tr}`;
     }
     async _saveForm() {
-      if (this._demo) { this._toast('Exit the demo preview to log real readings'); return; }
+      if (this._demo) { this._toast(t('Exit the demo preview to log real readings')); return; }
       const v = this._fv(), { s, E } = this._c;
-      if (!v.d) { this._toast('Pick a date'); return; }
-      if (v.t == null) { this._toast('Enter the total counter reading'); this.$('f-t').focus(); return; }
+      if (!v.d) { this._toast(t('Pick a date')); return; }
+      if (v.t == null) { this._toast(t('Enter the total counter reading')); this.$('f-t').focus(); return; }
       const prev = [...E].reverse().find(e => e.d < v.d), next = E.find(e => e.d > v.d);
-      if ((prev && v.t < prev.t) || (next && v.t > next.t)) { if (!confirm('This reading does not fit between your neighbouring readings (counters only go up). Save anyway?')) return; }
+      if ((prev && v.t < prev.t) || (next && v.t > next.t)) { if (!confirm(t('This reading does not fit between your neighbouring readings (counters only go up). Save anyway?'))) return; }
       const e = { d: v.d, t: v.t }; if (v.vt != null) e.vt = v.vt; if (v.mt != null) e.mt = v.mt;
       this._data.entries = this._data.entries.filter(x => x.d !== v.d).concat(e);
       this._fd = null; this._ui.formOpen = false;
       const dt = prev ? (v.t - prev.t) * s.mult : null;
       this._renderAll(); await this._commit({ put: [e] });
-      this._toast(dt != null && dt >= 0 ? `Saved · +${fk(dt)} kWh since ${fshort(prev.d)}` : 'Reading saved');
+      this._toast(dt != null && dt >= 0 ? t('Saved · +{0} kWh since {1}', fk(dt), fshort(prev.d)) : t('Reading saved'));
     }
 
     /* ----- kpis ----- */
@@ -801,10 +1110,10 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const cost = o => { const c = this._cost(o); return c != null ? ` · <b>${this._money(c)}</b>` : ''; };
       const tile = (i, a, b, lab, v, sub, sp, id) => `<section class="card kpi" style="--a:${a};--b:${b};animation-delay:${i * 70}ms"><div class="kpi-t"><span class="kpi-i">${ic(id)}</span>${lab}</div><div class="kpi-v">${v == null ? '—' : fk(v)}<small>kWh</small></div><div class="kpi-s">${sub}</div>${this._spark(sp, a, b, 'sp' + i)}</section>`;
       this.$('kpis').innerHTML =
-        tile(0, '#3ef0a8', '#3ee6ff', 'Daily average · this month', avg, peak ? `Peak <b>${fk(peak.v)}</b> kWh on ${fshort(peak.k)}` : MONL[d.getMonth()], dm, 'avg') +
-        tile(1, '#3ee6ff', '#5b8cff', 'This week', wk.n ? wk.t : null, `Last week <b>${lw.n ? fk(lw.t) : '—'}</b> kWh${cost(wk)}`, wks, 'week') +
-        tile(2, '#8f7dff', '#c07bff', `${MONL[d.getMonth()]}${mo.me ? ' · Moj Elektro' : ''}`, mo.n ? mo.t : null, `Projected <b>${proj == null ? '—' : fk(proj)}</b> kWh${cost(mo)}`, mos, 'month') +
-        tile(3, '#ffc857', '#ff7a3d', `Year ${d.getFullYear()}`, yr.n ? yr.t : null, `${MON[0]} – ${MON[d.getMonth()]}${cost(yr)}`, mos.slice(-(d.getMonth() + 1)), 'year');
+        tile(0, '#3ef0a8', '#3ee6ff', t('Daily average · this month'), avg, peak ? t('Peak {0} kWh on {1}', `<b>${fk(peak.v)}</b>`, fshort(peak.k)) : MONL[d.getMonth()], dm, 'avg') +
+        tile(1, '#3ee6ff', '#5b8cff', t('This week'), wk.n ? wk.t : null, `${t('Last week {0} kWh', `<b>${lw.n ? fk(lw.t) : '—'}</b>`)}${cost(wk)}`, wks, 'week') +
+        tile(2, '#8f7dff', '#c07bff', `${MONL[d.getMonth()]}${mo.me ? ' · Moj Elektro' : ''}`, mo.n ? mo.t : null, `${t('Projected {0} kWh', `<b>${proj == null ? '—' : fk(proj)}</b>`)}${cost(mo)}`, mos, 'month') +
+        tile(3, '#ffc857', '#ff7a3d', t('Year {0}', d.getFullYear()), yr.n ? yr.t : null, `${MON[0]} – ${MON[d.getMonth()]}${cost(yr)}`, mos.slice(-(d.getMonth() + 1)), 'year');
     }
     _spark(vals, a, b, id) {
       const pts = vals.map((v, i) => [i, v]).filter(p => p[1] != null);
@@ -826,19 +1135,19 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const wd = bk.filter(hasF), avg = wd.length ? wd.reduce((a, b) => a + V(b), 0) / wd.length : 0;
       const ticks = [1, .75, .5, .25, 0];
       let h = `<div class="ch${sm ? ' sm' : ''}"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>`;
-      if (avg > 0) h += `<div class="ch-avg" style="bottom:${avg / mx * 100}%"><span>avg ${fk(avg)}</span></div>`;
+      if (avg > 0) h += `<div class="ch-avg" style="bottom:${avg / mx * 100}%"><span>${t('avg {0}', fk(avg))}</span></div>`;
       h += `<div class="ch-b${bk.length > 20 ? ' dense' : ''}">`;
       bk.forEach((b, i) => {
         const v = vals[i], has = hasF(b), part = has && b.n < b.span && b.span > 1;
         let tip = `<b>${b.title}</b>`;
         if (has) {
-          tip += `<div class="r"><span>Total</span><span class="v">${fk(stack ? v : b.t)} kWh</span></div>`;
+          tip += `<div class="r"><span>${t('Total')}</span><span class="v">${fk(stack ? v : b.t)} kWh</span></div>`;
           if (stack === 'b') tip += b.b.map((x, j) => x > 0 ? `<div class="r"><i class="dot" style="background:${BLK[j]}"></i>Blok ${j + 1}<span class="v">${fk(x)} kWh</span></div>` : '').join('');
           else if (b.has) tip += `<div class="r"><i class="dot vt"></i>VT<span class="v">${fk(b.vt)} kWh</span></div><div class="r"><i class="dot mt"></i>MT<span class="v">${fk(b.mt)} kWh</span></div>`;
-          const c = this._cost(b); if (c != null) tip += `<div class="r"><span>Cost</span><span class="v">${this._money(c)}</span></div>`;
-          if (b.span > 1) tip += `<div class="m">${b.n} of ${b.span} days logged · ${fk((stack ? v : b.t) / Math.max(1, b.n))} kWh/day</div>`;
-          if (!stack && b.q15) tip += `<div class="m">incl. 15-min data · meter total tomorrow</div>`;
-        } else tip += `<div class="m">No data</div>`;
+          const c = this._cost(b); if (c != null) tip += `<div class="r"><span>${t('Cost')}</span><span class="v">${this._money(c)}</span></div>`;
+          if (b.span > 1) tip += `<div class="m">${t('{0} of {1} days logged · {2} kWh/day', b.n, b.span, fk((stack ? v : b.t) / Math.max(1, b.n)))}</div>`;
+          if (!stack && b.q15) tip += `<div class="m">${t('incl. 15-min data · meter total tomorrow')}</div>`;
+        } else tip += `<div class="m">${t('No data')}</div>`;
         let bar;
         if (!has) bar = `<div class="bar none"></div>`;
         else if (stack === 'b') bar = `<div class="bar stk" style="height:${v / mx * 100}%;--i:${i}">${[4, 3, 2, 1, 0].map(j => b.b[j] > 0 ? `<div class="seg" style="flex:${b.b[j]};background:${BLK[j]}"></div>` : '').join('')}</div>`;
@@ -856,13 +1165,13 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const hi = wd.reduce((a, b) => V(b) > V(a) ? b : a), lo = wd.reduce((a, b) => V(b) < V(a) ? b : a);
       const st = (l, v, sub) => `<div class="st"><div class="st-l">${l}</div><div class="st-v">${fk(v)}<small>kWh</small></div><div class="st-s">${sub}</div></div>`;
       const c = bk.reduce((a, b) => { const x = this._cost(b); return x == null ? a : (a || 0) + x; }, null);
-      return `<div class="stats">${st('Total', tot, c != null ? '≈ ' + this._money(c) : `${wd.length} periods`)}${st('Average', av, 'per period')}${st('Highest', V(hi), hi.title)}${st('Lowest', V(lo), lo.title)}</div>`;
+      return `<div class="stats">${st(t('Total'), tot, c != null ? '≈ ' + this._money(c) : t('{0} periods', wd.length))}${st(t('Average'), av, t('per period'))}${st(t('Highest'), V(hi), hi.title)}${st(t('Lowest'), V(lo), lo.title)}</div>`;
     }
-    _tabs(cur, act, opts) { return `<div class="seg-tabs">${opts.map(([k, l]) => `<button class="${k === cur ? 'on' : ''}" data-act="${act}" data-v="${k}">${l}</button>`).join('')}</div>`; }
+    _tabs(cur, act, opts) { return `<div class="seg-tabs">${opts.map(([k, l]) => `<button class="${k === cur ? 'on' : ''}" data-act="${act}" data-v="${k}">${t(l)}</button>`).join('')}</div>`; }
     _renderChart() {
       const r = this._ui.range, bk = this._buckets(r);
-      const sub = { day: 'Last 30 days', week: 'Last 12 weeks', month: 'Last 12 months', year: 'By year' }[r];
-      this.$('chart').innerHTML = `<div class="ch-h"><div><div class="h-t">${this._c.out ? 'Sent to the grid' : 'Consumption'}</div><div class="h-s">${sub} · kWh</div></div>${this._tabs(r, 'range', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div>${this._bars(bk, false)}${this._stats(bk, false)}`;
+      const sub = t({ day: 'Last 30 days', week: 'Last 12 weeks', month: 'Last 12 months', year: 'By year' }[r]);
+      this.$('chart').innerHTML = `<div class="ch-h"><div><div class="h-t">${t(this._c.out ? 'Sent to the grid' : 'Consumption')}</div><div class="h-s">${sub} · kWh</div></div>${this._tabs(r, 'range', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div>${this._bars(bk, false)}${this._stats(bk, false)}`;
     }
     _renderHeat() {
       const { today, days } = this._c;
@@ -877,34 +1186,35 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
           const k = addD(ws, d), o = days.get(k);
           if (k > today) { cells += `<div class="cell f"></div>`; continue; }
           const lv = o && o.n ? 1 + Math.min(3, Math.floor((o.t - mn) / rg * 4)) : 0;
-          cells += `<div class="cell l${lv}${k === today ? ' td' : ''}" data-tip="${esc(`<b>${fdate(k)}</b><div class="${o && o.n ? '' : 'm'}">${o && o.n ? fk(o.t) + ' kWh' : 'No data'}</div>${o && o.q15 ? '<div class="m">15-min data · meter total tomorrow</div>' : ''}`)}"></div>`;
+          cells += `<div class="cell l${lv}${k === today ? ' td' : ''}" data-tip="${esc(`<b>${fdate(k)}</b><div class="${o && o.n ? '' : 'm'}">${o && o.n ? fk(o.t) + ' kWh' : t('No data')}</div>${o && o.q15 ? `<div class="m">${t('15-min data · meter total tomorrow')}</div>` : ''}`)}"></div>`;
         }
       }
       const sums = Array(7).fill(0), cnt = Array(7).fill(0);
       for (let i = 0; i < 84; i++) { const k = addD(today, -i), o = days.get(k); if (o && o.n) { const w = (pd(k).getDay() + 6) % 7; sums[w] += o.t; cnt[w]++; } }
       const av = sums.map((s, i) => cnt[i] ? s / cnt[i] : 0), amx = Math.max(...av) || 1;
       const nz = av.filter(x => x > 0), amn = nz.length ? Math.min(...nz) * 0.7 : 0;
-      const wk = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((n, i) => `<div class="wk-c${i > 4 ? ' we' : ''}" data-tip="${esc(`<b>${DOWL[(i + 1) % 7]}s</b><div>${cnt[i] ? fk(av[i]) + ' kWh avg' : 'No data'}</div><div class="m">last 12 weeks</div>`)}"><i style="height:${av[i] ? Math.max(8, (av[i] - amn) / ((amx - amn) || 1) * 100) : 4}%;--i:${i}"></i><span>${n[0]}${n[1]}</span></div>`).join('');
-      this.$('heat').innerHTML = `<div class="ch-h"><div><div class="h-t">Energy rhythm</div><div class="h-s">Every day, last ${W} weeks</div></div></div>
-<div class="hm-m">${months}</div><div class="hm"><div class="hm-d">${['Mon', '', 'Wed', '', 'Fri', '', 'Sun'].map(x => `<span>${x}</span>`).join('')}</div><div class="hm-g">${cells}</div></div>
-<div class="hm-leg">less <div class="cell"></div><div class="cell l1"></div><div class="cell l2"></div><div class="cell l3"></div><div class="cell l4"></div> more</div>
-<div class="wk"><div class="wk-t">Average by weekday</div><div class="wk-b">${wk}</div></div>`;
+      const wk = [1, 2, 3, 4, 5, 6, 0].map((w, i) => `<div class="wk-c${i > 4 ? ' we' : ''}" data-tip="${esc(`<b>${DOWP[w]}</b><div>${cnt[i] ? t('{0} kWh avg', fk(av[i])) : t('No data')}</div><div class="m">${t('last 12 weeks')}</div>`)}"><i style="height:${av[i] ? Math.max(8, (av[i] - amn) / ((amx - amn) || 1) * 100) : 4}%;--i:${i}"></i><span>${DOW2[w]}</span></div>`).join('');
+      this.$('heat').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Energy rhythm')}</div><div class="h-s">${t('Every day, last {0} weeks', W)}</div></div></div>
+<div class="hm-m">${months}</div><div class="hm"><div class="hm-d">${[DOW[1], '', DOW[3], '', DOW[5], '', DOW[0]].map(x => `<span>${x}</span>`).join('')}</div><div class="hm-g">${cells}</div></div>
+<div class="hm-leg">${t('less')} <div class="cell"></div><div class="cell l1"></div><div class="cell l2"></div><div class="cell l3"></div><div class="cell l4"></div> ${t('more')}</div>
+<div class="wk"><div class="wk-t">${t('Average by weekday')}</div><div class="wk-b">${wk}</div></div>`;
     }
     _renderTariff() {
       const r = this._ui.trange, { today } = this._c;
       const bk = this._buckets(r);
       const any = bk.some(b => b.has);
-      const head = `<div class="ch-h"><div><div class="h-t">Energija VT · MT</div><div class="h-s">${this._me ? 'Big (VT = peak) and small (MT = off-peak) tariff, from Moj Elektro' : 'Big (VT) and small (MT) tariff split'}</div></div><div class="row" style="align-items:center;gap:18px"><div class="legend"><span><i class="dot vt"></i>VT · big</span><span><i class="dot mt"></i>MT · small</span></div>${this._tabs(r, 'trange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
-      if (!any) { this.$('tariff').innerHTML = head + `<div class="empty">${ic('sun')}<b>No tariff data yet</b><span>Fill in the Energija VT and MT fields when you log a reading${this._c.s.tmode === 'reading' ? ' (both readings are needed on two consecutive entries)' : ''} to unlock this split.</span></div>`; return; }
+      // with Moj Elektro the title says it all, so there is no subtitle
+      const head = `<div class="ch-h"><div><div class="h-t">Energija VT · MT</div>${this._me ? '' : `<div class="h-s">${t('Big (VT) and small (MT) tariff split')}</div>`}</div><div class="row" style="align-items:center;gap:18px"><div class="legend"><span><i class="dot vt"></i>${t('VT · big')}</span><span><i class="dot mt"></i>${t('MT · small')}</span></div>${this._tabs(r, 'trange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
+      if (!any) { this.$('tariff').innerHTML = head + `<div class="empty">${ic('sun')}<b>${t('No tariff data yet')}</b><span>${t('Fill in the Energija VT and MT fields when you log a reading{0} to unlock this split.', this._c.s.tmode === 'reading' ? t(' (both readings are needed on two consecutive entries)') : '')}</span></div>`; return; }
       const cur = [...bk].reverse().find(b => b.has);
-      const nm = { day: cur.now ? 'Today' : fdate(cur.from), week: cur.now ? 'This week' : cur.title, month: cur.now ? 'This month' : cur.title }[r];
+      const nm = { day: cur.now ? t('Today') : fdate(cur.from), week: cur.now ? t('This week') : cur.title, month: cur.now ? t('This month') : cur.title }[r];
       const tot = cur.vt + cur.mt, fv = tot ? cur.vt / tot : 0;
       const R = 88, C = 2 * Math.PI * R, gap = tot && fv > 0 && fv < 1 ? 6 : 0;
       const vtLen = Math.max(0, C * fv - gap), mtLen = Math.max(0, C * (1 - fv) - gap);
       const s = this._c.s, cv = s.pVT > 0 ? cur.vt * s.pVT : null, cm = s.pMT > 0 ? cur.mt * s.pMT : null;
       const vS = bk.filter(b => b.has).reduce((a, b) => a + b.vt, 0), mS = bk.filter(b => b.has).reduce((a, b) => a + b.mt, 0);
       const totC = bk.reduce((a, b) => { const x = this._cost(b); return x == null ? a : (a || 0) + x; }, null);
-      const sp = { day: '30 days', week: '12 weeks', month: '12 months' }[r];
+      const sp = t({ day: '30 days', week: '12 weeks', month: '12 months' }[r]);
       this.$('tariff').innerHTML = head + `<div class="tariff-b">
 <div class="donut-w"><div class="dn"><svg viewBox="0 0 200 200"><defs><linearGradient id="dVT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc857"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="dMT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a18bff"/><stop offset="1" stop-color="#4f8dff"/></linearGradient></defs>
 <circle cx="100" cy="100" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="18"/>
@@ -912,9 +1222,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 <circle cx="100" cy="100" r="${R}" fill="none" stroke="url(#dMT)" stroke-width="18" stroke-linecap="round" stroke-dasharray="${mtLen} ${C}" stroke-dashoffset="${-(C * fv)}" style="filter:drop-shadow(0 0 8px rgba(161,139,255,.5))"/>
 <circle cx="100" cy="100" r="66" fill="none" stroke="rgba(255,255,255,.06)" stroke-dasharray="2 5"/></svg>
 <div class="dn-c"><div class="dn-l">${nm}</div><div class="dn-v">${fk(tot)}<small>kWh</small></div><div class="dn-l">${Math.round(fv * 100)}% VT · ${100 - Math.round(fv * 100)}% MT</div></div></div>
-<div class="tl"><div class="tl-i vt"><div class="tl-n">${ic('sun')}Energija VT</div><div class="tl-v">${fk(cur.vt)}<small>kWh</small></div><div class="tl-s">${cv != null ? '≈ ' + this._money(cv) : 'big tariff'}</div></div>
-<div class="tl-i mt"><div class="tl-n">${ic('moon')}Energija MT</div><div class="tl-v">${fk(cur.mt)}<small>kWh</small></div><div class="tl-s">${cm != null ? '≈ ' + this._money(cm) : 'small tariff'}</div></div></div></div>
-<div>${this._bars(bk, true, true)}<div class="stats"><div class="st"><div class="st-l">VT · ${sp}</div><div class="st-v" style="color:var(--vt1)">${fk(vS)}<small>kWh</small></div><div class="st-s">${s.pVT > 0 ? '≈ ' + this._money(vS * s.pVT) : 'big tariff'}</div></div><div class="st"><div class="st-l">MT · ${sp}</div><div class="st-v" style="color:var(--mt1)">${fk(mS)}<small>kWh</small></div><div class="st-s">${s.pMT > 0 ? '≈ ' + this._money(mS * s.pMT) : 'small tariff'}</div></div><div class="st"><div class="st-l">MT share</div><div class="st-v">${vS + mS ? Math.round(mS / (vS + mS) * 100) : 0}<small>%</small></div><div class="st-s">of tariff energy</div></div><div class="st"><div class="st-l">Energy cost</div><div class="st-v">${totC != null ? this._money(totC) : '—'}</div><div class="st-s">${totC != null ? sp : 'set prices in ⚙'}</div></div></div></div></div>`;
+<div class="tl"><div class="tl-i vt"><div class="tl-n">${ic('sun')}Energija VT</div><div class="tl-v">${fk(cur.vt)}<small>kWh</small></div><div class="tl-s">${cv != null ? '≈ ' + this._money(cv) : t('big tariff')}</div></div>
+<div class="tl-i mt"><div class="tl-n">${ic('moon')}Energija MT</div><div class="tl-v">${fk(cur.mt)}<small>kWh</small></div><div class="tl-s">${cm != null ? '≈ ' + this._money(cm) : t('small tariff')}</div></div></div></div>
+<div>${this._bars(bk, true, true)}<div class="stats"><div class="st"><div class="st-l">VT · ${sp}</div><div class="st-v" style="color:var(--vt1)">${fk(vS)}<small>kWh</small></div><div class="st-s">${s.pVT > 0 ? '≈ ' + this._money(vS * s.pVT) : t('big tariff')}</div></div><div class="st"><div class="st-l">MT · ${sp}</div><div class="st-v" style="color:var(--mt1)">${fk(mS)}<small>kWh</small></div><div class="st-s">${s.pMT > 0 ? '≈ ' + this._money(mS * s.pMT) : t('small tariff')}</div></div><div class="st"><div class="st-l">${t('MT share')}</div><div class="st-v">${vS + mS ? Math.round(mS / (vS + mS) * 100) : 0}<small>%</small></div><div class="st-s">${t('of tariff energy')}</div></div><div class="st"><div class="st-l">${t('Energy cost')}</div><div class="st-v">${totC != null ? this._money(totC) : '—'}</div><div class="st-s">${totC != null ? sp : t('set prices in ⚙')}</div></div></div></div></div>`;
     }
 
     /* ----- Moj Elektro: 15-minute load profile -----
@@ -942,26 +1252,26 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       if (this._prof && !!this._prof.out !== this._isOut()) this._buildProf(false);
       if (this._isOut()) { this._renderProfOut(el); return; }
       const P = this._prof, L = P && P.last;
-      let h = `<div class="ch-h"><div><div class="h-t">15-minute power</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${fdate(iso(L[L.length - 1].t))} ${hm(L[L.length - 1].t)}` : 'Moj Elektro · 24 h delay'}</div></div><span class="badge">kW</span></div>`;
-      if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…'}</b><span>${P && P.err ? esc(P.err) : 'Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.'}</span></div>`; return; }
+      let h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')}</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${fdate(iso(L[L.length - 1].t))} ${hm(L[L.length - 1].t)}` : t('Moj Elektro · 24 h delay')}</div></div><span class="badge">kW</span></div>`;
+      if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${t(P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…')}</b><span>${P && P.err ? esc(P.err) : t('Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.')}</span></div>`; return; }
       const pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw);
-      const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">Power<span class="v">${fk(s.kw)} kW</span></div><div class="r">Energy<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i></div>`).join('');
+      const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i></div>`).join('');
       const xl = L.map((s, i) => s.t.getMinutes() === 0 && s.t.getHours() % 6 === 0 ? `<span style="left:${(i + .5) / L.length * 100}%">${pad(s.t.getHours())}:00</span>` : '').join('');
-      const bp = P.peaks.map((s, i) => `<div style="--c:${BLK[i]}"><b>Blok ${i + 1}</b><span>${s ? fk(s.kw) : '—'}${s ? '<small style="font-size:11px;color:var(--mut);font-weight:500"> kW</small>' : ''}</span><em>${s ? `${fshort(iso(s.t))} ${hm(s.t)}` : 'no data'}</em></div>`).join('');
-      el.innerHTML = h + `<div class="pkrow"><div class="pk-v">${fk(pk.kw)}<small>kW peak</small></div><div class="pk-s">${fdate(iso(pk.t))} · ${hm(pk.t)} <span class="bchip" style="--c:${BLK[pk.b - 1]}">Blok ${pk.b}</span></div></div>
+      const bp = P.peaks.map((s, i) => `<div style="--c:${BLK[i]}"><b>Blok ${i + 1}</b><span>${s ? fk(s.kw) : '—'}${s ? '<small style="font-size:11px;color:var(--mut);font-weight:500"> kW</small>' : ''}</span><em>${s ? `${fshort(iso(s.t))} ${hm(s.t)}` : t('no data')}</em></div>`).join('');
+      el.innerHTML = h + `<div class="pkrow"><div class="pk-v">${fk(pk.kw)}<small>${t('kW peak')}</small></div><div class="pk-s">${fdate(iso(pk.t))} · ${hm(pk.t)} <span class="bchip" style="--c:${BLK[pk.b - 1]}">Blok ${pk.b}</span></div></div>
 <div class="pch">${bars}</div><div class="pxl">${xl}</div>
-<div class="bsub" style="margin-top:14px">Highest 15-min power per block · last ${P.days} day${P.days > 1 ? 's' : ''}</div>
+<div class="bsub" style="margin-top:14px">${t('Highest 15-min power per block · {0}', lastDays(P.days))}</div>
 <div class="bpk">${bp}</div>
-<div class="pnote">Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.</div>`;
+<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}</div>`;
     }
     // Grid out: the newest complete day of energy sent to the grid, what that day sent out, the net against
     // grid in and the hours it was exporting.
     _renderProfOut(el) {
       const P = this._prof, L = P && P.last;
-      const h = `<div class="ch-h"><div><div class="h-t">15-minute power · <span class="go">grid out</span></div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} · energy sent to the grid` : 'Moj Elektro · 24 h delay'}</div></div><span class="badge" style="color:var(--c1);border-color:rgba(62,240,168,.3);background:rgba(62,240,168,.1)">kW</span></div>`;
-      if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('sun')}<b>No grid-out 15-minute data yet</b><span>Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.</span></div>`; return; }
+      const h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')} · <span class="go">${t('grid out')}</span></div><div class="h-s">${L && L.length ? t('{0} · energy sent to the grid', fdate(iso(L[0].t))) : t('Moj Elektro · 24 h delay')}</div></div><span class="badge" style="color:var(--c1);border-color:rgba(62,240,168,.3);background:rgba(62,240,168,.1)">kW</span></div>`;
+      if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('sun')}<b>${t('No grid-out 15-minute data yet')}</b><span>${t('Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.')}</span></div>`; return; }
       const day = iso(L[0].t), pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw || .1);
-      const bars = L.map((s, i) => `<div class="pc${s === pk && s.kw > 0 ? ' top' : ''}" style="--c:#3ef0a8" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">Power out<span class="v">${fk(s.kw)} kW</span></div><div class="r">Energy out<span class="v">${s.kwh.toFixed(3)} kWh</span></div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:linear-gradient(180deg,#e8ff6a,#3ef0a8);--i:${i}"></i></div>`).join('');
+      const bars = L.map((s, i) => `<div class="pc${s === pk && s.kw > 0 ? ' top' : ''}" style="--c:#3ef0a8" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power out')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy out')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:linear-gradient(180deg,#e8ff6a,#3ef0a8);--i:${i}"></i></div>`).join('');
       const xl = L.map((s, i) => s.t.getMinutes() === 0 && s.t.getHours() % 6 === 0 ? `<span style="left:${(i + .5) / L.length * 100}%">${pad(s.t.getHours())}:00</span>` : '').join('');
       const on = L.filter(s => s.kwh > 0.0005), sent = L.reduce((a, s) => a + s.kwh, 0);
       // grid in of the same day: its 15-minute data, or else Moj Elektro's day total
@@ -970,10 +1280,10 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const net = used == null ? null : sent - used;
       const end = on.length ? new Date(+on[on.length - 1].t + 9e5) : null, B = P.best;
       const tile = (c, l, v, s) => `<div style="--c:${c}"><b>${l}</b><span>${v}</span><em>${s}</em></div>`;
-      el.innerHTML = h + `<div class="pkrow"><div class="pk-v">${fk(pk.kw)}<small>kW peak out</small></div><div class="pk-s">${pk.kw > 0 ? `${fdate(day)} · ${hm(pk.t)}` : 'nothing sent out'}</div></div>
+      el.innerHTML = h + `<div class="pkrow"><div class="pk-v">${fk(pk.kw)}<small>${t('kW peak out')}</small></div><div class="pk-s">${pk.kw > 0 ? `${fdate(day)} · ${hm(pk.t)}` : t('nothing sent out')}</div></div>
 <div class="pch">${bars}</div><div class="pxl">${xl}</div>
-<div class="bpk o3">${tile('#3ef0a8', 'Sent out', `${fk(sent)}<small style="font-size:11px;color:var(--mut);font-weight:500"> kWh</small>`, `${on.length} quarter${on.length === 1 ? '' : 's'} exporting`)}${tile('#ffc857', 'Net', net == null ? '—' : `${net > 0 ? '+' : ''}${fk(net)}<small style="font-size:11px;color:var(--mut);font-weight:500"> kWh</small>`, net == null ? 'grid in not known yet' : net >= 0 ? 'more out than in' : 'more in than out')}${tile('#4cc9f0', 'Exporting', on.length ? `${hm(on[0].t)}–${hm(end)}` : '—', B && B.kw > 0 ? `best ${fk(B.kw)} kW · ${fshort(iso(B.t))}` : `last ${P.days} day${P.days > 1 ? 's' : ''}`)}</div>
-<div class="pnote"><i class="sq"></i>Energy sent to the grid (A−). What you produce and use yourself never passes the meter, so it isn't shown here.</div>`;
+<div class="bpk o3">${tile('#3ef0a8', t('Sent out'), `${fk(sent)}<small style="font-size:11px;color:var(--mut);font-weight:500"> kWh</small>`, LANG === 'sl' ? `četrture z oddajo: ${on.length}` : `${on.length} quarter${on.length === 1 ? '' : 's'} exporting`)}${tile('#ffc857', t('Net'), net == null ? '—' : `${net > 0 ? '+' : ''}${fk(net)}<small style="font-size:11px;color:var(--mut);font-weight:500"> kWh</small>`, t(net == null ? 'grid in not known yet' : net >= 0 ? 'more out than in' : 'more in than out'))}${tile('#4cc9f0', t('Exporting'), on.length ? `${hm(on[0].t)}–${hm(end)}` : '—', B && B.kw > 0 ? t('best {0} kW · {1}', fk(B.kw), fshort(iso(B.t))) : lastDays(P.days))}</div>
+<div class="pnote"><i class="sq"></i>${t("Energy sent to the grid (A−). What you produce and use yourself never passes the meter, so it isn't shown here.")}</div>`;
     }
 
     /* ----- Moj Elektro: network tariff blocks ----- */
@@ -981,18 +1291,18 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const el = this.$('blocks'); if (!this._me || !el) return;
       const { days, bLast: meLast, today } = this._c, r = this._ui.brange || 'day';
       const legend = `<div class="blegend">${BLK.map((c, i) => `<span><i style="background:${c}"></i>Blok ${i + 1}</span>`).join('')}</div>`;
-      const head = `<div class="ch-h"><div><div class="h-t">Časovni bloki · tariff blocks</div><div class="h-s">Energy per network tariff block, from Moj Elektro</div></div><div class="row" style="align-items:center;gap:18px">${legend}${this._tabs(r, 'brange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Časovni bloki · tariff blocks')}</div><div class="h-s">${t('Energy per network tariff block, from Moj Elektro')}</div></div><div class="row" style="align-items:center;gap:18px">${legend}${this._tabs(r, 'brange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
       const y = meLast && days.get(meLast);
-      if (!y || !y.b) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<b>No block data yet</b><span>The daily automation adds it every morning.</span></div>`; return; }
+      if (!y || !y.b) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<b>${t('No block data yet')}</b><span>${t('The daily automation adds it every morning.')}</span></div>`; return; }
       const rows = (vals, tot) => vals.map((x, i) => `<div class="brow"><span>Blok ${i + 1}</span><div class="bt"><i style="width:${tot ? x / tot * 100 : 0}%;background:${BLK[i]}"></i></div><span class="bv">${fk(x)} kWh<small>${tot ? Math.round(x / tot * 100) : 0}%</small></span></div>`).join('');
       const d = pd(today), ms = this._sum(iso(new Date(d.getFullYear(), d.getMonth(), 1)), today);
       const yt = y.b.reduce((a, x) => a + x, 0), mt = ms.b.reduce((a, x) => a + x, 0);
       let mdays = 0; for (const [k, o] of days) if (k.slice(0, 7) === today.slice(0, 7) && o.b) mdays++;
       el.innerHTML = head + `<div class="blk-b"><div>
-<div class="bsub">${meLast === addD(today, -1) ? 'Yesterday' : fdate(meLast)} · ${fk(yt)} kWh</div>${rows(y.b, yt)}
+<div class="bsub">${meLast === addD(today, -1) ? t('Yesterday') : fdate(meLast)} · ${fk(yt)} kWh</div>${rows(y.b, yt)}
 <div class="bgap"></div>
-<div class="bsub">${MONL[d.getMonth()]} · ${mdays} logged day${mdays === 1 ? '' : 's'} · ${fk(mt)} kWh</div>${rows(ms.b, mt)}
-<div class="bnote">Blok 1 is the most expensive network block and only applies on working days from November to February. Weekends, holidays and the lower season (March–October) fall into the cheaper blocks 2–5.</div>
+<div class="bsub">${MONL[d.getMonth()]} · ${count(mdays, 'logged day', 'logged days', 'zabeleženi dnevi')} · ${fk(mt)} kWh</div>${rows(ms.b, mt)}
+<div class="bnote">${t('Blok 1 is the most expensive network block and only applies on working days from November to February. Weekends, holidays and the lower season (March–October) fall into the cheaper blocks 2–5.')}</div>
 </div><div>${this._bars(this._buckets(r), 'b', true)}</div></div>`;
     }
 
@@ -1000,59 +1310,61 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     _renderLog() {
       const { E, s, out } = this._c;
       const el = this.$('log'), ME = this._demo ? [] : ((out ? this._data.meOut : this._data.me) || []);
-      if (!E.length && !ME.length) { el.innerHTML = `<div class="ch-h"><div><div class="h-t">Reading log</div><div class="h-s">Every counter reading you've entered</div></div></div><div class="empty" style="min-height:120px">${ic('meter')}<span>No readings yet</span></div>`; return; }
+      if (!E.length && !ME.length) { el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Reading log')}</div><div class="h-s">${t("Every counter reading you've entered")}</div></div></div><div class="empty" style="min-height:120px">${ic('meter')}<span>${t('No readings yet')}</span></div>`; return; }
       const rows = [], act = !this._demo && E.length > 0;
-      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">1 day</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">15-min data · VT / MT tomorrow</td>` : `<td class="m">—</td><td class="m">tariff blocks only</td>`}<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>${act ? '<td></td>' : ''}</tr>`]);
+      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">${nDays(1)}</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">${t('15-min data · VT / MT tomorrow')}</td>` : `<td class="m">—</td><td class="m">${t('tariff blocks only')}</td>`}<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>${act ? '<td></td>' : ''}</tr>`]);
       for (let i = E.length - 1; i >= 0; i--) {
         const e = E[i], p = E[i - 1];
         const n = p ? diffD(p.d, e.d) : 0, dt = p ? (e.t - p.t) * s.mult : null;
         const vtu = s.tmode === 'usage' ? e.vt : (p && e.vt != null && p.vt != null ? (e.vt - p.vt) * s.mult : null);
         const mtu = s.tmode === 'usage' ? e.mt : (p && e.mt != null && p.mt != null ? (e.mt - p.mt) * s.mult : null);
-        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? 'baseline' : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${n} days · ${fk(dt / n)}/day` : n === 1 ? '1 day' : ''}</td><td class="vtc">${vtu == null ? '<span class="m">—</span>' : fk(vtu)}</td><td class="mtc">${mtu == null ? '<span class="m">—</span>' : fk(mtu)}</td>${act ? `<td><button class="rb" data-act="edit" data-d="${e.d}" title="Edit">${ic('edit')}</button></td>` : ''}</tr>`]);
+        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${nDays(n)} · ${fk(dt / n)}/${LANG === 'sl' ? 'dan' : 'day'}` : n === 1 ? nDays(1) : ''}</td><td class="vtc">${vtu == null ? '<span class="m">—</span>' : fk(vtu)}</td><td class="mtc">${mtu == null ? '<span class="m">—</span>' : fk(mtu)}</td>${act ? `<td><button class="rb" data-act="edit" data-d="${e.d}" title="${t('Edit')}">${ic('edit')}</button></td>` : ''}</tr>`]);
       }
       rows.sort((a, b) => a[0] < b[0] ? 1 : -1);
       const show = (this._ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
       const first = [...E.map(e => e.d), ...ME.map(m => m.d)].sort()[0];
-      const sub = [E.length ? `${E.length} manual reading${E.length > 1 ? 's' : ''}` : '', ME.length ? `${ME.length} Moj Elektro ${out ? 'grid-out ' : ''}day${ME.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-      el.innerHTML = `<div class="ch-h"><div><div class="h-t">Log</div><div class="h-s">${sub} · since ${fdate(first)} ${pd(first).getFullYear()}</div></div><div class="row"><button class="btn sm gh" data-act="export">${ic('down')}Export</button><button class="btn sm gh" data-act="import">${ic('up')}Import</button></div></div>
-<div class="tscroll"><table class="tbl"><thead><tr><th>Date</th><th>Counter / source</th><th>${out ? 'Sent out' : 'Used'}</th><th>Span</th><th>VT kWh</th><th>MT kWh</th>${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
-${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${this._ui.all ? 'Show less' : `Show all ${rows.length}`}</button></div>` : ''}`;
+      const sub = [E.length ? count(E.length, 'manual reading', 'manual readings', 'ročni odčitki') : '', ME.length ? (out ? count(ME.length, 'Moj Elektro grid-out day', 'Moj Elektro grid-out days', 'dnevi oddaje Moj Elektro') : count(ME.length, 'Moj Elektro day', 'Moj Elektro days', 'dnevi Moj Elektro')) : ''].filter(Boolean).join(' · ');
+      el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div><div class="row"><button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div></div>
+<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th><th>${t('Span')}</th><th>VT kWh</th><th>MT kWh</th>${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
+${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${this._ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
     }
 
     /* ----- settings drawer ----- */
     _renderDrawer() {
-      const s = this._c.s, open = this._dwOpen, mode = this._mode(), user = this._hass && this._hass.user && this._hass.user.name;
-      const opt = (k, v, t, d) => `<div class="opt${s[k] === v ? ' on' : ''}" data-act="set" data-k="${k}" data-v="${v}"><i></i><div><b>${t}</b><span>${d}</span></div></div>`;
+      const s = this._c.s, open = this._dwOpen, mode = this._mode(), lang = this._langPref(), user = this._hass && this._hass.user && this._hass.user.name;
+      const opt = (k, v, b, d) => `<div class="opt${s[k] === v ? ' on' : ''}" data-act="set" data-k="${k}" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`;
       this.$('dw').innerHTML = `<div class="${open ? 'dw-open' : ''}"><div class="dw-bg" data-act="close"></div><aside class="dw">
-<div class="row" style="align-items:center;justify-content:space-between"><h3>Settings</h3><button class="ibtn" data-act="close">${ic('x')}</button></div>
-${this._me && this._sync === 'shared' && !this._demo ? `<div class="dw-s"><div class="dw-t">Grid</div>
+<div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Settings')}</h3><button class="ibtn" data-act="close">${ic('x')}</button></div>
+${this._me && this._sync === 'shared' && !this._demo ? `<div class="dw-s"><div class="dw-t">${t('Grid')}</div>
 ${opt('grid', 'in', 'Grid in', 'Energy you take from the grid.')}
 ${opt('grid', 'both', 'Grid in &amp; Grid out', 'Also the energy you send to the grid (for example from solar panels), with a Grid in / Grid out switch at the top.')}</div>` : ''}
-${this._me ? '' : `<div class="dw-s"><div class="dw-t">Counter format</div>
+${this._me ? '' : `<div class="dw-s"><div class="dw-t">${t('Counter format')}</div>
 ${opt('mult', 1000, 'MWh with 3 decimals', '120.622 on the display = 120 622 kWh. For example 121.334 − 120.622 = 712 kWh.')}
 ${opt('mult', 1, 'Plain kWh', 'The counter already shows kWh (e.g. 120622 or 12.5).')}</div>
-<div class="dw-s"><div class="dw-t">Energija VT / MT input</div>
+<div class="dw-s"><div class="dw-t">${t('Energija VT / MT input')}</div>
 ${opt('tmode', 'reading', 'Counter readings', 'Type the VT and MT registers from the meter; usage is the difference between readings.')}
 ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT for that day.')}</div>`}
-<div class="dw-s"><div class="dw-t">Prices (optional)</div>
+<div class="dw-s"><div class="dw-t">${t('Prices (optional)')}</div>
 <div class="two"><label class="fld vt"><span><i class="dot vt"></i>VT / kWh</span><input class="in" data-set="pVT" inputmode="decimal" value="${s.pVT || ''}" placeholder="0.12"></label>
 <label class="fld mt"><span><i class="dot mt"></i>MT / kWh</span><input class="in" data-set="pMT" inputmode="decimal" value="${s.pMT || ''}" placeholder="0.08"></label></div>
-<label class="fld"><span>Currency symbol</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
-<div class="dw-note">Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).</div></div>
-<div class="dw-s"><div class="dw-t">This device</div>
-${[['auto', 'Automatic', 'Light on tablets and on devices that ask for reduced motion.'], ['light', 'Light', 'No animations, blur or glow — for slow tablets and wall panels.'], ['full', 'Full', 'All animations and effects.']].map(([v, t, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t}</b><span>${d}</span></div></div>`).join('')}
-<div class="dw-note">Now: <b>${this._lite ? 'light' : 'full'}</b>${mode === 'auto' ? ' — automatic' : ''}${user ? ` · signed in as <b>${esc(user)}</b>` : ''}. Saved on this device only.</div></div>
-${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">Moj Elektro history</div>
-<div class="dw-note">Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks)${this._gridBoth() ? ', for grid in and grid out' : ''}. Days already in the log are updated with Moj Elektro's numbers.</div>
-<div class="two"><label class="fld"><span>From</span><input class="in" type="date" id="imp-from" value="${this._ui.impFrom}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label>
-<label class="fld"><span>To</span><input class="in" type="date" id="imp-to" value="${this._ui.impTo}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label></div>
-<div class="row"><button class="btn sm gh" data-act="api-import"${this._importing ? ' disabled' : ''}>${ic('sync', this._importing ? 'spin' : '')}${this._importing ? 'Importing…' : 'Export &amp; import from Moj Elektro'}</button></div></div>` : ''}
-<div class="dw-s"><div class="dw-t">Your data</div>
-<div class="dw-note">${this._sync === 'shared' ? `Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.` : `The Daily Energy integration is not set up, so nothing can be saved.`}</div>
-<div class="row"><button class="btn sm gh" data-act="export">${ic('down')}Export JSON</button><button class="btn sm gh" data-act="import">${ic('up')}Import CSV / JSON</button></div>
+<label class="fld"><span>${t('Currency symbol')}</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
+<div class="dw-note">${t('Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).')}</div></div>
+<div class="dw-s"><div class="dw-t">${t('Language')}</div>
+${[['auto', t('Automatic'), t('Follows the Home Assistant language.')], ['en', 'English', ''], ['sl', 'Slovenščina', '']].map(([v, b, d]) => `<div class="opt${lang === v ? ' on' : ''}" data-act="lang" data-v="${v}"><i></i><div><b>${b}</b>${d ? `<span>${d}</span>` : ''}</div></div>`).join('')}</div>
+<div class="dw-s"><div class="dw-t">${t('This device')}</div>
+${[['auto', 'Automatic', 'Light on tablets and on devices that ask for reduced motion.'], ['light', 'Light', 'No animations, blur or glow — for slow tablets and wall panels.'], ['full', 'Full', 'All animations and effects.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}
+<div class="dw-note">${t('Now: {0}', `<b>${t(this._lite ? 'light' : 'full')}</b>`)}${mode === 'auto' ? t(' — automatic') : ''}${user ? t(' · signed in as {0}', `<b>${esc(user)}</b>`) : ''}${t('. Saved on this device only.')}</div></div>
+${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">${t('Moj Elektro history')}</div>
+<div class="dw-note">${t("Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks){0}. Days already in the log are updated with Moj Elektro's numbers.", this._gridBoth() ? t(', for grid in and grid out') : '')}</div>
+<div class="two"><label class="fld"><span>${t('From')}</span><input class="in" type="date" id="imp-from" value="${this._ui.impFrom}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label>
+<label class="fld"><span>${t('To')}</span><input class="in" type="date" id="imp-to" value="${this._ui.impTo}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label></div>
+<div class="row"><button class="btn sm gh" data-act="api-import"${this._importing ? ' disabled' : ''}>${ic('sync', this._importing ? 'spin' : '')}${t(this._importing ? 'Importing…' : 'Export &amp; import from Moj Elektro')}</button></div></div>` : ''}
+<div class="dw-s"><div class="dw-t">${t('Your data')}</div>
+<div class="dw-note">${t(this._sync === 'shared' ? 'Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.' : 'The Daily Energy integration is not set up, so nothing can be saved.')}</div>
+<div class="row"><button class="btn sm gh" data-act="export">${ic('down')}${t('Export JSON')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import CSV / JSON')}</button></div>
 ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-items:center">${this._ui.pin
-        ? `<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN"><button class="btn sm warn" data-act="clear-ok">${ic('del')}Delete</button><button class="btn sm gh" data-act="clear-no">Cancel</button>`
-        : `<button class="btn sm warn" data-act="clear">${ic('del')}Delete all data</button>`}</div>` : ''}</div>
+        ? `<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN"><button class="btn sm warn" data-act="clear-ok">${ic('del')}${t('Delete')}</button><button class="btn sm gh" data-act="clear-no">${t('Cancel')}</button>`
+        : `<button class="btn sm warn" data-act="clear">${ic('del')}${t('Delete all data')}</button>`}</div>` : ''}</div>
 </aside></div>`;
     }
     // Import from Moj Elektro: administrators only (checked by Home Assistant too), with API access
@@ -1063,27 +1375,27 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       if (this._importing) return;
       const max = this._impMax();
       let a = this._ui.impFrom, b = this._ui.impTo;
-      if (!a || !b) { this._toast('Pick both dates'); return; }
+      if (!a || !b) { this._toast(t('Pick both dates')); return; }
       if (a > b) [a, b] = [b, a];
       if (b > max) b = max;
-      if (a > b) { this._toast('Pick days before today'); return; }
+      if (a > b) { this._toast(t('Pick days before today')); return; }
       const spans = [];
       for (let s = a; s <= b;) { const d = pd(s), e = iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)), end = e < b ? e : b; spans.push([s, end]); s = addD(end, 1); }
       this._importing = true; this._renderDrawer();
       let days = 0, noTotal = 0, err = null;
       for (let i = 0; i < spans.length && !err; i++) {
         const d = pd(spans[i][0]);
-        this._toast(`Importing from Moj Elektro · ${MONL[d.getMonth()]} ${d.getFullYear()}${spans.length > 1 ? ` (${i + 1}/${spans.length})` : ''}…`, { hold: true, icon: 'sync' });
+        this._toast(t('Importing from Moj Elektro · {0}…', `${MONL[d.getMonth()]} ${d.getFullYear()}${spans.length > 1 ? ` (${i + 1}/${spans.length})` : ''}`), { hold: true, icon: 'sync' });
         try {
           const r = await this._ws('import_api', { start: spans[i][0], end: spans[i][1] });
           if (r.error) err = r.error; else { days += r.days || 0; noTotal += r.no_total || 0; }
-        } catch (e) { err = e && e.code === 'unauthorized' ? 'Only administrators can import' : (e && e.message || String(e)); }
+        } catch (e) { err = e && e.code === 'unauthorized' ? t('Only administrators can import') : (e && e.message || String(e)); }
       }
       this._importing = false; this._renderDrawer();
-      const done = `${days} day${days === 1 ? '' : 's'} updated`;
-      if (err) this._toast(`Import stopped — ${err}${days ? ` (${done})` : ''}`, { ms: 6000 });
-      else if (days) this._toast(`Imported from Moj Elektro: ${done}${noTotal ? ` · ${noTotal} without a meter total` : ''}`, { ms: 5000 });
-      else this._toast(noTotal > (pd(b) - pd(a)) / 864e5 ? 'Moj Elektro has no data for those days' : 'Nothing new — those days are already up to date', { ms: 5000 });
+      const done = count(days, 'day updated', 'days updated', 'posodobljeni dnevi');
+      if (err) this._toast(t('Import stopped — {0}', `${err}${days ? ` (${done})` : ''}`), { ms: 6000 });
+      else if (days) this._toast(t('Imported from Moj Elektro: {0}', `${done}${noTotal ? t(' · {0} without a meter total', noTotal) : ''}`), { ms: 5000 });
+      else this._toast(t(noTotal > (pd(b) - pd(a)) / 864e5 ? 'Moj Elektro has no data for those days' : 'Nothing new — those days are already up to date'), { ms: 5000 });
     }
     _drawer(o) { this._dwOpen = o; if (!o && this._ui.pin) { this._ui.pin = false; this._renderDrawer(); } const w = this.$('dw').firstElementChild; if (w) w.classList.toggle('dw-open', o); }
 
@@ -1112,21 +1424,22 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'update') this._checkUpdates();
       else if (a === 'view') this._setView(t.dataset.v);
       else if (a === 'mode') { LS.set('daily-energy-mode', t.dataset.v); this._applyLite(); this._renderAll(); }
+      else if (a === 'lang') { LS.set('daily-energy-lang', t.dataset.v); this._renderAll(); this._drawer(true); }
       else if (a === 'settings') { this._renderDrawer(); requestAnimationFrame(() => this._drawer(true)); }
       else if (a === 'close') this._drawer(false);
       else if (a === 'set') {
         let v = t.dataset.v; if (t.dataset.k === 'mult') v = Number(v);
         const on = t.dataset.k === 'grid' && v === 'both' && this._data.settings.grid !== 'both';
         this._data.settings[t.dataset.k] = v; if (this._demo) this._demo = this._genDemo(); this._renderAll(); this._drawer(true); await this._commit({ settings: true });
-        if (on) this._toast('Grid out is on — fetching the last days from Moj Elektro. For older days use Moj Elektro history below.', { ms: 6000 });
+        if (on) this._toast(tr('Grid out is on — fetching the last days from Moj Elektro. For older days use Moj Elektro history below.'), { ms: 6000 });
       }
-      else if (a === 'demo-on') { this._demo = this._genDemo(); this._shown = 0; this._dwOpen = false; this._renderAll(); this._toast('Demo data loaded — explore away'); }
+      else if (a === 'demo-on') { this._demo = this._genDemo(); this._shown = 0; this._dwOpen = false; this._renderAll(); this._toast(tr('Demo data loaded — explore away')); }
       else if (a === 'demo-off') { this._demo = null; this._shown = 0; this._renderAll(); }
       else if (a === 'export') this._export();
       else if (a === 'import') this.$('file').click();
       else if (a === 'api-import') this._apiImport();
       else if (a === 'clear') {
-        if (!confirm('Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed; settings stay. Export JSON first if you want a backup — Moj Elektro days can be fetched again with Moj Elektro history.')) return;
+        if (!confirm(tr('Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed; settings stay. Export JSON first if you want a backup — Moj Elektro days can be fetched again with Moj Elektro history.'))) return;
         if (!this._hasPin) { this._clearAll(''); return; }
         this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50);
       }
@@ -1138,20 +1451,20 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
     async _openFormPin() {
       const p = this.$('fpin'), pin = p ? p.value : '';
       let ok = false; try { ok = (await this._ws('verify_pin', { pin })).ok; } catch (e) { }
-      if (!ok) { this._toast('Wrong PIN'); if (p) { p.value = ''; p.focus(); } return; }
+      if (!ok) { this._toast(t('Wrong PIN')); if (p) { p.value = ''; p.focus(); } return; }
       this._pinOk = pin; this._ui.formPin = false; this._ui.formOpen = true; this._renderForm();
       setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 100);
     }
     async _clearAll(given) {
       const p = this.$('pin'), pin = given != null ? given : (p ? p.value : '');
       try { await this._ws('clear_all', { pin }); }
-      catch (e) { this._toast(e && e.code === 'wrong_pin' ? 'Wrong PIN' : e && e.code === 'unauthorized' ? 'Only administrators can delete data' : 'Could not delete — ' + (e && e.message || e)); if (p) { p.value = ''; p.focus(); } return; }
-      this._ui.pin = false; this._demo = null; this._shown = 0; this._renderDrawer(); this._drawer(true); this._toast('All data deleted');
+      catch (e) { this._toast(e && e.code === 'wrong_pin' ? t('Wrong PIN') : e && e.code === 'unauthorized' ? t('Only administrators can delete data') : t('Could not delete — {0}', e && e.message || e)); if (p) { p.value = ''; p.focus(); } return; }
+      this._ui.pin = false; this._demo = null; this._shown = 0; this._renderDrawer(); this._drawer(true); this._toast(t('All data deleted'));
     }
     _isAdmin() { return !!(this._hass && this._hass.user && this._hass.user.is_admin); }
     async _change(e) {
       const t = e.target;
-      if (t.id === 'f-d') { this._fd = t.value || null; const ex = this._c.E.find(x => x.d === t.value); if (ex) this._renderForm(); else { const b = this.$('f-badge'); b.textContent = 'New entry'; b.className = 'badge'; this._preview(); } }
+      if (t.id === 'f-d') { this._fd = t.value || null; const ex = this._c.E.find(x => x.d === t.value); if (ex) this._renderForm(); else { const b = this.$('f-badge'); b.textContent = tr('New entry'); b.className = 'badge'; this._preview(); } }
       else if (t.id === 'imp-from') this._ui.impFrom = t.value;
       else if (t.id === 'imp-to') this._ui.impTo = t.value;
       else if (t.dataset && t.dataset.set) { const k = t.dataset.set; this._data.settings[k] = k === 'cur' ? (t.value.trim() || '€') : (num(t.value) || 0); this._calc(); this._renderHero(); this._renderKpis(); this._renderChart(); this._renderTariff(); await this._commit({ settings: true }); }
@@ -1161,10 +1474,10 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
         try {
           const text = await f.text();
           const r = /\.json$/i.test(f.name) ? await this._ws('import_backup', { data: JSON.parse(text) }) : await this._ws('import_csv', { text });
-          const kind = { readings: 'daily meter readings', blocks: 'daily tariff blocks', quarters: '15-minute data', backup: 'backup' }[r.kind] || r.kind;
-          this._toast(`Imported ${kind}: ${r.days} day${r.days === 1 ? '' : 's'} updated`);
+          const kind = tr({ readings: 'daily meter readings', blocks: 'daily tariff blocks', quarters: '15-minute data', backup: 'backup' }[r.kind] || r.kind);
+          this._toast(tr('Imported {0}: {1}', kind, count(r.days, 'day updated', 'days updated', 'posodobljeni dnevi')));
         } catch (err) {
-          this._toast(err && err.code === 'unauthorized' ? 'Only administrators can import' : 'Could not import — ' + (err && err.message || 'unknown file'));
+          this._toast(err && err.code === 'unauthorized' ? tr('Only administrators can import') : tr('Could not import — {0}', err && err.message || tr('unknown file')));
         }
       }
     }
@@ -1224,7 +1537,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       const cfg = this._p.config || {};
       this.style.display = 'block';
       const menu = this._menu = document.createElement('button');
-      menu.title = 'Menu';
+      menu.title = t('Menu');
       menu.style.cssText = 'position:fixed;top:12px;left:12px;z-index:5;width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(10,14,30,.7);color:#eef1ff;cursor:pointer;display:none';
       menu.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
       menu.addEventListener('click', () => this.dispatchEvent(new Event('hass-toggle-menu', { bubbles: true, composed: true })));
