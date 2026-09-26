@@ -18,6 +18,7 @@ No `configuration.yaml` editing and no other integration needed.
 - **Grid out** (optional) – with solar panels, switch the whole dashboard between the energy you take from the grid
   and the energy you send to it, with the net balance per day.
 - Works for every user of your Home Assistant, updates live, and has a **light mode** for slow wall tablets.
+- **English or Slovenian** (slovenščina) – follows your Home Assistant language, or pick one in ⚙.
 
 Every value is shown on the day the energy was actually used (00:00–24:00).
 
@@ -90,6 +91,7 @@ In the dashboard itself (⚙):
 |---|---|
 | Grid | **Grid in** (default) or **Grid in & Grid out**. With grid out, a **Grid in / Grid out** switch appears at the top: Grid out shows the energy sent to the grid – yesterday, month, year, charts, 15-minute power with the net against grid in and the hours it was exporting, and the log. Shared by every user. |
 | Prices | Energy prices for the cost estimates (grid in only). |
+| Language | **Automatic** (Slovenian when Home Assistant is set to Slovenian, otherwise English), **English** or **Slovenščina**. Saved on each device separately. |
 | This device | **Automatic** (light on tablets and on devices that ask for reduced motion), **Light** (no animations, blur or glow – for slow tablets and wall panels) or **Full**. Saved on each device separately. |
 | Moj Elektro history | Fetch any date range from Moj Elektro (see below). |
 | Your data | Export a JSON backup, import CSV / JSON, and **Delete all data** (administrators only; asks for the PIN when one is set): removes every Moj Elektro day, the 15-minute data and all manual readings – settings stay. |
