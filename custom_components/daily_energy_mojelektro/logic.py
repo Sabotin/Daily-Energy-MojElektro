@@ -134,10 +134,12 @@ def quarters_url(meter_id: str, today: date, days_back: int = 2) -> str:
     )
 
 
-def quarters_from_api(payload: dict, today: date) -> dict[str, list[float]]:
-    """Complete past days from a meter-readings response: {date: [kWh per quarter hour from 00:00]}.
+def _quarters(payload: dict, today: date) -> dict[date, list[tuple]]:
+    """Past days with at least 92 readings: {date: [(start, kWh, flagged)] sorted by start}.
 
-    Every reading carries the END time of its quarter hour (00:15 ... next day 00:00).
+    Every reading carries the END time of its quarter hour (00:15 ... next day 00:00). A reading with
+    readingQualities is one Moj Elektro has not received from the meter yet: it comes as 0 and is
+    replaced later.
     """
     blocks = (payload or {}).get("intervalBlocks") or []
     block = next((b for b in blocks if b.get("readingType") == READING_A_PLUS_15), None)
@@ -155,14 +157,19 @@ def quarters_from_api(payload: dict, today: date) -> dict[str, list[float]]:
         if value is None:
             continue
         start = end.replace(tzinfo=None) - timedelta(minutes=15)  # local wall time of the quarter's start
-        per_day.setdefault(start.date(), []).append((start, value))
-    out: dict[str, list[float]] = {}
-    for d, items in per_day.items():
-        if d >= today or len(items) < 92:  # only complete past days (92/100 on DST change days)
-            continue
-        items.sort()
-        out[d.isoformat()] = [round(v, 4) for _, v in items]
-    return out
+        per_day.setdefault(start.date(), []).append((start, value, bool(item.get("readingQualities"))))
+    # only complete past days (92/100 quarters on DST change days)
+    return {d: sorted(items) for d, items in per_day.items() if d < today and len(items) >= 92}
+
+
+def quarters_from_api(payload: dict, today: date) -> dict[str, list[float]]:
+    """Complete past days from a meter-readings response: {date: [kWh per quarter hour from 00:00]}."""
+    return {d.isoformat(): [round(v, 4) for _, v, _ in items] for d, items in _quarters(payload, today).items()}
+
+
+def quarters_missing(payload: dict, today: date) -> dict[str, int]:
+    """Per day of quarters_from_api: how many quarter hours Moj Elektro has not published yet (sent as 0)."""
+    return {d.isoformat(): sum(1 for *_, flagged in items if flagged) for d, items in _quarters(payload, today).items()}
 
 
 # ---------------------------------------------------------------- CSV import
