@@ -32,7 +32,7 @@ Pregled porabe energije za Home Assistant, neposredno iz API-ja Moj Elektro.
 [![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sabotin&repository=Daily-Energy-MojElektro&category=integration)
 
 1. Kliknite zgornji gumb → **Download** → ponovno zaženite Home Assistant
-2. Dodajte integracijo in vnesite ID merilnega mesta ter API-žeton – **Daily Energy** se nato prikaže v stranski vrstici
+2. Dodajte integracijo **Daily Energy MojElektro** in vnesite ID merilnega mesta ter API-žeton – **Daily Energy** se nato prikaže v stranski vrstici
 
    [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=daily_energy_mojelektro)
 
