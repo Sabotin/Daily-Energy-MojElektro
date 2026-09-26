@@ -53,8 +53,9 @@ class DailyEnergyManager:
         self.entry = entry
         self.panel_url: str | None = None
         self._store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
-        # days: {date: {u, vt, mt, mo, mvt, mmt, b}}, manual: {date: {t, vt, mt}}, q15: {date: [kWh]}
-        self.data: dict = {"days": {}, "manual": {}, "settings": {}, "q15": {}}
+        # days: {date: {u, vt, mt, mo, mvt, mmt, b}}, manual: {date: {t, vt, mt}}, q15: {date: [kWh]},
+        # q15_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched}
+        self.data: dict = {"days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}}
         self._listeners: set[Callable[[dict], None]] = set()
         self._unsub_watch: CALLBACK_TYPE | None = None
         self._unsub_settle: CALLBACK_TYPE | None = None
@@ -200,7 +201,8 @@ class DailyEnergyManager:
         """
         today = dt_util.now().date()
         yesterday = (today - timedelta(days=1)).isoformat()
-        if len(self.data["q15"].get(yesterday, [])) >= 92 or self._fetching:
+        complete = len(self.data["q15"].get(yesterday, [])) >= 92 and not self.data["q15_miss"].get(yesterday)
+        if complete or self._fetching:
             return
         source = self.hass.config_entries.async_get_entry(self.entry.data.get(CONF_SOURCE_ENTRY))
         token = source.data.get("token") if source else None
@@ -226,9 +228,19 @@ class DailyEnergyManager:
             self._fetching = False
 
         days = logic.quarters_from_api(payload, today)
+        missing = logic.quarters_missing(payload, today)
+        # a day is replaced unless the stored copy is more complete (fewer quarters not published yet)
+        days = {
+            d: q
+            for d, q in days.items()
+            if d not in self.data["q15"] or missing.get(d, 0) <= self.data["q15_miss"].get(d, 0)
+        }
         if days:
-            self.apply_import({"days": {}, "q15": days})
-            _LOGGER.debug("Stored 15-minute data for %s", ", ".join(sorted(days)))
+            self.apply_import({"days": {}, "q15": days}, missing)
+            _LOGGER.debug(
+                "Stored 15-minute data for %s",
+                ", ".join(f"{d} ({missing.get(d, 0)} not published yet)" for d in sorted(days)),
+            )
 
     async def async_update(self) -> None:
         """Copy the current Moj Elektro values into the day log (same rules as the original automation)."""
@@ -323,8 +335,12 @@ class DailyEnergyManager:
         self._changed()
 
     @callback
-    def apply_import(self, parsed: dict) -> int:
-        """Merge a parsed CSV (see logic.parse_moj_elektro_csv); returns the number of days touched."""
+    def apply_import(self, parsed: dict, missing: dict[str, int] | None = None) -> int:
+        """Merge a parsed CSV (see logic.parse_moj_elektro_csv) or fetched 15-minute days.
+
+        missing: quarter hours per day that Moj Elektro had not published yet (none for a CSV export).
+        Returns the number of days touched.
+        """
         count = 0
         for day, patch in parsed.get("days", {}).items():
             if self._merge_day(day, patch):
@@ -333,7 +349,9 @@ class DailyEnergyManager:
         for day, values in parsed.get("q15", {}).items():
             if day >= cutoff:
                 self.data["q15"][day] = values
+                self.data["q15_miss"][day] = (missing or {}).get(day, 0)
         self.data["q15"] = {d: v for d, v in self.data["q15"].items() if d >= cutoff}
+        self.data["q15_miss"] = {d: n for d, n in self.data["q15_miss"].items() if d in self.data["q15"]}
         self._changed()
         return count
 
