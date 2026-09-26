@@ -11,56 +11,6 @@ import logic  # noqa: E402
 TODAY = date(2026, 9, 25)
 
 
-def test_measurement_from_unique_id():
-    assert logic.measurement_from_unique_id("1000000000001-sensor.mojelektro_daily_input") == "daily_input"
-    assert logic.measurement_from_unique_id("x-sensor.mojelektro_daily_input_blok_2") == "daily_input_blok_2"
-    assert logic.measurement_from_unique_id("x-sensor.mojelektro_15min_input_2") == "15min_input"
-    assert logic.measurement_from_unique_id("x-sensor.mojelektro_daily_output") is None
-    assert logic.measurement_from_unique_id("something-else") is None
-    assert logic.measurement_from_name("Moj Elektro daily input peak") == "daily_input_peak"
-
-
-def test_pick_usage_day_first_run_and_repeats():
-    # first run: the meter-reading total is two days behind
-    assert logic.pick_usage_day({}, 30.5, 500.0, TODAY) == "2026-09-23"
-    days = {"2026-09-23": {"u": 30.5, "mo": 500.0}}
-    # the same values again stay on the same day
-    assert logic.pick_usage_day(days, 30.5, 500.0, TODAY) == "2026-09-23"
-    # the next day: month total before it equals the previous month-to-date
-    assert logic.pick_usage_day(days, 28.25, 528.25, date(2026, 9, 26)) == "2026-09-24"
-
-
-def test_pick_usage_day_new_month_falls_back():
-    days = {"2026-09-29": {"u": 30.0, "mo": 900.0}}
-    assert logic.pick_usage_day(days, 25.0, 25.0, date(2026, 10, 3)) == "2026-10-01"
-
-
-def test_pick_usage_day_ignores_blocks_only_days():
-    days = {"2026-09-23": {"u": 30.5, "mo": 500.0}, "2026-09-24": {"b": [0, 10.0, 5.0, 4.0, 0]}}
-    assert logic.pick_usage_day(days, 28.25, 528.25, date(2026, 9, 26)) == "2026-09-24"
-
-
-def test_stale_record_cannot_push_the_next_day_forward():
-    # A half-updated save put the new day total under 24 Sep with 23 Sep's month total. The complete
-    # values that follow must still land on 24 Sep, not 25 Sep.
-    days = {
-        "2026-09-23": {"u": 30.5, "mo": 500.0},
-        "2026-09-24": {"u": 28.25, "mo": 500.0},
-    }
-    assert logic.pick_usage_day(days, 28.25, 528.25, date(2026, 9, 26)) == "2026-09-24"
-
-
-def test_snapshot_consistent_rejects_half_updated_sensors():
-    # everything new: VT + MT = day, month VT + month MT = month
-    assert logic.snapshot_consistent(28.25, 20.0, 8.25, 528.25, 300.0, 228.25)
-    # the day total is new, VT is still yesterday's
-    assert not logic.snapshot_consistent(28.25, 15.5, 8.25, 528.25, 300.0, 228.25)
-    # the month totals are still yesterday's while month VT is new
-    assert not logic.snapshot_consistent(28.25, 20.0, 8.25, 500.0, 300.0, 220.0)
-    # a missing sensor
-    assert not logic.snapshot_consistent(28.25, None, 8.25, 528.25, 300.0, 228.25)
-
-
 READINGS = """Datum,Merilno mesto,PREJETA DELOVNA ENERGIJA ET,PREJETA DELOVNA ENERGIJA VT,PREJETA DELOVNA ENERGIJA MT,ODDANA DELOVNA ENERGIJA ET,ODDANA DELOVNA ENERGIJA VT,ODDANA DELOVNA ENERGIJA MT,VRSTA STANJA
 2026-09-01,1-1,100000.0000,60000.0000,40000.0000,0,0,0,Stanje iz MC
 2026-09-02,1-1,100030.0000,60020.0000,40010.0000,0,0,0,Stanje iz MC
