@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.webp" alt="Daily Energy" width="420"></p>
+
 # Daily Energy for Moj Elektro
 
 ![Daily Energy dashboard](assets/dashboard.webp)
