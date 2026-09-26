@@ -16,7 +16,6 @@ from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 from .const import (
-    CONF_LITE_USERS,
     CONF_METER,
     CONF_PIN,
     CONF_SIDEBAR,
@@ -31,7 +30,7 @@ PASSWORD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
 
 def _options(user_input: dict[str, Any]) -> dict[str, Any]:
-    return {CONF_PIN: user_input.get(CONF_PIN, ""), CONF_SIDEBAR: True, CONF_LITE_USERS: ""}
+    return {CONF_PIN: user_input.get(CONF_PIN, ""), CONF_SIDEBAR: True}
 
 
 class DailyEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -122,7 +121,7 @@ class DailyEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class DailyEnergyOptionsFlow(OptionsFlow):
-    """PIN, sidebar panel, light mode and (for a meter set up with its own token) a new API token."""
+    """PIN, sidebar panel and (for a meter set up with its own token) a new API token."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         entry = self.config_entry
@@ -144,7 +143,6 @@ class DailyEnergyOptionsFlow(OptionsFlow):
         fields: dict[Any, Any] = {
             vol.Optional(CONF_PIN, default=opts.get(CONF_PIN, "")): str,
             vol.Optional(CONF_SIDEBAR, default=opts.get(CONF_SIDEBAR, True)): bool,
-            vol.Optional(CONF_LITE_USERS, default=opts.get(CONF_LITE_USERS, "")): str,
         }
         if own_token:
             fields[vol.Optional(CONF_TOKEN, default="")] = PASSWORD

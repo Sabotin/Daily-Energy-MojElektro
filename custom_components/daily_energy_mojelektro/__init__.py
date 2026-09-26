@@ -56,7 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
             module_url=MODULE_URL,
-            config={"entry_id": entry.entry_id, "lite_users": manager.lite_users},
+            config={"entry_id": entry.entry_id},
             require_admin=False,
         )
 

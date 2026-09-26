@@ -15,6 +15,8 @@ No `configuration.yaml` editing and no other integration needed.
 - **15-minute power** chart with the highest 15-minute power per tariff block (what your billed power is based on).
 - **Energy rhythm** heat map and average by weekday.
 - A **log** of every day, and your **history fetched straight from Moj Elektro** for any date range.
+- **Grid out** (optional) – with solar panels, switch the whole dashboard between the energy you take from the grid
+  and the energy you send to it, with the net balance per day.
 - Works for every user of your Home Assistant, updates live, and has a **light mode** for slow wall tablets.
 
 Every value is shown on the day the energy was actually used (00:00–24:00).
@@ -83,10 +85,16 @@ Settings → Devices & services → Daily Energy for Moj Elektro → **Configure
 |---|---|
 | PIN | Asked before opening the manual meter reading and before deleting readings. Empty = no PIN. Checked by Home Assistant, never stored in the browser. |
 | Show in sidebar | Adds the Daily Energy page to the sidebar. |
-| Light mode users | Comma-separated user names (for example `tablet`). Their dashboard skips blur and animations. |
 | New API token | Only when you created a new token in Moj Elektro. It is checked before it is saved; empty keeps the current one. |
 
-Energy prices for the cost estimates are set in the dashboard itself (⚙).
+In the dashboard itself (⚙):
+
+| Setting | What it does |
+|---|---|
+| Grid | **Grid in** (default) or **Grid in & Grid out**. With grid out, a **Grid in / Grid out** switch appears at the top: Grid out shows the energy sent to the grid – yesterday, month, year, charts, 15-minute power with the net against grid in and the hours it was exporting, and the log. Shared by every user. |
+| Prices | Energy prices for the cost estimates (grid in only). |
+| This device | **Automatic** (light on tablets and on devices that ask for reduced motion), **Light** (no animations, blur or glow – for slow tablets and wall panels) or **Full**. Saved on each device separately. |
+| Moj Elektro history | Fetch any date range from Moj Elektro (see below). |
 
 ## Your history (optional)
 
@@ -95,7 +103,8 @@ New days are logged automatically from the day you install it. To fill in the pa
 **Settings (⚙) → Moj Elektro history** – pick a **From** and **To** date and tap **Export & import from Moj Elektro**.
 Daily Energy fetches those days straight from the Moj Elektro API, one month at a time (the progress is shown), and
 fills in daily usage, the high / low tariff split, month totals and tariff blocks – plus the 15-minute chart for the
-last three weeks. A year takes about a minute.
+last three weeks, and with grid out switched on the same for the energy sent to the grid. A year takes about a minute
+(two with grid out).
 
 Or download CSV exports from the [Moj Elektro portal](https://mojelektro.si) and use **Import CSV / JSON**:
 

@@ -1,6 +1,6 @@
 """Tests for the pure logic module (no Home Assistant needed)."""
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import sys
 
@@ -241,3 +241,27 @@ def test_month_spans():
     assert logic.quarters_range_url("4-1", date(2026, 1, 1), date(2026, 2, 1)).endswith(
         "startTime=2026-01-01&endTime=2026-02-01&option=ReadingType%3D" + logic.READING_A_PLUS_15
     )
+
+
+def test_grid_out_quarters_and_totals():
+    # Moj Elektro's answer for grid out: the same format with the A- reading type and empty readingQualities
+    start = datetime(2026, 9, 25, 0, 15)
+    readings = [
+        {"readingQualities": [], "timestamp": (start + timedelta(minutes=15 * i)).isoformat() + "+02:00",
+         "value": "1.2500" if 40 <= i < 60 else "0.0000"}
+        for i in range(96)
+    ]
+    payload = {"intervalBlocks": [{"readingType": logic.READING_A_MINUS_15, "intervalReadings": readings}]}
+    days = logic.quarters_from_api(payload, date(2026, 9, 26), logic.READING_A_MINUS_15)
+    assert list(days) == ["2026-09-25"] and len(days["2026-09-25"]) == 96
+    assert round(sum(days["2026-09-25"]), 3) == 25.0
+    assert logic.quarters_missing(payload, date(2026, 9, 26), logic.READING_A_MINUS_15) == {"2026-09-25": 0}
+
+    et = {"2026-09-01": 45100.0, "2026-09-23": 46002.103, "2026-09-24": 46044.616}
+    vt = {"2026-09-01": 30539.0, "2026-09-23": 31441.16, "2026-09-24": 31483.673}
+    mt = {"2026-09-01": 14560.943, "2026-09-23": 14560.943, "2026-09-24": 14560.943}
+    rec = logic.totals_from_readings(et, vt, mt, [date(2026, 9, 23)])["2026-09-23"]
+    out = logic.keyed(rec, logic.GRID_OUT)
+    assert out == {"o": 42.513, "ovt": 42.513, "omt": 0.0, "omo": 944.616, "omvt": 944.673, "ommt": 0.0}
+    assert logic.keyed(rec, logic.GRID_IN)["u"] == 42.513
+    assert logic.GRID_OUT["registers"]["et"] == "32.0.4.1.19.2.12.0.0.0.0.0.0.0.0.3.72.0"

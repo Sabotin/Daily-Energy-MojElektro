@@ -1,7 +1,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 MOJ_ELEKTRO_DOMAIN = "mojelektro"
 
@@ -10,7 +10,6 @@ CONF_SOURCE_ENTRY = "mojelektro_entry_id"
 CONF_TOKEN = "token"
 CONF_METER = "meter_id"
 CONF_PIN = "pin"
-CONF_LITE_USERS = "lite_users"
 CONF_SIDEBAR = "sidebar"
 
 STORAGE_VERSION = 1
@@ -35,6 +34,6 @@ EARLIEST_HOUR = 6
 # The 15-minute chart only looks back ten days; imported quarter hours older than this are dropped.
 KEEP_Q15_DAYS = 21
 
-SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur")
+SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur", "grid")
 # Import from Moj Elektro (Settings): the longest range fetched in one call; the card asks month by month.
 MAX_IMPORT_DAYS = 400
