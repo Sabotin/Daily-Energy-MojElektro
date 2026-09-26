@@ -65,17 +65,20 @@ Importing is safe to repeat; days are updated, never duplicated. Only administra
   **15-minute data and tariff blocks** one day later. Until the meter total arrives, yesterday is shown from the
   15-minute data and marked "15-min data".
 - A meter reading dated D is taken at 00:00 on D, so reading(D + 1) − reading(D) is the usage of day D.
-- **15-minute chart:** the Moj Elektro sensor only reveals one quarter hour of yesterday every 15 minutes. Moj Elektro
-  publishes yesterday's whole curve at about 05:45, so every half hour from 05:00 to 12:00 Daily Energy asks the
-  Moj Elektro API for yesterday's **96 quarter hours in one request**. It uses the API token and meter of your Moj
-  Elektro integration, so there is nothing extra to set up. Moj Elektro sometimes publishes a day before every quarter
-  hour has arrived from the meter (those come as 0 and are flagged); such a day is fetched again until they are filled
-  in, and the day before yesterday is checked too. Once yesterday is complete it stops asking. The chart always shows
-  one whole day and switches to the next day all at once.
+- **Straight from the Moj Elektro API, every hour:** Daily Energy asks the Moj Elektro API for what is still missing -
+  the daily meter readings (usage, high / low tariff and month totals of the last days) and yesterday's **96 quarter
+  hours** for the 15-minute chart and the tariff blocks. It uses the API token and meter of your Moj Elektro
+  integration, so there is nothing extra to set up, and nothing is requested when everything is already there.
+  Moj Elektro publishes yesterday's 15-minute curve at about 05:45 and a day's meter total a day later.
+- **Update button** (next to Settings): checks the Moj Elektro API right away and shows "Updated the cards!" or
+  "Nothing has been updated yet".
+- Moj Elektro sometimes publishes a day before every quarter hour has arrived from the meter (those come as 0 and are
+  flagged); such a day is fetched again until they are filled in. The 15-minute chart always shows one whole day and
+  switches to the next day all at once.
 - **Half-updated sensors are never saved:** Moj Elektro updates its sensors one after another. Daily Energy waits until
   they have settled and only logs a day when VT + MT equals the day total and the month totals agree.
 - The log is stored by Home Assistant itself (`.storage/daily_energy_mojelektro.*`) and is part of your backups.
-- Your data goes nowhere else: apart from that one Moj Elektro request, the dashboard only reads the sensors the
+- Your data goes nowhere else: apart from those Moj Elektro API requests, the dashboard only reads the sensors the
   Moj Elektro integration creates. The token stays in Home Assistant and never reaches the browser.
 
 You can also add the dashboard to any existing dashboard as a card:
@@ -87,6 +90,6 @@ type: custom:daily-energy-card
 ## Credits and licence
 
 Built on the [Moj Elektro integration](https://github.com/frlequ/homeassistant-mojelektro) by frlequ (MIT).
-This project does not include any of its code; it reads the sensors it creates and reuses its API token for the 15-minute request.
+This project does not include any of its code; it reads the sensors it creates and reuses its API token for the Moj Elektro API requests.
 
 MIT licence – see [LICENSE](LICENSE). Not affiliated with Elektro Slovenije or any distribution company.

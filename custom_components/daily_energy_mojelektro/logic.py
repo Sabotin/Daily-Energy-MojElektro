@@ -182,6 +182,105 @@ def quarters_missing(payload: dict, today: date) -> dict[str, int]:
     return {d.isoformat(): sum(1 for *_, flagged in items if flagged) for d, items in _quarters(payload, today).items()}
 
 
+# ---------------------------------------------------------------- Moj Elektro API (daily meter readings)
+
+# Cumulative meter registers (kWh), one reading per day taken at 00:00: total, high tariff (VT), low tariff (MT).
+READING_ET = "32.0.4.1.1.2.12.0.0.0.0.0.0.0.0.3.72.0"
+READING_VT = "32.0.4.1.1.2.12.0.0.0.0.1.0.0.0.3.72.0"
+READING_MT = "32.0.4.1.1.2.12.0.0.0.0.2.0.0.0.3.72.0"
+
+
+def readings_url(meter_id: str, reading_type: str, start: date, end: date) -> str:
+    """Request for one register's daily readings from start up to (not including) end."""
+    return (
+        f"{API_URL}?usagePoint={meter_id}&startTime={start.isoformat()}&endTime={end.isoformat()}"
+        f"&option=ReadingType%3D{reading_type}"
+    )
+
+
+def readings_from_api(payload: dict) -> dict[str, float]:
+    """{date: register value} from a meter-readings response (the reading dated D is taken at 00:00 on D)."""
+    out: dict[str, float] = {}
+    for block in (payload or {}).get("intervalBlocks") or []:
+        for item in block.get("intervalReadings") or []:
+            try:
+                day = datetime.fromisoformat(str(item["timestamp"])).date()
+            except (KeyError, ValueError):
+                continue
+            value = to_float(item.get("value"))
+            if value is not None and value >= 0:
+                out[day.isoformat()] = value
+    return out
+
+
+def totals_from_readings(et: dict, vt: dict, mt: dict, days: list[date]) -> dict[str, dict]:
+    """Day records from daily meter readings: usage of day D = reading(D + 1) - reading(D).
+
+    Month-to-date totals come from the reading on the 1st of D's month. A day is left out when a
+    reading is missing or the numbers do not add up (VT + MT must equal the total).
+    """
+    out: dict[str, dict] = {}
+    for day in days:
+        d, n, fm = day.isoformat(), (day + timedelta(days=1)).isoformat(), day.replace(day=1).isoformat()
+        if any(k not in reg for reg in (et, vt, mt) for k in (d, n, fm)):
+            continue
+        u, v, m = (round(reg[n] - reg[d], 3) for reg in (et, vt, mt))
+        if min(u, v, m) < 0 or abs(u - v - m) >= 0.02:
+            continue
+        out[d] = {
+            "u": u,
+            "vt": v,
+            "mt": m,
+            "mo": round(et[n] - et[fm], 3),
+            "mvt": round(vt[n] - vt[fm], 3),
+            "mmt": round(mt[n] - mt[fm], 3),
+        }
+    return out
+
+
+# ---------------------------------------------------------------- network tariff blocks
+
+# Slovenian public holidays (month, day); Easter Monday is added per year.
+HOLIDAYS = {(1, 1), (1, 2), (2, 8), (4, 27), (5, 1), (5, 2), (6, 25), (8, 15), (10, 31), (11, 1), (12, 25), (12, 26)}
+
+
+def easter_monday(year: int) -> date:
+    """Easter Monday (Gregorian calendar)."""
+    a, b, c = year % 19, year // 100, year % 100
+    d, e = b // 4, b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = c // 4, c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month, day = divmod(h + l - 7 * m + 114, 31)
+    return date(year, month, day + 1) + timedelta(days=1)
+
+
+def block_of(start: datetime) -> int:
+    """Network tariff block (1-5) of the quarter hour starting at this local time.
+
+    Higher season = November to February; weekends and public holidays are one block cheaper.
+    """
+    h = start.hour
+    tier = 0 if (7 <= h < 14 or 16 <= h < 20) else 1 if (h == 6 or 14 <= h < 16 or 20 <= h < 22) else 2
+    day = start.date()
+    free = day.weekday() >= 5 or (day.month, day.day) in HOLIDAYS or day == easter_monday(day.year)
+    return (1 if day.month in (11, 12, 1, 2) else 2) + (1 if free else 0) + tier
+
+
+def blocks_from_quarters(day: date, values: list[float]) -> list[float] | None:
+    """kWh per tariff block for one day of 96 quarter hours (None on clock-change days)."""
+    if len(values) != 96:
+        return None
+    blocks = [0.0] * 5
+    start = datetime(day.year, day.month, day.day)
+    for i, value in enumerate(values):
+        blocks[block_of(start + timedelta(minutes=15 * i)) - 1] += value
+    return [round(b, 3) for b in blocks]
+
+
 # ---------------------------------------------------------------- CSV import
 
 
