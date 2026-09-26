@@ -134,12 +134,22 @@ def quarters_url(meter_id: str, today: date, days_back: int = 2) -> str:
     )
 
 
+def _estimated(reading: dict) -> bool:
+    """True for a quarter hour the meter has not delivered yet (1.5.x) or that Moj Elektro estimated (3.x)."""
+    for quality in reading.get("readingQualities") or []:
+        code = str((quality or {}).get("readingQualityType", ""))
+        if code.startswith(("1.5.", "3.")):
+            return True
+    return False
+
+
 def _quarters(payload: dict, today: date) -> dict[date, list[tuple]]:
     """Past days with at least 92 readings: {date: [(start, kWh, flagged)] sorted by start}.
 
-    Every reading carries the END time of its quarter hour (00:15 ... next day 00:00). A reading with
-    readingQualities is one Moj Elektro has not received from the meter yet: it comes as 0 and is
-    replaced later.
+    Every reading carries the END time of its quarter hour (00:15 ... next day 00:00). A reading whose
+    readingQualities include 1.5.x (not received from the meter) or 3.x (estimated) is flagged: Moj
+    Elektro sends 0 or an even share of the day for it and replaces it once the meter delivers.
+    1.8.0 marks a normal reading.
     """
     blocks = (payload or {}).get("intervalBlocks") or []
     block = next((b for b in blocks if b.get("readingType") == READING_A_PLUS_15), None)
@@ -157,7 +167,7 @@ def _quarters(payload: dict, today: date) -> dict[date, list[tuple]]:
         if value is None:
             continue
         start = end.replace(tzinfo=None) - timedelta(minutes=15)  # local wall time of the quarter's start
-        per_day.setdefault(start.date(), []).append((start, value, bool(item.get("readingQualities"))))
+        per_day.setdefault(start.date(), []).append((start, value, _estimated(item)))
     # only complete past days (92/100 quarters on DST change days)
     return {d: sorted(items) for d, items in per_day.items() if d < today and len(items) >= 92}
 
