@@ -134,7 +134,7 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .pulse{width:9px;height:9px;border-radius:50%;background:var(--c1);box-shadow:0 0 0 0 rgba(62,230,255,.7);animation:pulse 2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(62,230,255,.6)}70%{box-shadow:0 0 0 12px rgba(62,230,255,0)}100%{box-shadow:0 0 0 0 rgba(62,230,255,0)}}
 .big{display:flex;align-items:baseline;gap:12px;margin:10px 0 6px}
-.bignum{font-size:clamp(64px,7.4vw,112px);font-weight:700;letter-spacing:-.045em;line-height:.95;background:linear-gradient(180deg,#fff 20%,#9fdfff 70%,#6f8bff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 30px rgba(62,230,255,.35));font-variant-numeric:tabular-nums}
+.bignum{font-size:clamp(64px,7.4vw,112px);font-weight:700;letter-spacing:-.045em;line-height:.95;background:linear-gradient(180deg,#fff 20%,#9fdfff 70%,#6f8bff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 30px rgba(62,230,255,.35));font-variant-numeric:tabular-nums;padding-right:.08em;margin-right:-.08em}
 .unit{font-size:22px;color:var(--mut);font-weight:500}
 .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:500;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
