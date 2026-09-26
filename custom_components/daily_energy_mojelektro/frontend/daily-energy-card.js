@@ -534,8 +534,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
         if (off && (!meLast || m.d > meLast)) meLast = m.d;
         if (b && (!bLast || m.d > bLast)) bLast = m.d;
       }
-      // grid out: until a day's meter total arrives, its complete 15-minute data gives the provisional total
-      if (out) for (const [d, q] of Object.entries(this._q15o || {})) {
+      // until a day's meter total (or, for grid in, its tariff blocks) arrives, its whole-day 15-minute data gives
+      // the provisional total
+      if (!this._demo) for (const [d, q] of Object.entries((out ? this._q15o : this._q15) || {})) {
         if (days.has(d) || !Array.isArray(q) || q.length < 92) continue;
         const t = q.reduce((a, x) => a + (+x || 0), 0);
         days.set(d, { t, vt: 0, mt: 0, n: 1, has: false, me: true, b: null, q15: true });
