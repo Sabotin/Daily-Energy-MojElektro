@@ -27,10 +27,19 @@ Energy dashboard for Home Assistant, straight from the Moj Elektro API. Enter yo
 
 ## Install
 
-1. HACS → ⋮ → **Custom repositories** → `https://github.com/Sabotin/Daily-Energy-MojElektro` (Integration)
-2. Download **Daily Energy for Moj Elektro** and restart Home Assistant
-3. Settings → Devices & services → **Add integration** → **Daily Energy for Moj Elektro**
-4. Enter meter ID and API token – **Daily Energy** appears in the sidebar
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sabotin&repository=Daily-Energy-MojElektro&category=integration)
+
+1. Click the button above → **Download** → restart Home Assistant
+2. Add the integration and enter your meter ID and API token – **Daily Energy** appears in the sidebar
+
+   [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=daily_energy_mojelektro)
+
+<details><summary>Without the button</summary>
+
+HACS → ⋮ → **Custom repositories** → `https://github.com/Sabotin/Daily-Energy-MojElektro` (Integration) → download →
+restart → Settings → Devices & services → **Add integration** → **Daily Energy for Moj Elektro**.
+
+</details>
 
 As a card on any dashboard:
 
