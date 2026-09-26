@@ -34,6 +34,39 @@ Every value is shown on the day the energy was actually used (00:00–24:00).
 
 Manual installation: copy `custom_components/daily_energy_mojelektro` into your `config/custom_components` folder and restart.
 
+### Without the integration (YAML setup)
+
+Prefer plain YAML? The [`yaml-setup`](yaml-setup) folder has the same dashboard as a card file, a script and two
+automations. It needs two Moj Elektro API requests in `configuration.yaml` and your API token in `secrets.yaml`:
+
+```yaml
+# secrets.yaml
+mojelektro_token: PASTE_YOUR_TOKEN_HERE
+```
+
+```yaml
+# configuration.yaml
+rest_command:
+  mojelektro_15min:
+    url: "https://api.informatika.si/mojelektro/v1/meter-readings?usagePoint={{ meter }}&startTime={{ start }}&endTime={{ end }}&option=ReadingType%3D32.0.2.4.1.2.12.0.0.0.0.0.0.0.0.3.72.0"
+    method: get
+    headers:
+      accept: application/json
+      X-API-TOKEN: !secret mojelektro_token
+    timeout: 30
+  mojelektro_readings:
+    url: "https://api.informatika.si/mojelektro/v1/meter-readings?usagePoint={{ meter }}&startTime={{ start }}&endTime={{ end }}&option=ReadingType%3D{{ rt }}"
+    method: get
+    headers:
+      accept: application/json
+      X-API-TOKEN: !secret mojelektro_token
+    timeout: 30
+```
+
+Restart Home Assistant after adding them, then follow the steps in [yaml-setup/README.md](yaml-setup/README.md)
+(script `script.daily_energy_check_updates`, the hourly API automation and the backup logger automation).
+The HACS integration does not need any of this.
+
 ## Options
 
 Settings → Devices & services → Daily Energy for Moj Elektro → **Configure**:
