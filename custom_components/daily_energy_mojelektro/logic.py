@@ -122,7 +122,8 @@ def blocks_day(today: date) -> str:
 # ---------------------------------------------------------------- Moj Elektro API (15-minute data)
 
 API_URL = "https://api.informatika.si/mojelektro/v1/meter-readings"
-READING_A_PLUS_15 = "32.0.2.4.1.2.12.0.0.0.0.0.0.0.0.3.72.0"  # received active energy, 15 min, kWh
+READING_A_PLUS_15 = "32.0.2.4.1.2.12.0.0.0.0.0.0.0.0.3.72.0"  # received active energy (grid in), 15 min, kWh
+READING_A_MINUS_15 = "32.0.2.4.19.2.12.0.0.0.0.0.0.0.0.3.72.0"  # delivered active energy (grid out), 15 min, kWh
 
 
 def quarters_url(meter_id: str, today: date, days_back: int = 2) -> str:
@@ -130,11 +131,11 @@ def quarters_url(meter_id: str, today: date, days_back: int = 2) -> str:
     return quarters_range_url(meter_id, today - timedelta(days=days_back), today)
 
 
-def quarters_range_url(meter_id: str, start: date, end: date) -> str:
+def quarters_range_url(meter_id: str, start: date, end: date, reading_type: str = READING_A_PLUS_15) -> str:
     """Request for the 15-minute energy of the days from start up to (not including) end."""
     return (
         f"{API_URL}?usagePoint={meter_id}&startTime={start.isoformat()}&endTime={end.isoformat()}"
-        f"&option=ReadingType%3D{READING_A_PLUS_15}"
+        f"&option=ReadingType%3D{reading_type}"
     )
 
 
@@ -158,7 +159,7 @@ def _estimated(reading: dict) -> bool:
     return False
 
 
-def _quarters(payload: dict, today: date) -> dict[date, list[tuple]]:
+def _quarters(payload: dict, today: date, reading_type: str = READING_A_PLUS_15) -> dict[date, list[tuple]]:
     """Past days with at least 92 readings: {date: [(start, kWh, flagged)] sorted by start}.
 
     Every reading carries the END time of its quarter hour (00:15 ... next day 00:00). A reading whose
@@ -167,7 +168,7 @@ def _quarters(payload: dict, today: date) -> dict[date, list[tuple]]:
     1.8.0 marks a normal reading.
     """
     blocks = (payload or {}).get("intervalBlocks") or []
-    block = next((b for b in blocks if b.get("readingType") == READING_A_PLUS_15), None)
+    block = next((b for b in blocks if b.get("readingType") == reading_type), None)
     if block is None and len(blocks) == 1:
         block = blocks[0]
     if block is None:
@@ -187,14 +188,14 @@ def _quarters(payload: dict, today: date) -> dict[date, list[tuple]]:
     return {d: sorted(items) for d, items in per_day.items() if d < today and len(items) >= 92}
 
 
-def quarters_from_api(payload: dict, today: date) -> dict[str, list[float]]:
+def quarters_from_api(payload: dict, today: date, reading_type: str = READING_A_PLUS_15) -> dict[str, list[float]]:
     """Complete past days from a meter-readings response: {date: [kWh per quarter hour from 00:00]}."""
-    return {d.isoformat(): [round(v, 4) for _, v, _ in items] for d, items in _quarters(payload, today).items()}
+    return {d.isoformat(): [round(v, 4) for _, v, _ in items] for d, items in _quarters(payload, today, reading_type).items()}
 
 
-def quarters_missing(payload: dict, today: date) -> dict[str, int]:
+def quarters_missing(payload: dict, today: date, reading_type: str = READING_A_PLUS_15) -> dict[str, int]:
     """Per day of quarters_from_api: how many quarter hours Moj Elektro has not published yet (sent as 0)."""
-    return {d.isoformat(): sum(1 for *_, flagged in items if flagged) for d, items in _quarters(payload, today).items()}
+    return {d.isoformat(): sum(1 for *_, flagged in items if flagged) for d, items in _quarters(payload, today, reading_type).items()}
 
 
 # ---------------------------------------------------------------- Moj Elektro API (daily meter readings)
@@ -203,6 +204,27 @@ def quarters_missing(payload: dict, today: date) -> dict[str, int]:
 READING_ET = "32.0.4.1.1.2.12.0.0.0.0.0.0.0.0.3.72.0"
 READING_VT = "32.0.4.1.1.2.12.0.0.0.0.1.0.0.0.3.72.0"
 READING_MT = "32.0.4.1.1.2.12.0.0.0.0.2.0.0.0.3.72.0"
+# The same registers for energy sent to the grid (flow direction 19 = reverse).
+READING_ET_OUT = "32.0.4.1.19.2.12.0.0.0.0.0.0.0.0.3.72.0"
+READING_VT_OUT = "32.0.4.1.19.2.12.0.0.0.0.1.0.0.0.3.72.0"
+READING_MT_OUT = "32.0.4.1.19.2.12.0.0.0.0.2.0.0.0.3.72.0"
+
+# Per direction: the 15-minute reading type, the three daily registers and the day-record keys.
+GRID_IN = {
+    "q15": READING_A_PLUS_15,
+    "registers": {"et": READING_ET, "vt": READING_VT, "mt": READING_MT},
+    "keys": {"u": "u", "vt": "vt", "mt": "mt", "mo": "mo", "mvt": "mvt", "mmt": "mmt"},
+}
+GRID_OUT = {
+    "q15": READING_A_MINUS_15,
+    "registers": {"et": READING_ET_OUT, "vt": READING_VT_OUT, "mt": READING_MT_OUT},
+    "keys": {"u": "o", "vt": "ovt", "mt": "omt", "mo": "omo", "mvt": "omvt", "mmt": "ommt"},
+}
+
+
+def keyed(record: dict, direction: dict) -> dict:
+    """A totals_from_readings record with the day-record keys of a direction (grid out: o, ovt, omt, ...)."""
+    return {direction["keys"][k]: v for k, v in record.items()}
 
 
 def readings_url(meter_id: str, reading_type: str, start: date, end: date) -> str:

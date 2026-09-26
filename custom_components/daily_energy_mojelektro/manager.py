@@ -27,7 +27,6 @@ from . import logic
 from .const import (
     API_PAUSE,
     CHECK_MINUTE,
-    CONF_LITE_USERS,
     CONF_METER,
     CONF_PIN,
     CONF_SOURCE_ENTRY,
@@ -77,9 +76,12 @@ class DailyEnergyManager:
         self.entry = entry
         self.panel_url: str | None = None
         self._store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
-        # days: {date: {u, vt, mt, mo, mvt, mmt, b}}, manual: {date: {t, vt, mt}}, q15: {date: [kWh]},
-        # q15_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched}
-        self.data: dict = {"days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}}
+        # days: {date: {u, vt, mt, mo, mvt, mmt, b} + grid out {o, ovt, omt, omo, omvt, ommt}},
+        # manual: {date: {t, vt, mt}}, q15 / q15o: {date: [kWh]} grid in / grid out,
+        # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched}
+        self.data: dict = {
+            "days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {}
+        }
         self._listeners: set[Callable[[dict], None]] = set()
         self._unsub_watch: CALLBACK_TYPE | None = None
         self._unsub_settle: CALLBACK_TYPE | None = None
@@ -110,11 +112,6 @@ class DailyEnergyManager:
     @property
     def pin(self) -> str:
         return str(self.entry.options.get(CONF_PIN) or "").strip()
-
-    @property
-    def lite_users(self) -> list[str]:
-        raw = self.entry.options.get(CONF_LITE_USERS) or ""
-        return [u.strip() for u in str(raw).split(",") if u.strip()]
 
     def check_pin(self, pin: str | None) -> bool:
         return not self.pin or str(pin or "").strip() == self.pin
@@ -229,16 +226,31 @@ class DailyEnergyManager:
 
     # ------------------------------------------------------------ Moj Elektro API
 
+    @property
+    def grid_out(self) -> bool:
+        """Settings > Grid: "Grid in & Grid out" also fetches the energy sent to the grid."""
+        return self.data["settings"].get("grid") == "both"
+
+    def _directions(self) -> list[tuple[dict, str, str]]:
+        """(direction, 15-minute store key, its missing-quarters key) for every direction that is fetched."""
+        out = [(logic.GRID_IN, "q15", "q15_miss")]
+        if self.grid_out:
+            out.append((logic.GRID_OUT, "q15o", "q15o_miss"))
+        return out
+
     def missing(self, today) -> list[str]:
         """What the API should still deliver: yesterday's full 15-minute curve and the meter totals
-        of the two days before yesterday (Moj Elektro publishes a day's meter total two days later)."""
+        of the two days before yesterday (Moj Elektro publishes a day's meter total up to two days later)."""
         d1, d2, d3 = ((today - timedelta(days=n)).isoformat() for n in (1, 2, 3))
         out = []
-        if len(self.data["q15"].get(d1, [])) < 92 or self.data["q15_miss"].get(d1):
-            out.append(f"15-min {d1}")
-        if self.data["q15_miss"].get(d2):
-            out.append(f"15-min {d2}")
-        out += [f"total {d}" for d in (d3, d2) if "u" not in self.data["days"].get(d, {})]
+        for direction, q_key, miss_key in self._directions():
+            name = "" if direction is logic.GRID_IN else " out"
+            if len(self.data[q_key].get(d1, [])) < 92 or self.data[miss_key].get(d1):
+                out.append(f"15-min{name} {d1}")
+            if self.data[miss_key].get(d2):
+                out.append(f"15-min{name} {d2}")
+            total = direction["keys"]["u"]
+            out += [f"total{name} {d}" for d in (d3, d2) if total not in self.data["days"].get(d, {})]
         return out
 
     async def _get_json(self, session, url: str, token: str) -> dict | None:
@@ -253,12 +265,47 @@ class DailyEnergyManager:
             _LOGGER.debug("Moj Elektro request failed: %s", err)
             return None
 
+    async def _fetch(self, session, meter: str, token: str, direction: dict, q_range, r_ranges) -> tuple:
+        """One direction: the 15-minute data of q_range and the three daily registers of every r_range.
+
+        Returns (15-minute payload or None, {"et"|"vt"|"mt": {date: reading}}, whether Moj Elektro answered).
+        Moj Elektro allows 5 requests a second, so every request waits API_PAUSE first.
+        """
+        await asyncio.sleep(API_PAUSE)
+        quarters = await self._get_json(session, logic.quarters_range_url(meter, *q_range, direction["q15"]), token)
+        answered = quarters is not None
+        registers: dict[str, dict] = {}
+        for key, reading_type in direction["registers"].items():
+            registers[key] = {}
+            for start, end in r_ranges:
+                await asyncio.sleep(API_PAUSE)
+                payload = await self._get_json(session, logic.readings_url(meter, reading_type, start, end), token)
+                answered |= payload is not None
+                registers[key].update(logic.readings_from_api(payload))
+        return quarters, registers, answered
+
+    def _store_quarters(self, q_key: str, miss_key: str, days: dict, missing: dict, cutoff: str) -> set[str]:
+        """Keep the 15-minute days of the last KEEP_Q15_DAYS days; a day is only replaced by data that is at
+        least as complete. Returns the days that changed."""
+        changed = set()
+        for d, values in days.items():
+            flagged = missing.get(d, 0)
+            if d >= cutoff and (d not in self.data[q_key] or flagged <= self.data[miss_key].get(d, 0)):
+                if self.data[q_key].get(d) != values:
+                    changed.add(d)
+                self.data[q_key][d] = values
+                self.data[miss_key][d] = flagged
+        self.data[q_key] = {d: v for d, v in self.data[q_key].items() if d >= cutoff}
+        self.data[miss_key] = {d: n for d, n in self.data[miss_key].items() if d in self.data[q_key]}
+        return changed
+
     async def async_check_updates(self, force: bool = True) -> dict:
         """Fetch everything the dashboard shows straight from the Moj Elektro API and save what is new.
 
         * daily meter readings (total, VT, MT): usage, VT, MT and month totals of the last three days
         * 15-minute data of the last two days: the 15-minute chart, and the tariff blocks once a day
           is complete; a day is only replaced by data that is at least as complete
+        * with Settings > Grid "Grid in & Grid out": the same for the energy sent to the grid
         Uses the meter ID and API token entered at setup (or those of the linked Moj Elektro integration).
         force = False (the hourly run) does not contact Moj Elektro when nothing is missing.
         Returns {"changed": bool, ...}.
@@ -272,66 +319,69 @@ class DailyEnergyManager:
         if not token or not meter:
             return {"changed": False, "error": "no Moj Elektro token"}
 
-        d3, first = today - timedelta(days=3), (today - timedelta(days=3)).replace(day=1)
+        day = timedelta(days=1)
+        d3, first = today - 3 * day, (today - 3 * day).replace(day=1)
         watched = [(today - timedelta(days=n)).isoformat() for n in (1, 2, 3)]
-        before = json.dumps(
-            [self.data["days"].get(d) for d in watched] + [self.data["q15"].get(d) for d in watched[:2]],
+        directions = self._directions()
+        snap = lambda: json.dumps(  # noqa: E731
+            [self.data["days"].get(d) for d in watched]
+            + [self.data[q].get(d) for _, q, _ in directions for d in watched[:2]],
             sort_keys=True,
         )
+        before = snap()
+        fetched = []
         self._fetching = True
         try:
             session = async_get_clientsession(self.hass)
-            quarters = await self._get_json(session, logic.quarters_url(meter, today), token)
-            registers: dict[str, dict] = {}
-            for key, reading_type in (("et", logic.READING_ET), ("vt", logic.READING_VT), ("mt", logic.READING_MT)):
-                registers[key] = {}
-                # the 1st of the month (for month totals) and the last days; Moj Elektro allows 5 requests a second
-                for start, end in ((first, first + timedelta(days=1)), (d3, today + timedelta(days=1))):
-                    await asyncio.sleep(API_PAUSE)
-                    payload = await self._get_json(session, logic.readings_url(meter, reading_type, start, end), token)
-                    registers[key].update(logic.readings_from_api(payload))
+            for direction, q_key, miss_key in directions:
+                # the 1st of the month (for month totals) and the last days
+                result = await self._fetch(
+                    session, meter, token, direction, (today - 2 * day, today), ((first, first + day), (d3, today + day))
+                )
+                fetched.append((direction, q_key, miss_key, *result))
         finally:
             self._fetching = False
-        if quarters is None and not registers["et"]:
+        if not any(answered for *_, answered in fetched):
             return {"changed": False, "error": "Moj Elektro did not answer"}
 
         cutoff = (today - timedelta(days=KEEP_Q15_DAYS)).isoformat()
-        if quarters is not None:
-            missing = logic.quarters_missing(quarters, today)
-            for d, values in logic.quarters_from_api(quarters, today).items():
-                stored_miss = self.data["q15_miss"].get(d, 0)
-                if d >= cutoff and (d not in self.data["q15"] or missing.get(d, 0) <= stored_miss):
-                    self.data["q15"][d] = values
-                    self.data["q15_miss"][d] = missing.get(d, 0)
-        for d in watched[:2]:
-            values = self.data["q15"].get(d)
-            if values and not self.data["q15_miss"].get(d):
-                blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
-                old = self.data["days"].get(d, {}).get("b")
-                if blocks and (not old or len(old) != 5 or any(abs(a - b) > 0.0015 for a, b in zip(old, blocks))):
-                    self._merge_day(d, {"b": blocks})
-        totals = logic.totals_from_readings(
-            registers["et"], registers["vt"], registers["mt"], [date.fromisoformat(d) for d in reversed(watched)]
-        )
-        for d, rec in totals.items():
-            old = self.data["days"].get(d, {})
-            if any(not isinstance(old.get(k), (int, float)) or abs(old[k] - v) > 0.0015 for k, v in rec.items()):
-                self._merge_day(d, rec)
+        for direction, q_key, miss_key, quarters, registers, _answered in fetched:
+            if quarters is not None:
+                self._store_quarters(
+                    q_key,
+                    miss_key,
+                    logic.quarters_from_api(quarters, today, direction["q15"]),
+                    logic.quarters_missing(quarters, today, direction["q15"]),
+                    cutoff,
+                )
+            if direction is logic.GRID_IN:
+                for d in watched[:2]:
+                    values = self.data["q15"].get(d)
+                    if values and not self.data["q15_miss"].get(d):
+                        blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
+                        old = self.data["days"].get(d, {}).get("b")
+                        if blocks and (not old or len(old) != 5 or any(abs(a - b) > 0.0015 for a, b in zip(old, blocks))):
+                            self._merge_day(d, {"b": blocks})
+            totals = logic.totals_from_readings(
+                registers["et"], registers["vt"], registers["mt"], [date.fromisoformat(d) for d in reversed(watched)]
+            )
+            for d, rec in totals.items():
+                rec = logic.keyed(rec, direction)
+                old = self.data["days"].get(d, {})
+                if any(not isinstance(old.get(k), (int, float)) or abs(old[k] - v) > 0.0015 for k, v in rec.items()):
+                    self._merge_day(d, rec)
 
-        after = json.dumps(
-            [self.data["days"].get(d) for d in watched] + [self.data["q15"].get(d) for d in watched[:2]],
-            sort_keys=True,
-        )
-        changed = after != before
+        changed = snap() != before
         if changed:
             self._changed()
         return {"changed": changed, "missing": self.missing(today)}
 
     async def async_import_range(self, start: date, end: date) -> dict:
-        """Fetch past days from the Moj Elektro API and fill them in (Settings > Import from Moj Elektro).
+        """Fetch past days from the Moj Elektro API and fill them in (Settings > Moj Elektro history).
 
         Month by month: daily meter readings (usage, VT, MT, month totals) and 15-minute data (tariff
-        blocks of every complete day; the 15-minute chart for the last KEEP_Q15_DAYS days). Moj Elektro's
+        blocks of every complete day; the 15-minute chart for the last KEEP_Q15_DAYS days), and with
+        Settings > Grid "Grid in & Grid out" the same for the energy sent to the grid. Moj Elektro's
         numbers replace what is stored for those days. Returns {"days": days changed, ...} or {"error": ...}.
         """
         today = dt_util.now().date()
@@ -347,73 +397,64 @@ class DailyEnergyManager:
             return {"days": 0, "error": "Daily Energy is already fetching, try again in a moment"}
 
         day = timedelta(days=1)
-        registers: dict[str, dict] = {"et": {}, "vt": {}, "mt": {}}
-        quarters: dict[str, list[float]] = {}
-        missing: dict[str, int] = {}
+        directions = self._directions()
+        collected = {id(dr): {"q": {}, "miss": {}, "reg": {"et": {}, "vt": {}, "mt": {}}} for dr, _, _ in directions}
         answered = False
         self._fetching = True
         try:
             session = async_get_clientsession(self.hass)
             for span_start, span_end in logic.month_spans(start, end):
-                await asyncio.sleep(API_PAUSE)
-                payload = await self._get_json(
-                    session, logic.quarters_range_url(meter, span_start, span_end + day), token
-                )
-                if payload is not None:
-                    answered = True
-                    quarters.update(logic.quarters_from_api(payload, today))
-                    missing.update(logic.quarters_missing(payload, today))
                 # readings from the 1st of the month (month totals) up to the day after the last day, in two
                 # requests so that none is longer than a month
                 first = span_start.replace(day=1)
-                for key, reading_type in (("et", logic.READING_ET), ("vt", logic.READING_VT), ("mt", logic.READING_MT)):
-                    for req_start, req_end in ((first, span_end + day), (span_end + day, span_end + 2 * day)):
-                        await asyncio.sleep(API_PAUSE)
-                        payload = await self._get_json(
-                            session, logic.readings_url(meter, reading_type, req_start, req_end), token
-                        )
-                        if payload is not None:
-                            answered = True
-                            registers[key].update(logic.readings_from_api(payload))
+                r_ranges = ((first, span_end + day), (span_end + day, span_end + 2 * day))
+                for direction, _q, _m in directions:
+                    quarters, registers, ok = await self._fetch(
+                        session, meter, token, direction, (span_start, span_end + day), r_ranges
+                    )
+                    answered |= ok
+                    bucket = collected[id(direction)]
+                    if quarters is not None:
+                        bucket["q"].update(logic.quarters_from_api(quarters, today, direction["q15"]))
+                        bucket["miss"].update(logic.quarters_missing(quarters, today, direction["q15"]))
+                    for key, values in registers.items():
+                        bucket["reg"][key].update(values)
         finally:
             self._fetching = False
         if not answered:
             return {"days": 0, "error": "Moj Elektro did not answer"}
 
         wanted = [start + timedelta(days=n) for n in range((end - start).days + 1)]
-        touched: set[str] = set()
-        totals = logic.totals_from_readings(registers["et"], registers["vt"], registers["mt"], wanted)
-        for d, rec in totals.items():
-            if self._merge_day(d, rec):
-                touched.add(d)
-        blocks_days = 0
+        first_day, last_day = start.isoformat(), end.isoformat()
         cutoff = (today - timedelta(days=KEEP_Q15_DAYS)).isoformat()
-        for d, values in quarters.items():
-            if not start.isoformat() <= d <= end.isoformat():
-                continue
-            flagged = missing.get(d, 0)
-            blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
-            # quarter hours Moj Elektro has not received are sent as 0 or an even share: only use such a
-            # day's blocks when there are none yet
-            if blocks and (not flagged or not self.data["days"].get(d, {}).get("b")):
-                blocks_days += 1
-                if self._merge_day(d, {"b": blocks}):
+        touched: set[str] = set()
+        result = {"first": first_day, "last": last_day}
+        for direction, q_key, miss_key in directions:
+            bucket = collected[id(direction)]
+            reg = bucket["reg"]
+            totals = logic.totals_from_readings(reg["et"], reg["vt"], reg["mt"], wanted)
+            for d, rec in totals.items():
+                if self._merge_day(d, logic.keyed(rec, direction)):
                     touched.add(d)
-            if d >= cutoff and (d not in self.data["q15"] or flagged <= self.data["q15_miss"].get(d, 0)):
-                if self.data["q15"].get(d) != values:
-                    touched.add(d)
-                self.data["q15"][d] = values
-                self.data["q15_miss"][d] = flagged
+            quarters = {d: v for d, v in bucket["q"].items() if first_day <= d <= last_day}
+            if direction is logic.GRID_IN:
+                blocks_days = 0
+                for d, values in quarters.items():
+                    flagged = bucket["miss"].get(d, 0)
+                    blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
+                    # quarter hours Moj Elektro has not received are sent as 0 or an even share: only use such
+                    # a day's blocks when there are none yet
+                    if blocks and (not flagged or not self.data["days"].get(d, {}).get("b")):
+                        blocks_days += 1
+                        if self._merge_day(d, {"b": blocks}):
+                            touched.add(d)
+                result.update(totals=len(totals), blocks=blocks_days, no_total=len(wanted) - len(totals))
+            else:
+                result.update(totals_out=len(totals))
+            touched |= self._store_quarters(q_key, miss_key, quarters, bucket["miss"], cutoff)
         if touched:
             self._changed()
-        return {
-            "days": len(touched),
-            "totals": len(totals),
-            "blocks": blocks_days,
-            "no_total": len(wanted) - len(totals),
-            "first": start.isoformat(),
-            "last": end.isoformat(),
-        }
+        return {"days": len(touched), **result}
 
     async def async_update(self) -> None:
         """Copy the current Moj Elektro values into the day log (same rules as the original automation)."""
@@ -482,17 +523,21 @@ class DailyEnergyManager:
             "manual": self.data["manual"],
             "settings": self.data["settings"],
             "q15": self.data["q15"],
+            "q15o": self.data["q15o"],
             "entities": self.entities(),
             "api": all(self.credentials()),
             "has_pin": bool(self.pin),
-            "lite_users": self.lite_users,
         }
 
     @callback
     def save_settings(self, settings: dict) -> None:
         clean = {k: settings[k] for k in SETTINGS_KEYS if k in settings}
+        was_out = self.grid_out
         self.data["settings"] = {**self.data["settings"], **clean}
         self._changed()
+        if self.grid_out and not was_out:
+            # grid out was just switched on: fetch the last days of it right away
+            self.hass.async_create_task(self.async_check_updates(force=True))
 
     @callback
     def save_manual(self, put: list[dict], delete: list[str]) -> None:
