@@ -1,4 +1,4 @@
-"""Daily Energy for Moj Elektro: a dashboard and daily log on top of the Moj Elektro integration."""
+"""Daily Energy for Moj Elektro: an energy dashboard and day log, fed straight from the Moj Elektro API."""
 
 from __future__ import annotations
 

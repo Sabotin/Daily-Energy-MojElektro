@@ -3,7 +3,29 @@
     "step": {
       "user": {
         "title": "Daily Energy za Moj Elektro",
-        "description": "Izberite merilno mesto Moj Elektro. Senzorji se poiščejo samodejno.",
+        "description": "Kako naj Daily Energy dostopa do API-ja Moj Elektro?",
+        "menu_options": {
+          "api": "Vnesem merilno mesto in API žeton",
+          "link": "Uporabi mojo integracijo Moj Elektro"
+        }
+      },
+      "api": {
+        "title": "Daily Energy za Moj Elektro",
+        "description": "Vsi podatki se prenesejo neposredno iz API-ja Moj Elektro. Žeton ustvarite na mojelektro.si pod Moj profil > Kreiraj žeton (neomejena veljavnost). Merilno mesto je številka EIMM pod Merilna mesta / merilne točke.",
+        "data": {
+          "meter_id": "Merilno mesto (EIMM)",
+          "token": "API žeton",
+          "pin": "PIN (neobvezno)"
+        },
+        "data_description": {
+          "meter_id": "Na primer 4-123456.",
+          "token": "Shranjen je samo v Home Assistantu in nikoli ne pride do brskalnika.",
+          "pin": "Če je nastavljen, ga zahtevata ročni vnos stanja števca in brisanje odčitkov. Pustite prazno za brez PIN-a."
+        }
+      },
+      "link": {
+        "title": "Daily Energy za Moj Elektro",
+        "description": "Uporabi merilno mesto in API žeton vaše integracije Moj Elektro. Njeni senzorji se beležijo tudi kot rezerva.",
         "data": {
           "mojelektro_entry_id": "Merilno mesto Moj Elektro",
           "pin": "PIN (neobvezno)"
@@ -13,9 +35,13 @@
         }
       }
     },
+    "error": {
+      "invalid_auth": "Moj Elektro ni sprejel tega API žetona.",
+      "invalid_meter": "Moj Elektro je zavrnil zahtevo. Preverite merilno mesto (EIMM) in da žeton pripada njemu.",
+      "cannot_connect": "API Moj Elektro ni dosegljiv. Poskusite znova pozneje."
+    },
     "abort": {
-      "mojelektro_missing": "Najprej namestite in nastavite integracijo Moj Elektro (HACS: frlequ/homeassistant-mojelektro).",
-      "already_configured": "Vsa merilna mesta Moj Elektro že imajo nadzorno ploščo Daily Energy."
+      "already_configured": "To merilno mesto že ima nadzorno ploščo Daily Energy."
     }
   },
   "options": {
@@ -25,13 +51,20 @@
         "data": {
           "pin": "PIN (neobvezno)",
           "sidebar": "Prikaži Daily Energy v stranski vrstici",
-          "lite_users": "Lahki način za te uporabnike"
+          "lite_users": "Lahki način za te uporabnike",
+          "token": "Nov API žeton"
         },
         "data_description": {
           "pin": "Ščiti ročni vnos stanja števca in brisanje odčitkov. Pustite prazno za brez PIN-a.",
-          "lite_users": "Uporabniška imena, ločena z vejico (npr. tablet). Njihova plošča je brez zamegljevanja in animacij, za počasne naprave."
+          "lite_users": "Uporabniška imena, ločena z vejico (npr. tablet). Njihova plošča je brez zamegljevanja in animacij, za počasne naprave.",
+          "token": "Samo če ste v Moj Elektro ustvarili nov žeton. Pustite prazno, da ostane trenutni."
         }
       }
+    },
+    "error": {
+      "invalid_auth": "Moj Elektro ni sprejel tega API žetona.",
+      "invalid_meter": "Moj Elektro je zavrnil zahtevo. Preverite, da žeton pripada temu merilnemu mestu.",
+      "cannot_connect": "API Moj Elektro ni dosegljiv. Poskusite znova pozneje."
     }
   }
 }

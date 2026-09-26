@@ -1,11 +1,14 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 MOJ_ELEKTRO_DOMAIN = "mojelektro"
 
 CONF_SOURCE_ENTRY = "mojelektro_entry_id"
+# Own Moj Elektro API access, so the Moj Elektro integration is optional (same keys it uses itself).
+CONF_TOKEN = "token"
+CONF_METER = "meter_id"
 CONF_PIN = "pin"
 CONF_LITE_USERS = "lite_users"
 CONF_SIDEBAR = "sidebar"
@@ -18,7 +21,7 @@ PANEL_ELEMENT = "daily-energy-panel"
 PANEL_ICON = "mdi:lightning-bolt"
 PANEL_TITLE = "Daily Energy"
 
-# Sensor values change a few times a day; these runs are a safety net if a change was missed.
+# With the Moj Elektro integration linked: its sensors change a few times a day; these runs are a safety net.
 REFRESH_TIMES = ((6, 30), (12, 0), (20, 0))
 # Every hour at this minute, whatever is still missing is fetched from the Moj Elektro API (yesterday's 15-minute
 # curve, meter totals of the last days); nothing is requested when everything is there.
