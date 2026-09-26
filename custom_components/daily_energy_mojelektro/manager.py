@@ -1,4 +1,4 @@
-"""Storage, Moj Elektro API fetching and the optional sensor logger for one meter."""
+"""Storage and Moj Elektro API fetching for one meter."""
 
 from __future__ import annotations
 
@@ -11,14 +11,9 @@ import logging
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import (
-    async_call_later,
-    async_track_state_change_event,
-    async_track_time_change,
-)
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -29,23 +24,16 @@ from .const import (
     CHECK_MINUTE,
     CONF_METER,
     CONF_PIN,
-    CONF_SOURCE_ENTRY,
     CONF_TOKEN,
     DOMAIN,
-    EARLIEST_HOUR,
     KEEP_Q15_DAYS,
     MAX_IMPORT_DAYS,
-    REFRESH_TIMES,
     SETTINGS_KEYS,
-    SETTLE_SECONDS,
     STORAGE_VERSION,
     VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-# A change of any of these means Moj Elektro published new data.
-WATCH_KEYS = ("daily_input", "monthly_input", "daily_input_blok_2", "daily_input_blok_3")
 
 
 async def async_test_access(hass: HomeAssistant, meter: str, token: str) -> str | None:
@@ -83,8 +71,6 @@ class DailyEnergyManager:
             "days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {}
         }
         self._listeners: set[Callable[[dict], None]] = set()
-        self._unsub_watch: CALLBACK_TYPE | None = None
-        self._unsub_settle: CALLBACK_TYPE | None = None
         self._fetching = False
 
     # ------------------------------------------------------------ storage
@@ -117,108 +103,26 @@ class DailyEnergyManager:
         return not self.pin or str(pin or "").strip() == self.pin
 
     def credentials(self) -> tuple[str | None, str | None]:
-        """(meter ID, API token): entered at setup, or those of the linked Moj Elektro integration."""
-        if self.entry.data.get(CONF_TOKEN) and self.entry.data.get(CONF_METER):
-            return self.entry.data[CONF_METER], self.entry.data[CONF_TOKEN]
-        source_id = self.entry.data.get(CONF_SOURCE_ENTRY)
-        source = self.hass.config_entries.async_get_entry(source_id) if source_id else None
-        if source is None:
-            return None, None
-        return source.data.get(CONF_METER), source.data.get(CONF_TOKEN)
+        """(meter ID, API token) entered at setup."""
+        return self.entry.data.get(CONF_METER), self.entry.data.get(CONF_TOKEN)
 
-    # ------------------------------------------------------------ entities
-
-    def entities(self) -> dict[str, str]:
-        """Sensors of the linked Moj Elektro integration (optional), by measurement name."""
-        registry = er.async_get(self.hass)
-        found: dict[str, str] = {}
-        source = self.entry.data.get(CONF_SOURCE_ENTRY)
-        if not source:
-            return found
-        for ent in er.async_entries_for_config_entry(registry, source):
-            if ent.domain != "sensor" or ent.disabled:
-                continue
-            key = logic.measurement_from_unique_id(ent.unique_id) or logic.measurement_from_name(
-                ent.original_name
-            )
-            if key and key not in found:
-                found[key] = ent.entity_id
-        return found
-
-    def _value(self, entities: dict[str, str], key: str) -> float | None:
-        entity_id = entities.get(key)
-        state = self.hass.states.get(entity_id) if entity_id else None
-        return logic.to_float(state.state) if state else None
-
-    # ------------------------------------------------------------ logger
+    # ------------------------------------------------------------ schedule
 
     @callback
     def async_start(self) -> CALLBACK_TYPE:
-        """Start listening; returns a callable that stops everything."""
-        unsubs: list[CALLBACK_TYPE] = []
-        for hour, minute in REFRESH_TIMES:
-            unsubs.append(
-                async_track_time_change(self.hass, self._on_time, hour=hour, minute=minute, second=0)
-            )
-        # Every hour: fetch whatever is still missing straight from the Moj Elektro API.
-        unsubs.append(async_track_time_change(self.hass, self._on_check_time, minute=CHECK_MINUTE, second=0))
-
-        @callback
-        def _started(_hass: HomeAssistant) -> None:
-            # Moj Elektro's entities exist once Home Assistant has started.
-            self._watch()
-            self.hass.async_create_task(self.async_update())
-            self.hass.async_create_task(self.async_check_updates(force=False))
-
-        unsubs.append(async_at_started(self.hass, _started))
+        """Every hour (and once Home Assistant has started): fetch whatever is still missing from the
+        Moj Elektro API. Returns a callable that stops it."""
+        unsubs: list[CALLBACK_TYPE] = [
+            async_track_time_change(self.hass, self._on_check_time, minute=CHECK_MINUTE, second=0),
+            async_at_started(self.hass, lambda _hass: self._on_check_time(None)),
+        ]
 
         @callback
         def _stop() -> None:
             for unsub in unsubs:
                 unsub()
-            if self._unsub_watch:
-                self._unsub_watch()
-                self._unsub_watch = None
-            if self._unsub_settle:
-                self._unsub_settle()
-                self._unsub_settle = None
 
         return _stop
-
-    @callback
-    def _watch(self) -> None:
-        if self._unsub_watch:
-            self._unsub_watch()
-            self._unsub_watch = None
-        entities = self.entities()
-        watched = [entities[k] for k in WATCH_KEYS if k in entities]
-        if watched:
-            self._unsub_watch = async_track_state_change_event(self.hass, watched, self._on_change)
-        elif self.entry.data.get(CONF_SOURCE_ENTRY):
-            _LOGGER.warning("No Moj Elektro sensors found for %s", self.entry.title)
-
-    @callback
-    def _on_change(self, event: Event) -> None:
-        new = event.data.get("new_state")
-        if new is None or new.state in ("unknown", "unavailable"):
-            return
-        # Moj Elektro updates its sensors one after another: log once, after the last change has settled.
-        if self._unsub_settle:
-            self._unsub_settle()
-        self._unsub_settle = async_call_later(self.hass, SETTLE_SECONDS, self._on_settled)
-
-    @callback
-    def _on_settled(self, _now) -> None:
-        self._unsub_settle = None
-        self.hass.async_create_task(self.async_update())
-
-    @callback
-    def _on_time(self, _now) -> None:
-        if not self.entry.data.get(CONF_SOURCE_ENTRY):
-            return
-        if self._unsub_watch is None:
-            self._watch()
-        self.hass.async_create_task(self.async_update())
 
     @callback
     def _on_check_time(self, _now) -> None:
@@ -306,7 +210,7 @@ class DailyEnergyManager:
         * 15-minute data of the last two days: the 15-minute chart, and the tariff blocks once a day
           is complete; a day is only replaced by data that is at least as complete
         * with Settings > Grid "Grid in & Grid out": the same for the energy sent to the grid
-        Uses the meter ID and API token entered at setup (or those of the linked Moj Elektro integration).
+        Uses the meter ID and API token entered at setup.
         force = False (the hourly run) does not contact Moj Elektro when nothing is missing.
         Returns {"changed": bool, ...}.
         """
@@ -456,37 +360,6 @@ class DailyEnergyManager:
             self._changed()
         return {"days": len(touched), **result}
 
-    async def async_update(self) -> None:
-        """Copy the current Moj Elektro values into the day log (same rules as the original automation)."""
-        now = dt_util.now()
-        if now.hour < EARLIEST_HOUR:
-            return
-        entities = self.entities()
-        val = lambda key: self._value(entities, key)  # noqa: E731
-        changed = False
-
-        u, mo = val("daily_input"), val("monthly_input")
-        vt, mt = val("daily_input_peak"), val("daily_input_offpeak")
-        mvt, mmt = val("monthly_input_peak"), val("monthly_input_offpeak")
-        if (
-            u is not None
-            and u > 0.1
-            and mo is not None
-            and mo > 0
-            and logic.snapshot_consistent(u, vt, mt, mo, mvt, mmt)
-        ):
-            day = logic.pick_usage_day(self.data["days"], u, mo, now.date())
-            patch = {"u": round(u, 3), "vt": round(vt, 3), "mt": round(mt, 3)}
-            patch.update({"mo": round(mo, 3), "mvt": round(mvt, 3), "mmt": round(mmt, 3)})
-            changed |= self._merge_day(day, patch)
-
-        blocks = [val(k) for k in logic.BLOCK_KEYS]
-        if all(b is not None for b in blocks) and sum(blocks) > 0.1:
-            changed |= self._merge_day(logic.blocks_day(now.date()), {"b": [round(b, 3) for b in blocks]})
-
-        if changed:
-            self._changed()
-
     # ------------------------------------------------------------ changes
 
     def _merge_day(self, day: str, patch: dict) -> bool:
@@ -524,7 +397,6 @@ class DailyEnergyManager:
             "settings": self.data["settings"],
             "q15": self.data["q15"],
             "q15o": self.data["q15o"],
-            "entities": self.entities(),
             "api": all(self.credentials()),
             "has_pin": bool(self.pin),
         }
@@ -549,8 +421,10 @@ class DailyEnergyManager:
         self._changed()
 
     @callback
-    def clear_manual(self) -> None:
-        self.data["manual"] = {}
+    def clear_all(self) -> None:
+        """Settings > Delete all data: every Moj Elektro day, 15-minute day and manual reading. Settings stay."""
+        for key in ("days", "manual", "q15", "q15_miss", "q15o", "q15o_miss"):
+            self.data[key] = {}
         self._changed()
 
     @callback
