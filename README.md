@@ -96,9 +96,7 @@ In the dashboard itself (⚙):
 
 ## Your history (optional)
 
-Right after setup, Daily Energy fetches your history by itself: every day from 1 January of last year, plus the
-15-minute data of the last days (a minute or two, in the background – last year appears first, then this year). New days
-follow every hour. For older days:
+New days are logged automatically from the day you install it. To fill in the past:
 
 **Settings (⚙) → Moj Elektro history** – pick a **From** and **To** date and tap **Export & import from Moj Elektro**.
 Daily Energy fetches those days straight from the Moj Elektro API, one month at a time (the progress is shown), and
