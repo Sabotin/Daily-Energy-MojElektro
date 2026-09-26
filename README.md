@@ -32,8 +32,6 @@ Energy dashboard for Home Assistant, straight from the Moj Elektro API. Enter yo
 3. Settings → Devices & services → **Add integration** → **Daily Energy for Moj Elektro**
 4. Enter meter ID and API token – **Daily Energy** appears in the sidebar
 
-Prefer plain YAML without the integration? See [yaml-setup](yaml-setup/README.md).
-
 As a card on any dashboard:
 
 ```yaml
