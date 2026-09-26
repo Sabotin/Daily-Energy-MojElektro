@@ -158,3 +158,17 @@ def test_quarters_from_api_empty_or_other_type():
     assert logic.quarters_from_api({}, TODAY) == {}
     other = {"intervalBlocks": [{"readingType": "x", "intervalReadings": []}, {"readingType": "y"}]}
     assert logic.quarters_from_api(other, TODAY) == {}
+
+
+def test_quarters_missing_counts_flagged_quarters():
+    # Moj Elektro publishes the day before every reading has arrived from the meter; those quarter
+    # hours come as 0 with readingQualities and are replaced later.
+    readings = _api_day("2026-09-24", [0.5] * 96)
+    for r in readings[-8:]:
+        r["value"] = "0.0000"
+        r["readingQualities"] = [{"readingQualityType": "1.5.259"}]
+    payload = {"intervalBlocks": [{"readingType": logic.READING_A_PLUS_15, "intervalReadings": readings}]}
+    assert logic.quarters_missing(payload, TODAY) == {"2026-09-24": 8}
+    assert logic.quarters_from_api(payload, TODAY)["2026-09-24"][-8:] == [0.0] * 8
+    complete = {"intervalBlocks": [{"readingType": logic.READING_A_PLUS_15, "intervalReadings": _api_day("2026-09-24", [0.5] * 96)}]}
+    assert logic.quarters_missing(complete, TODAY) == {"2026-09-24": 0}
