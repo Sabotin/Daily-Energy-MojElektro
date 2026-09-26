@@ -1,7 +1,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.2.3"
+VERSION = "0.3.0"
 
 MOJ_ELEKTRO_DOMAIN = "mojelektro"
 
@@ -20,9 +20,11 @@ PANEL_TITLE = "Daily Energy"
 
 # Sensor values change a few times a day; these runs are a safety net if a change was missed.
 REFRESH_TIMES = ((6, 30), (12, 0), (20, 0))
-# Moj Elektro publishes yesterday's 15-minute curve at about 05:45; it is requested every half hour from 05:00 to 12:00
-# (skipped once it is complete and no quarter hour is still missing).
-QUARTER_TIMES = tuple((h, m) for h in range(5, 13) for m in (0, 30) if (h, m) <= (12, 0))
+# Every hour at this minute, whatever is still missing is fetched from the Moj Elektro API (yesterday's 15-minute
+# curve, meter totals of the last days); nothing is requested when everything is there.
+CHECK_MINUTE = 5
+# Pause between API requests: Moj Elektro allows 5 requests per second.
+API_PAUSE = 0.3
 # Moj Elektro updates its sensors one after another; wait until they have all settled before logging.
 SETTLE_SECONDS = 30
 # Moj Elektro data between midnight and 06:00 can be incomplete.

@@ -183,3 +183,48 @@ def test_normal_reading_code_is_not_missing():
     readings[11]["readingQualities"] = [{"readingQualityType": "3.8.0"}]
     payload = {"intervalBlocks": [{"readingType": logic.READING_A_PLUS_15, "intervalReadings": readings}]}
     assert logic.quarters_missing(payload, TODAY) == {"2026-09-24": 2}
+
+
+def _register(values: dict[str, float]) -> dict:
+    return {"intervalBlocks": [{"readingType": logic.READING_ET, "intervalReadings": [
+        {"timestamp": d + "T00:00:00+02:00", "value": f"{v:.4f}", "readingQualities": []} for d, v in values.items()
+    ]}]}
+
+
+def test_totals_from_meter_readings():
+    # readings are taken at 00:00: usage of 24 Sep = reading of 25 Sep - reading of 24 Sep (invented numbers)
+    et = logic.readings_from_api(_register({"2026-09-01": 1000.0, "2026-09-24": 1600.5, "2026-09-25": 1638.0}))
+    vt = logic.readings_from_api(_register({"2026-09-01": 600.0, "2026-09-24": 950.0, "2026-09-25": 980.0}))
+    mt = logic.readings_from_api(_register({"2026-09-01": 400.0, "2026-09-24": 650.5, "2026-09-25": 658.0}))
+    out = logic.totals_from_readings(et, vt, mt, [date(2026, 9, 23), date(2026, 9, 24)])
+    assert list(out) == ["2026-09-24"]  # 23 Sep needs the reading of 23 Sep
+    assert out["2026-09-24"] == {"u": 37.5, "vt": 30.0, "mt": 7.5, "mo": 638.0, "mvt": 380.0, "mmt": 258.0}
+
+
+def test_totals_skip_numbers_that_do_not_add_up():
+    et = {"2026-09-01": 0.0, "2026-09-24": 10.0, "2026-09-25": 20.0}
+    vt = {"2026-09-01": 0.0, "2026-09-24": 5.0, "2026-09-25": 9.0}
+    mt = {"2026-09-01": 0.0, "2026-09-24": 5.0, "2026-09-25": 6.0}  # VT + MT = 5, total = 10
+    assert logic.totals_from_readings(et, vt, mt, [date(2026, 9, 24)]) == {}
+
+
+def test_easter_monday_and_blocks():
+    assert logic.easter_monday(2026) == date(2026, 4, 6)
+    assert logic.easter_monday(2027) == date(2027, 3, 29)
+    assert logic.easter_monday(2025) == date(2025, 4, 21)
+    from datetime import datetime
+    assert logic.block_of(datetime(2026, 1, 5, 10)) == 1  # winter working day, peak
+    assert logic.block_of(datetime(2026, 1, 3, 10)) == 2  # winter Saturday
+    assert logic.block_of(datetime(2026, 9, 24, 10)) == 2  # summer working day, peak
+    assert logic.block_of(datetime(2026, 9, 24, 23)) == 4  # summer night
+    assert logic.block_of(datetime(2026, 9, 26, 23)) == 5  # summer weekend night
+    assert logic.block_of(datetime(2026, 4, 6, 10)) == 3  # Easter Monday
+    assert logic.block_of(datetime(2026, 12, 25, 6)) == 3  # Christmas, shoulder hour
+
+
+def test_blocks_from_quarters():
+    b = logic.blocks_from_quarters(date(2026, 9, 24), [0.25] * 96)  # Thursday, lower season
+    # 11 h in block 2 (07-14, 16-20), 5 h in block 3 (06-07, 14-16, 20-22), 8 h in block 4 (night)
+    assert b == [0.0, 11.0, 5.0, 8.0, 0.0]
+    assert round(sum(b), 3) == 24.0
+    assert logic.blocks_from_quarters(date(2026, 3, 29), [0.25] * 92) is None  # clock change day

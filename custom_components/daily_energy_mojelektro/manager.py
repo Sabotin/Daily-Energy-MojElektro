@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import date, timedelta
+import json
 import logging
 
 import aiohttp
@@ -25,13 +25,14 @@ from homeassistant.util import dt as dt_util
 
 from . import logic
 from .const import (
+    API_PAUSE,
+    CHECK_MINUTE,
     CONF_LITE_USERS,
     CONF_PIN,
     CONF_SOURCE_ENTRY,
     DOMAIN,
     EARLIEST_HOUR,
     KEEP_Q15_DAYS,
-    QUARTER_TIMES,
     REFRESH_TIMES,
     SETTINGS_KEYS,
     SETTLE_SECONDS,
@@ -127,18 +128,15 @@ class DailyEnergyManager:
             unsubs.append(
                 async_track_time_change(self.hass, self._on_time, hour=hour, minute=minute, second=0)
             )
-        # Yesterday's whole 15-minute curve: tried every half hour from 05:00 to 09:00 until it is complete.
-        for hour, minute in QUARTER_TIMES:
-            unsubs.append(
-                async_track_time_change(self.hass, self._on_quarters_time, hour=hour, minute=minute, second=0)
-            )
+        # Every hour: fetch whatever is still missing straight from the Moj Elektro API.
+        unsubs.append(async_track_time_change(self.hass, self._on_check_time, minute=CHECK_MINUTE, second=0))
 
         @callback
         def _started(_hass: HomeAssistant) -> None:
             # Moj Elektro's entities exist once Home Assistant has started.
             self._watch()
             self.hass.async_create_task(self.async_update())
-            self.hass.async_create_task(self.async_fetch_quarters())
+            self.hass.async_create_task(self.async_check_updates(force=False))
 
         unsubs.append(async_at_started(self.hass, _started))
 
@@ -189,58 +187,109 @@ class DailyEnergyManager:
         self.hass.async_create_task(self.async_update())
 
     @callback
-    def _on_quarters_time(self, _now) -> None:
-        self.hass.async_create_task(self.async_fetch_quarters())
+    def _on_check_time(self, _now) -> None:
+        self.hass.async_create_task(self.async_check_updates(force=False))
 
-    async def async_fetch_quarters(self) -> None:
-        """Download yesterday's 96 quarter hours from Moj Elektro in one request.
+    # ------------------------------------------------------------ Moj Elektro API
 
-        The Moj Elektro sensor only reveals one of them every 15 minutes; with the whole day the
-        15-minute chart shows all of yesterday shortly after midnight. Uses the API token and meter
-        of the linked Moj Elektro entry, so there is nothing extra to set up.
+    def missing(self, today) -> list[str]:
+        """What the API should still deliver: yesterday's full 15-minute curve and the meter totals
+        of the two days before yesterday (Moj Elektro publishes a day's meter total two days later)."""
+        d1, d2, d3 = ((today - timedelta(days=n)).isoformat() for n in (1, 2, 3))
+        out = []
+        if len(self.data["q15"].get(d1, [])) < 92 or self.data["q15_miss"].get(d1):
+            out.append(f"15-min {d1}")
+        if self.data["q15_miss"].get(d2):
+            out.append(f"15-min {d2}")
+        out += [f"total {d}" for d in (d3, d2) if "u" not in self.data["days"].get(d, {})]
+        return out
+
+    async def _get_json(self, session, url: str, token: str) -> dict | None:
+        try:
+            async with asyncio.timeout(30):
+                response = await session.get(url, headers={"accept": "application/json", "X-API-TOKEN": token})
+                if response.status != 200:
+                    _LOGGER.debug("Moj Elektro request: HTTP %s", response.status)
+                    return None
+                return await response.json(content_type=None)
+        except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+            _LOGGER.debug("Moj Elektro request failed: %s", err)
+            return None
+
+    async def async_check_updates(self, force: bool = True) -> dict:
+        """Fetch everything the dashboard shows straight from the Moj Elektro API and save what is new.
+
+        * daily meter readings (total, VT, MT): usage, VT, MT and month totals of the last three days
+        * 15-minute data of the last two days: the 15-minute chart, and the tariff blocks once a day
+          is complete; a day is only replaced by data that is at least as complete
+        Uses the API token and meter of the linked Moj Elektro entry. force = False (the hourly run)
+        does not contact Moj Elektro when nothing is missing. Returns {"changed": bool, ...}.
         """
         today = dt_util.now().date()
-        yesterday = (today - timedelta(days=1)).isoformat()
-        complete = len(self.data["q15"].get(yesterday, [])) >= 92 and not self.data["q15_miss"].get(yesterday)
-        if complete or self._fetching:
-            return
+        if self._fetching:
+            return {"changed": False, "busy": True}
+        if not force and not self.missing(today):
+            return {"changed": False, "skipped": True}
         source = self.hass.config_entries.async_get_entry(self.entry.data.get(CONF_SOURCE_ENTRY))
         token = source.data.get("token") if source else None
         meter = source.data.get("meter_id") if source else None
         if not token or not meter:
-            return
+            return {"changed": False, "error": "no Moj Elektro token"}
+
+        d3, first = today - timedelta(days=3), (today - timedelta(days=3)).replace(day=1)
+        watched = [(today - timedelta(days=n)).isoformat() for n in (1, 2, 3)]
+        before = json.dumps(
+            [self.data["days"].get(d) for d in watched] + [self.data["q15"].get(d) for d in watched[:2]],
+            sort_keys=True,
+        )
         self._fetching = True
         try:
             session = async_get_clientsession(self.hass)
-            async with asyncio.timeout(30):
-                response = await session.get(
-                    logic.quarters_url(meter, today),
-                    headers={"accept": "application/json", "X-API-TOKEN": token},
-                )
-                if response.status != 200:
-                    _LOGGER.debug("Moj Elektro 15-minute request: HTTP %s", response.status)
-                    return
-                payload = await response.json(content_type=None)
-        except (aiohttp.ClientError, TimeoutError, ValueError) as err:
-            _LOGGER.debug("Moj Elektro 15-minute request failed: %s", err)
-            return
+            quarters = await self._get_json(session, logic.quarters_url(meter, today), token)
+            registers: dict[str, dict] = {}
+            for key, reading_type in (("et", logic.READING_ET), ("vt", logic.READING_VT), ("mt", logic.READING_MT)):
+                registers[key] = {}
+                # the 1st of the month (for month totals) and the last days; Moj Elektro allows 5 requests a second
+                for start, end in ((first, first + timedelta(days=1)), (d3, today + timedelta(days=1))):
+                    await asyncio.sleep(API_PAUSE)
+                    payload = await self._get_json(session, logic.readings_url(meter, reading_type, start, end), token)
+                    registers[key].update(logic.readings_from_api(payload))
         finally:
             self._fetching = False
+        if quarters is None and not registers["et"]:
+            return {"changed": False, "error": "Moj Elektro did not answer"}
 
-        days = logic.quarters_from_api(payload, today)
-        missing = logic.quarters_missing(payload, today)
-        # a day is replaced unless the stored copy is more complete (fewer quarters not published yet)
-        days = {
-            d: q
-            for d, q in days.items()
-            if d not in self.data["q15"] or missing.get(d, 0) <= self.data["q15_miss"].get(d, 0)
-        }
-        if days:
-            self.apply_import({"days": {}, "q15": days}, missing)
-            _LOGGER.debug(
-                "Stored 15-minute data for %s",
-                ", ".join(f"{d} ({missing.get(d, 0)} not published yet)" for d in sorted(days)),
-            )
+        cutoff = (today - timedelta(days=KEEP_Q15_DAYS)).isoformat()
+        if quarters is not None:
+            missing = logic.quarters_missing(quarters, today)
+            for d, values in logic.quarters_from_api(quarters, today).items():
+                stored_miss = self.data["q15_miss"].get(d, 0)
+                if d >= cutoff and (d not in self.data["q15"] or missing.get(d, 0) <= stored_miss):
+                    self.data["q15"][d] = values
+                    self.data["q15_miss"][d] = missing.get(d, 0)
+        for d in watched[:2]:
+            values = self.data["q15"].get(d)
+            if values and not self.data["q15_miss"].get(d):
+                blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
+                old = self.data["days"].get(d, {}).get("b")
+                if blocks and (not old or len(old) != 5 or any(abs(a - b) > 0.0015 for a, b in zip(old, blocks))):
+                    self._merge_day(d, {"b": blocks})
+        totals = logic.totals_from_readings(
+            registers["et"], registers["vt"], registers["mt"], [date.fromisoformat(d) for d in reversed(watched)]
+        )
+        for d, rec in totals.items():
+            old = self.data["days"].get(d, {})
+            if any(not isinstance(old.get(k), (int, float)) or abs(old[k] - v) > 0.0015 for k, v in rec.items()):
+                self._merge_day(d, rec)
+
+        after = json.dumps(
+            [self.data["days"].get(d) for d in watched] + [self.data["q15"].get(d) for d in watched[:2]],
+            sort_keys=True,
+        )
+        changed = after != before
+        if changed:
+            self._changed()
+        return {"changed": changed, "missing": self.missing(today)}
 
     async def async_update(self) -> None:
         """Copy the current Moj Elektro values into the day log (same rules as the original automation)."""

@@ -67,7 +67,8 @@
     down: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
     up: '<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
     spark: '<path d="M12 3l1.9 5.8L20 10l-5 3.6L16.8 20 12 16.3 7.2 20 9 13.6 4 10l6.1-1.2z"/>',
-    meter: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h4"/>'
+    meter: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h4"/>',
+    sync: '<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>'
   };
   const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
 
@@ -107,6 +108,8 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .ibtn{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:var(--txt);cursor:pointer;transition:.25s}
 .ibtn:hover{background:rgba(255,255,255,.1);transform:rotate(30deg)}
 .ibtn .ic{width:20px;height:20px}
+.ibtn.upd:hover{transform:rotate(-30deg)}
+.ibtn.busy{pointer-events:none;opacity:.85}.ibtn.busy .ic{animation:spin 1s linear infinite}
 /* banner */
 .banner{display:flex;align-items:center;gap:16px;padding:16px 20px;margin-bottom:18px;border-radius:20px;border:1px solid rgba(62,230,255,.25);background:linear-gradient(90deg,rgba(62,230,255,.10),rgba(123,107,255,.10));flex-wrap:wrap}
 .banner.demo{border-color:rgba(255,200,87,.35);background:linear-gradient(90deg,rgba(255,200,87,.12),rgba(255,122,61,.08))}
@@ -317,6 +320,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .toast{position:fixed;left:50%;bottom:34px;z-index:60;transform:translate(-50%,30px);opacity:0;transition:.35s cubic-bezier(.2,.8,.2,1);padding:13px 20px;border-radius:16px;background:linear-gradient(135deg,rgba(20,30,60,.95),rgba(30,20,60,.95));border:1px solid rgba(62,230,255,.35);box-shadow:0 20px 50px -10px rgba(62,230,255,.4);font-size:14px;display:flex;align-items:center;gap:10px;pointer-events:none}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .toast .ic{width:18px;height:18px;color:var(--c1);fill:var(--c1);stroke:none}
+.toast .ic.st{fill:none;stroke:var(--c1)}.toast.wait .ic{animation:spin 1s linear infinite}
 .dw-bg{position:fixed;inset:0;z-index:70;background:rgba(2,4,10,.55);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:.3s}
 .dw{position:fixed;top:0;right:0;bottom:0;z-index:71;width:min(420px,100vw);background:linear-gradient(180deg,#0c1228,#070a16);border-left:1px solid rgba(255,255,255,.08);box-shadow:-30px 0 80px -20px rgba(0,0,0,.8);transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);padding:26px;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
 .dw-open .dw-bg{opacity:1;pointer-events:auto}.dw-open .dw{transform:none}
@@ -582,9 +586,21 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const d = new Date(), c = this._c || {};
       // only warnings get a chip; normal operation keeps the header clean
       const chip = this._demo ? `<span class="chip warn"><i></i>Demo preview</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>Daily Energy integration not set up</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div><h1><span>Daily Energy</span></h1><div class="sub">${DOWL[d.getDay()]}, ${d.getDate()} ${MONL[d.getMonth()]} ${d.getFullYear()}</div></div><div class="sp"></div><div class="chips">${chip}</div><button class="ibtn" data-act="settings" title="Settings">${ic('gear')}</button>`;
+      return `<div class="logo">${ic('bolt')}</div><div><h1><span>Daily Energy</span></h1><div class="sub">${DOWL[d.getDay()]}, ${d.getDate()} ${MONL[d.getMonth()]} ${d.getFullYear()}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="Check for updates">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="Settings">${ic('gear')}</button>`;
     }
     _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); }
+    // Update button: asks the Moj Elektro API for new data now (the integration also checks every hour by itself).
+    async _checkUpdates() {
+      if (this._checking || !this._entry) return;
+      this._checking = true; this._renderHdr(); this._toast('Checking for updates…', { hold: true, icon: 'sync' });
+      const t0 = Date.now(); let msg;
+      try {
+        const res = await this._ws('check_updates');
+        msg = res && res.error ? 'Could not reach Moj Elektro — try again later' : res && res.changed ? 'Updated the cards!' : 'Nothing has been updated yet';
+      } catch (e) { msg = 'Could not check for updates — ' + (e && e.message || e); }
+      await new Promise(r => setTimeout(r, Math.max(0, 1200 - (Date.now() - t0))));
+      this._checking = false; this._renderHdr(); this._toast(msg, { ms: 3500 });
+    }
     _renderBanner() {
       const b = this.$('banner');
       if (this._demo) b.innerHTML = `<div class="banner demo">${ic('spark')}<div><b>Demo preview.</b> <span>150 days of sample readings so you can explore — nothing here is saved.</span></div><div class="sp"></div><button class="btn sm gh" data-act="demo-off">Exit demo</button></div>`;
@@ -1003,6 +1019,7 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
         else { this._ui.formOpen = true; this._renderForm(); this.$('form').scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 400); }
       }
       else if (a === 'all') { this._ui.all = !this._ui.all; this._renderLog(); }
+      else if (a === 'update') this._checkUpdates();
       else if (a === 'settings') { this._renderDrawer(); requestAnimationFrame(() => this._drawer(true)); }
       else if (a === 'close') this._drawer(false);
       else if (a === 'set') { let v = t.dataset.v; if (t.dataset.k === 'mult') v = Number(v); this._data.settings[t.dataset.k] = v; if (this._demo) this._demo = this._genDemo(); this._renderAll(); this._drawer(true); await this._commit({ settings: true }); }
@@ -1065,9 +1082,9 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
       if (y < 8) y = e.clientY + 18;
       tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('on');
     }
-    _toast(msg) {
-      const t = this.$('toast'); t.innerHTML = ic('bolt') + esc(msg); t.classList.add('on');
-      clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.remove('on'), 2800);
+    _toast(msg, o = {}) {
+      const t = this.$('toast'); t.innerHTML = ic(o.icon || 'bolt', o.icon === 'sync' ? 'st' : '') + esc(msg); t.classList.toggle('wait', !!o.hold); t.classList.add('on');
+      clearTimeout(this._tt); if (!o.hold) this._tt = setTimeout(() => t.classList.remove('on'), o.ms || 2800);
     }
 
     /* ----- demo ----- */

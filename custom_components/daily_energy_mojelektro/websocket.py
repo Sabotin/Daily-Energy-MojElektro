@@ -27,6 +27,7 @@ def async_register(hass: HomeAssistant) -> None:
         ws_clear_manual,
         ws_import_csv,
         ws_import_backup,
+        ws_check_updates,
     ):
         websocket_api.async_register_command(hass, command)
 
@@ -165,3 +166,12 @@ def ws_import_backup(hass: HomeAssistant, connection, msg: dict[str, Any]) -> No
     manager = _manager(hass, connection, msg)
     if manager is not None:
         connection.send_result(msg["id"], {"kind": "backup", "days": manager.apply_backup(msg["data"])})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/check_updates", ENTRY: str})
+@websocket_api.async_response
+async def ws_check_updates(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Update button: ask the Moj Elektro API for new data now and report whether anything changed."""
+    manager = _manager(hass, connection, msg)
+    if manager is not None:
+        connection.send_result(msg["id"], await manager.async_check_updates(force=True))
