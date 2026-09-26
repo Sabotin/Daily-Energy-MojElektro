@@ -51,12 +51,10 @@
         "data": {
           "pin": "PIN (neobvezno)",
           "sidebar": "Prikaži Daily Energy v stranski vrstici",
-          "lite_users": "Lahki način za te uporabnike",
           "token": "Nov API žeton"
         },
         "data_description": {
           "pin": "Ščiti ročni vnos stanja števca in brisanje odčitkov. Pustite prazno za brez PIN-a.",
-          "lite_users": "Uporabniška imena, ločena z vejico (npr. tablet). Njihova plošča je brez zamegljevanja in animacij, za počasne naprave.",
           "token": "Samo če ste v Moj Elektro ustvarili nov žeton. Pustite prazno, da ostane trenutni."
         }
       }

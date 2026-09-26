@@ -51,12 +51,10 @@
         "data": {
           "pin": "PIN (optional)",
           "sidebar": "Show Daily Energy in the sidebar",
-          "lite_users": "Light mode for these users",
           "token": "New API token"
         },
         "data_description": {
           "pin": "Protects the manual meter reading and deleting readings. Leave empty for no PIN.",
-          "lite_users": "Comma-separated user names (for example: tablet). Their dashboard skips blur and animations, for slow devices.",
           "token": "Only if you created a new token in Moj Elektro. Leave empty to keep the current one."
         }
       }
