@@ -79,7 +79,7 @@ MIT – glejte [LICENSE](LICENSE). Projekt ni povezan z Elektro Slovenije ali ka
 
 # Daily Energy for Moj Elektro
 
-Energy dashboard for Home Assistant, straight from the Moj Elektro API. Enter your meter ID and API token – done.
+Energy dashboard for Home Assistant, straight from the Moj Elektro API.
 
 ## Features
 
