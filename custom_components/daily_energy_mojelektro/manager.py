@@ -67,8 +67,9 @@ class DailyEnergyManager:
         # days: {date: {u, vt, mt, mo, mvt, mmt, b} + grid out {o, ovt, omt, omo, omvt, ommt}},
         # manual: {date: {t, vt, mt}}, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched}
+        # meta: {history_filled: True} once the first history fill has run
         self.data: dict = {
-            "days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {}
+            "days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {}, "meta": {}
         }
         self._listeners: set[Callable[[dict], None]] = set()
         self._fetching = False
@@ -114,7 +115,7 @@ class DailyEnergyManager:
         Moj Elektro API. Returns a callable that stops it."""
         unsubs: list[CALLBACK_TYPE] = [
             async_track_time_change(self.hass, self._on_check_time, minute=CHECK_MINUTE, second=0),
-            async_at_started(self.hass, lambda _hass: self._on_check_time(None)),
+            async_at_started(self.hass, lambda _hass: self.hass.async_create_task(self._async_first_run())),
         ]
 
         @callback
@@ -127,6 +128,29 @@ class DailyEnergyManager:
     @callback
     def _on_check_time(self, _now) -> None:
         self.hass.async_create_task(self.async_check_updates(force=False))
+
+    async def _async_first_run(self) -> None:
+        """Once Home Assistant has started: fill in the history on a fresh install, then check as every hour."""
+        if not self.data["meta"].get("history_filled"):
+            await self.async_fill_history()
+        await self.async_check_updates(force=False)
+
+    async def async_fill_history(self) -> None:
+        """A fresh install fetches its history once, from 1 January of last year, month by month (about a minute
+        per year). An install that already has days, or one whose data was deleted, is never filled again."""
+        today = dt_util.now().date()
+        if not self.data["days"]:
+            yesterday = today - timedelta(days=1)
+            for start, end in ((date(today.year - 1, 1, 1), date(today.year - 1, 12, 31)), (date(today.year, 1, 1), yesterday)):
+                if start > end:
+                    continue
+                result = await self.async_import_range(start, end)
+                if result.get("error"):
+                    # try again at the next start
+                    _LOGGER.warning("Filling in the Moj Elektro history stopped: %s", result["error"])
+                    return
+        self.data["meta"]["history_filled"] = True
+        self._save()
 
     # ------------------------------------------------------------ Moj Elektro API
 
@@ -238,9 +262,12 @@ class DailyEnergyManager:
         try:
             session = async_get_clientsession(self.hass)
             for direction, q_key, miss_key in directions:
-                # the 1st of the month (for month totals) and the last days
+                # 15-minute data: the last 2 days, or the last 10 while fewer than 7 whole days are stored (the
+                # per-block peaks look back over them); readings: the 1st of the month (month totals) and the last days
+                recent = [d for d, v in self.data[q_key].items() if d >= (today - 10 * day).isoformat() and len(v) >= 92]
+                back = 2 if len(recent) >= 7 else 10
                 result = await self._fetch(
-                    session, meter, token, direction, (today - 2 * day, today), ((first, first + day), (d3, today + day))
+                    session, meter, token, direction, (today - back * day, today), ((first, first + day), (d3, today + day))
                 )
                 fetched.append((direction, q_key, miss_key, *result))
         finally:
@@ -249,9 +276,10 @@ class DailyEnergyManager:
             return {"changed": False, "error": "Moj Elektro did not answer"}
 
         cutoff = (today - timedelta(days=KEEP_Q15_DAYS)).isoformat()
+        stored: set[str] = set()
         for direction, q_key, miss_key, quarters, registers, _answered in fetched:
             if quarters is not None:
-                self._store_quarters(
+                stored |= self._store_quarters(
                     q_key,
                     miss_key,
                     logic.quarters_from_api(quarters, today, direction["q15"]),
@@ -277,7 +305,7 @@ class DailyEnergyManager:
                 if any(not isinstance(old.get(k), (int, float)) or abs(old[k] - v) > 0.0015 for k, v in rec.items()):
                     self._merge_day(d, rec)
 
-        changed = snap() != before
+        changed = snap() != before or bool(stored)
         if changed:
             self._changed()
         return {"changed": changed, "missing": self.missing(today)}
