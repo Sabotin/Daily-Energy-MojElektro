@@ -127,11 +127,26 @@ READING_A_PLUS_15 = "32.0.2.4.1.2.12.0.0.0.0.0.0.0.0.3.72.0"  # received active 
 
 def quarters_url(meter_id: str, today: date, days_back: int = 2) -> str:
     """Request for the 15-minute energy of the last days_back days (the API returns whole days)."""
-    start = (today - timedelta(days=days_back)).isoformat()
+    return quarters_range_url(meter_id, today - timedelta(days=days_back), today)
+
+
+def quarters_range_url(meter_id: str, start: date, end: date) -> str:
+    """Request for the 15-minute energy of the days from start up to (not including) end."""
     return (
-        f"{API_URL}?usagePoint={meter_id}&startTime={start}&endTime={today.isoformat()}"
+        f"{API_URL}?usagePoint={meter_id}&startTime={start.isoformat()}&endTime={end.isoformat()}"
         f"&option=ReadingType%3D{READING_A_PLUS_15}"
     )
+
+
+def month_spans(start: date, end: date) -> list[tuple[date, date]]:
+    """[start, end] cut into pieces within one calendar month each (Moj Elektro answers about a month per request)."""
+    out: list[tuple[date, date]] = []
+    cur = start
+    while cur <= end:
+        next_month = (cur.replace(day=28) + timedelta(days=4)).replace(day=1)
+        out.append((cur, min(end, next_month - timedelta(days=1))))
+        cur = next_month
+    return out
 
 
 def _estimated(reading: dict) -> bool:

@@ -198,6 +198,7 @@ input.in.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:28px
 .btn.gh{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
 .btn.gh:hover{background:rgba(255,255,255,.1)}
 .btn.sm{padding:9px 14px;font-size:13px;border-radius:12px}
+.btn:disabled{opacity:.5;cursor:default;pointer-events:none}
 .btn.warn{background:rgba(255,93,122,.12);border:1px solid rgba(255,93,122,.3);color:#ffb3c0}
 input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;text-align:center}
 /* kpis */
@@ -321,6 +322,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .toast .ic{width:18px;height:18px;color:var(--c1);fill:var(--c1);stroke:none}
 .toast .ic.st{fill:none;stroke:var(--c1)}.toast.wait .ic{animation:spin 1s linear infinite}
+.btn .ic.spin{animation:spin 1s linear infinite}
 .dw-bg{position:fixed;inset:0;z-index:70;background:rgba(2,4,10,.55);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:.3s}
 .dw{position:fixed;top:0;right:0;bottom:0;z-index:71;width:min(420px,100vw);background:linear-gradient(180deg,#0c1228,#070a16);border-left:1px solid rgba(255,255,255,.08);box-shadow:-30px 0 80px -20px rgba(0,0,0,.8);transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);padding:26px;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
 .dw-open .dw-bg{opacity:1;pointer-events:auto}.dw-open .dw{transform:none}
@@ -393,7 +395,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       super();
       this.attachShadow({ mode: 'open' });
       this._data = { entries: [], settings: { ...DEF } };
-      this._ui = { range: 'day', trange: 'day', all: false };
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      this._ui = { range: 'day', trange: 'day', all: false, impFrom: `${y.getFullYear()}-01-01`, impTo: iso(y) };
       this._demo = null; this._loaded = false; this._shown = 0; this._sync = null;
       this._dirty = false; this._me = false; this._q15 = {}; this._ents = {}; this._pinOk = '';
     }
@@ -443,7 +446,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       });
       this._q15 = s.q15 || {}; this._ents = s.entities || {}; this._hasPin = !!s.has_pin;
       const wasMe = this._me;
-      this._me = !!(this._ents.daily_input || s.api); this._qEnt = this._ents['15min_input'];
+      this._api = !!s.api; this._me = !!(this._ents.daily_input || s.api); this._qEnt = this._ents['15min_input'];
       this._applyLite(s.lite_users);
       this._data = { entries, me, settings: { ...DEF, ...(s.settings || {}) } };
       const first = !this._loaded; this._loaded = true;
@@ -989,6 +992,11 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
 <label class="fld mt"><span><i class="dot mt"></i>MT / kWh</span><input class="in" data-set="pMT" inputmode="decimal" value="${s.pMT || ''}" placeholder="0.08"></label></div>
 <label class="fld"><span>Currency symbol</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
 <div class="dw-note">Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).</div></div>
+${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">Moj Elektro history</div>
+<div class="dw-note">Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks). Days already in the log are updated with Moj Elektro's numbers.</div>
+<div class="two"><label class="fld"><span>From</span><input class="in" type="date" id="imp-from" value="${this._ui.impFrom}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label>
+<label class="fld"><span>To</span><input class="in" type="date" id="imp-to" value="${this._ui.impTo}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label></div>
+<div class="row"><button class="btn sm gh" data-act="api-import"${this._importing ? ' disabled' : ''}>${ic('sync', this._importing ? 'spin' : '')}${this._importing ? 'Importing…' : 'Export &amp; import from Moj Elektro'}</button></div></div>` : ''}
 <div class="dw-s"><div class="dw-t">Your data</div>
 <div class="dw-note">${this._sync === 'shared' ? `Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.` : `The Daily Energy integration is not set up, so nothing can be saved.`}</div>
 <div class="row"><button class="btn sm gh" data-act="export">${ic('down')}Export JSON</button><button class="btn sm gh" data-act="import">${ic('up')}Import CSV / JSON</button></div>
@@ -996,6 +1004,36 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
         ? `<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN"><button class="btn sm warn" data-act="clear-ok">${ic('del')}Delete</button><button class="btn sm gh" data-act="clear-no">Cancel</button>`
         : `<button class="btn sm warn" data-act="clear">${ic('del')}Delete all readings</button>`}</div></div>
 </aside></div>`;
+    }
+    // Import from Moj Elektro: administrators only (checked by Home Assistant too), with API access
+    _canApiImport() { return this._sync === 'shared' && this._api && !this._demo && !!(this._hass && this._hass.user && this._hass.user.is_admin); }
+    _impMax() { return addD(iso(new Date()), -1); }
+    // The integration fetches one month per call, so the toast can show how far it has got.
+    async _apiImport() {
+      if (this._importing) return;
+      const max = this._impMax();
+      let a = this._ui.impFrom, b = this._ui.impTo;
+      if (!a || !b) { this._toast('Pick both dates'); return; }
+      if (a > b) [a, b] = [b, a];
+      if (b > max) b = max;
+      if (a > b) { this._toast('Pick days before today'); return; }
+      const spans = [];
+      for (let s = a; s <= b;) { const d = pd(s), e = iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)), end = e < b ? e : b; spans.push([s, end]); s = addD(end, 1); }
+      this._importing = true; this._renderDrawer();
+      let days = 0, noTotal = 0, err = null;
+      for (let i = 0; i < spans.length && !err; i++) {
+        const d = pd(spans[i][0]);
+        this._toast(`Importing from Moj Elektro · ${MONL[d.getMonth()]} ${d.getFullYear()}${spans.length > 1 ? ` (${i + 1}/${spans.length})` : ''}…`, { hold: true, icon: 'sync' });
+        try {
+          const r = await this._ws('import_api', { start: spans[i][0], end: spans[i][1] });
+          if (r.error) err = r.error; else { days += r.days || 0; noTotal += r.no_total || 0; }
+        } catch (e) { err = e && e.code === 'unauthorized' ? 'Only administrators can import' : (e && e.message || String(e)); }
+      }
+      this._importing = false; this._renderDrawer();
+      const done = `${days} day${days === 1 ? '' : 's'} updated`;
+      if (err) this._toast(`Import stopped — ${err}${days ? ` (${done})` : ''}`, { ms: 6000 });
+      else if (days) this._toast(`Imported from Moj Elektro: ${done}${noTotal ? ` · ${noTotal} without a meter total` : ''}`, { ms: 5000 });
+      else this._toast(noTotal > (pd(b) - pd(a)) / 864e5 ? 'Moj Elektro has no data for those days' : 'Nothing new — those days are already up to date', { ms: 5000 });
     }
     _drawer(o) { this._dwOpen = o; if (!o && this._ui.pin) { this._ui.pin = false; this._renderDrawer(); } const w = this.$('dw').firstElementChild; if (w) w.classList.toggle('dw-open', o); }
 
@@ -1029,6 +1067,7 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
       else if (a === 'demo-off') { this._demo = null; this._shown = 0; this._renderAll(); }
       else if (a === 'export') this._export();
       else if (a === 'import') this.$('file').click();
+      else if (a === 'api-import') this._apiImport();
       else if (a === 'clear') {
         if (!this._hasPin) { if (confirm('Delete all manual meter readings for every user? Moj Elektro days are not affected.')) this._clearAll(''); return; }
         this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50);
@@ -1054,6 +1093,8 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
     async _change(e) {
       const t = e.target;
       if (t.id === 'f-d') { this._fd = t.value || null; const ex = this._c.E.find(x => x.d === t.value); if (ex) this._renderForm(); else { const b = this.$('f-badge'); b.textContent = 'New entry'; b.className = 'badge'; this._preview(); } }
+      else if (t.id === 'imp-from') this._ui.impFrom = t.value;
+      else if (t.id === 'imp-to') this._ui.impTo = t.value;
       else if (t.dataset && t.dataset.set) { const k = t.dataset.set; this._data.settings[k] = k === 'cur' ? (t.value.trim() || '€') : (num(t.value) || 0); this._calc(); this._renderHero(); this._renderKpis(); this._renderChart(); this._renderTariff(); await this._commit({ settings: true }); }
       else if (t.id === 'file' && t.files[0]) {
         // Moj Elektro CSV exports and Daily Energy JSON backups are parsed and merged by the integration
