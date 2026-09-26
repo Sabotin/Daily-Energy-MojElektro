@@ -1,7 +1,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 
 MOJ_ELEKTRO_DOMAIN = "mojelektro"
 

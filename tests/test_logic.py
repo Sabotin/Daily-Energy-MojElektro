@@ -172,3 +172,14 @@ def test_quarters_missing_counts_flagged_quarters():
     assert logic.quarters_from_api(payload, TODAY)["2026-09-24"][-8:] == [0.0] * 8
     complete = {"intervalBlocks": [{"readingType": logic.READING_A_PLUS_15, "intervalReadings": _api_day("2026-09-24", [0.5] * 96)}]}
     assert logic.quarters_missing(complete, TODAY) == {"2026-09-24": 0}
+
+
+def test_normal_reading_code_is_not_missing():
+    # 1.8.0 marks a normal reading (older days carry it on every quarter); 3.x marks an estimate.
+    readings = _api_day("2026-09-24", [0.5] * 96)
+    for r in readings:
+        r["readingQualities"] = [{"readingQualityType": "1.8.0"}]
+    readings[10]["readingQualities"] = [{"readingQualityType": "1.5.259"}, {"readingQualityType": "3.8.0"}]
+    readings[11]["readingQualities"] = [{"readingQualityType": "3.8.0"}]
+    payload = {"intervalBlocks": [{"readingType": logic.READING_A_PLUS_15, "intervalReadings": readings}]}
+    assert logic.quarters_missing(payload, TODAY) == {"2026-09-24": 2}
