@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+
 from collections.abc import Callable
 from datetime import timedelta
 import logging
@@ -14,6 +15,7 @@ from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import (
+    async_call_later,
     async_track_state_change_event,
     async_track_time_change,
 )
@@ -29,9 +31,10 @@ from .const import (
     DOMAIN,
     EARLIEST_HOUR,
     KEEP_Q15_DAYS,
-    QUARTERS_MINUTE,
+    QUARTER_TIMES,
     REFRESH_TIMES,
     SETTINGS_KEYS,
+    SETTLE_SECONDS,
     STORAGE_VERSION,
     VERSION,
 )
@@ -54,6 +57,7 @@ class DailyEnergyManager:
         self.data: dict = {"days": {}, "manual": {}, "settings": {}, "q15": {}}
         self._listeners: set[Callable[[dict], None]] = set()
         self._unsub_watch: CALLBACK_TYPE | None = None
+        self._unsub_settle: CALLBACK_TYPE | None = None
         self._fetching = False
 
     # ------------------------------------------------------------ storage
@@ -122,10 +126,11 @@ class DailyEnergyManager:
             unsubs.append(
                 async_track_time_change(self.hass, self._on_time, hour=hour, minute=minute, second=0)
             )
-        # Yesterday's whole 15-minute curve: tried every hour until it is complete, then skipped for the day.
-        unsubs.append(
-            async_track_time_change(self.hass, self._on_quarters_time, minute=QUARTERS_MINUTE, second=0)
-        )
+        # Yesterday's whole 15-minute curve: tried every half hour from 05:00 to 09:00 until it is complete.
+        for hour, minute in QUARTER_TIMES:
+            unsubs.append(
+                async_track_time_change(self.hass, self._on_quarters_time, hour=hour, minute=minute, second=0)
+            )
 
         @callback
         def _started(_hass: HomeAssistant) -> None:
@@ -143,6 +148,9 @@ class DailyEnergyManager:
             if self._unsub_watch:
                 self._unsub_watch()
                 self._unsub_watch = None
+            if self._unsub_settle:
+                self._unsub_settle()
+                self._unsub_settle = None
 
         return _stop
 
@@ -161,8 +169,17 @@ class DailyEnergyManager:
     @callback
     def _on_change(self, event: Event) -> None:
         new = event.data.get("new_state")
-        if new is not None and new.state not in ("unknown", "unavailable"):
-            self.hass.async_create_task(self.async_update())
+        if new is None or new.state in ("unknown", "unavailable"):
+            return
+        # Moj Elektro updates its sensors one after another: log once, after the last change has settled.
+        if self._unsub_settle:
+            self._unsub_settle()
+        self._unsub_settle = async_call_later(self.hass, SETTLE_SECONDS, self._on_settled)
+
+    @callback
+    def _on_settled(self, _now) -> None:
+        self._unsub_settle = None
+        self.hass.async_create_task(self.async_update())
 
     @callback
     def _on_time(self, _now) -> None:
@@ -223,18 +240,18 @@ class DailyEnergyManager:
         changed = False
 
         u, mo = val("daily_input"), val("monthly_input")
-        if u is not None and u > 0.1 and mo is not None and mo > 0:
-            day = logic.pick_usage_day(logic.last_usage_record(self.data["days"]), u, mo, now.date())
-            patch = {"u": round(u, 3), "mo": round(mo, 3)}
-            for key, name in (
-                ("vt", "daily_input_peak"),
-                ("mt", "daily_input_offpeak"),
-                ("mvt", "monthly_input_peak"),
-                ("mmt", "monthly_input_offpeak"),
-            ):
-                v = val(name)
-                if v is not None:
-                    patch[key] = round(v, 3)
+        vt, mt = val("daily_input_peak"), val("daily_input_offpeak")
+        mvt, mmt = val("monthly_input_peak"), val("monthly_input_offpeak")
+        if (
+            u is not None
+            and u > 0.1
+            and mo is not None
+            and mo > 0
+            and logic.snapshot_consistent(u, vt, mt, mo, mvt, mmt)
+        ):
+            day = logic.pick_usage_day(self.data["days"], u, mo, now.date())
+            patch = {"u": round(u, 3), "vt": round(vt, 3), "mt": round(mt, 3)}
+            patch.update({"mo": round(mo, 3), "mvt": round(mvt, 3), "mmt": round(mmt, 3)})
             changed |= self._merge_day(day, patch)
 
         blocks = [val(k) for k in logic.BLOCK_KEYS]
