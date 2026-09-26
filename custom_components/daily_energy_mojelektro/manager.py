@@ -1,4 +1,4 @@
-"""Storage and daily logger for one Moj Elektro meter."""
+"""Storage, Moj Elektro API fetching and the optional sensor logger for one meter."""
 
 from __future__ import annotations
 
@@ -28,8 +28,10 @@ from .const import (
     API_PAUSE,
     CHECK_MINUTE,
     CONF_LITE_USERS,
+    CONF_METER,
     CONF_PIN,
     CONF_SOURCE_ENTRY,
+    CONF_TOKEN,
     DOMAIN,
     EARLIEST_HOUR,
     KEEP_Q15_DAYS,
@@ -44,6 +46,26 @@ _LOGGER = logging.getLogger(__name__)
 
 # A change of any of these means Moj Elektro published new data.
 WATCH_KEYS = ("daily_input", "monthly_input", "daily_input_blok_2", "daily_input_blok_3")
+
+
+async def async_test_access(hass: HomeAssistant, meter: str, token: str) -> str | None:
+    """One small Moj Elektro request to check a meter ID and token. Returns an error key, or None if fine."""
+    today = dt_util.now().date()
+    url = logic.readings_url(meter, logic.READING_ET, today - timedelta(days=7), today)
+    try:
+        async with asyncio.timeout(30):
+            response = await async_get_clientsession(hass).get(
+                url, headers={"accept": "application/json", "X-API-TOKEN": token}
+            )
+    except (aiohttp.ClientError, TimeoutError):
+        return "cannot_connect"
+    if response.status == 401:
+        return "invalid_auth"
+    if 400 <= response.status < 500:
+        return "invalid_meter"
+    if response.status != 200:
+        return "cannot_connect"
+    return None
 
 
 class DailyEnergyManager:
@@ -96,13 +118,25 @@ class DailyEnergyManager:
     def check_pin(self, pin: str | None) -> bool:
         return not self.pin or str(pin or "").strip() == self.pin
 
+    def credentials(self) -> tuple[str | None, str | None]:
+        """(meter ID, API token): entered at setup, or those of the linked Moj Elektro integration."""
+        if self.entry.data.get(CONF_TOKEN) and self.entry.data.get(CONF_METER):
+            return self.entry.data[CONF_METER], self.entry.data[CONF_TOKEN]
+        source_id = self.entry.data.get(CONF_SOURCE_ENTRY)
+        source = self.hass.config_entries.async_get_entry(source_id) if source_id else None
+        if source is None:
+            return None, None
+        return source.data.get(CONF_METER), source.data.get(CONF_TOKEN)
+
     # ------------------------------------------------------------ entities
 
     def entities(self) -> dict[str, str]:
-        """Moj Elektro sensors of the linked meter, by measurement name."""
+        """Sensors of the linked Moj Elektro integration (optional), by measurement name."""
         registry = er.async_get(self.hass)
         found: dict[str, str] = {}
         source = self.entry.data.get(CONF_SOURCE_ENTRY)
+        if not source:
+            return found
         for ent in er.async_entries_for_config_entry(registry, source):
             if ent.domain != "sensor" or ent.disabled:
                 continue
@@ -162,7 +196,7 @@ class DailyEnergyManager:
         watched = [entities[k] for k in WATCH_KEYS if k in entities]
         if watched:
             self._unsub_watch = async_track_state_change_event(self.hass, watched, self._on_change)
-        else:
+        elif self.entry.data.get(CONF_SOURCE_ENTRY):
             _LOGGER.warning("No Moj Elektro sensors found for %s", self.entry.title)
 
     @callback
@@ -182,6 +216,8 @@ class DailyEnergyManager:
 
     @callback
     def _on_time(self, _now) -> None:
+        if not self.entry.data.get(CONF_SOURCE_ENTRY):
+            return
         if self._unsub_watch is None:
             self._watch()
         self.hass.async_create_task(self.async_update())
@@ -222,17 +258,16 @@ class DailyEnergyManager:
         * daily meter readings (total, VT, MT): usage, VT, MT and month totals of the last three days
         * 15-minute data of the last two days: the 15-minute chart, and the tariff blocks once a day
           is complete; a day is only replaced by data that is at least as complete
-        Uses the API token and meter of the linked Moj Elektro entry. force = False (the hourly run)
-        does not contact Moj Elektro when nothing is missing. Returns {"changed": bool, ...}.
+        Uses the meter ID and API token entered at setup (or those of the linked Moj Elektro integration).
+        force = False (the hourly run) does not contact Moj Elektro when nothing is missing.
+        Returns {"changed": bool, ...}.
         """
         today = dt_util.now().date()
         if self._fetching:
             return {"changed": False, "busy": True}
         if not force and not self.missing(today):
             return {"changed": False, "skipped": True}
-        source = self.hass.config_entries.async_get_entry(self.entry.data.get(CONF_SOURCE_ENTRY))
-        token = source.data.get("token") if source else None
-        meter = source.data.get("meter_id") if source else None
+        meter, token = self.credentials()
         if not token or not meter:
             return {"changed": False, "error": "no Moj Elektro token"}
 
@@ -359,6 +394,7 @@ class DailyEnergyManager:
             "settings": self.data["settings"],
             "q15": self.data["q15"],
             "entities": self.entities(),
+            "api": all(self.credentials()),
             "has_pin": bool(self.pin),
             "lite_users": self.lite_users,
         }

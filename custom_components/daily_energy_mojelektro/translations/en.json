@@ -3,7 +3,29 @@
     "step": {
       "user": {
         "title": "Daily Energy for Moj Elektro",
-        "description": "Pick the Moj Elektro meter to follow. Its sensors are found automatically.",
+        "description": "How should Daily Energy reach the Moj Elektro API?",
+        "menu_options": {
+          "api": "Enter my meter ID and API token",
+          "link": "Use my Moj Elektro integration"
+        }
+      },
+      "api": {
+        "title": "Daily Energy for Moj Elektro",
+        "description": "Everything is fetched straight from the Moj Elektro API. Create the token at mojelektro.si under Moj profil > Kreiraj žeton (unlimited expiration). The meter ID is the EIMM number under Merilna mesta / merilne točke.",
+        "data": {
+          "meter_id": "Meter ID (EIMM)",
+          "token": "API token",
+          "pin": "PIN (optional)"
+        },
+        "data_description": {
+          "meter_id": "For example 4-123456.",
+          "token": "Stored in Home Assistant only; it never reaches the browser.",
+          "pin": "If set, opening the manual meter reading and deleting readings ask for it. Leave empty for no PIN."
+        }
+      },
+      "link": {
+        "title": "Daily Energy for Moj Elektro",
+        "description": "Uses the meter ID and API token of your Moj Elektro integration. Its sensors are also logged, as a backup.",
         "data": {
           "mojelektro_entry_id": "Moj Elektro meter",
           "pin": "PIN (optional)"
@@ -13,9 +35,13 @@
         }
       }
     },
+    "error": {
+      "invalid_auth": "Moj Elektro did not accept this API token.",
+      "invalid_meter": "Moj Elektro refused the request. Check the meter ID (EIMM) and that the token belongs to it.",
+      "cannot_connect": "Could not reach the Moj Elektro API. Try again later."
+    },
     "abort": {
-      "mojelektro_missing": "Install and set up the Moj Elektro integration first (HACS: frlequ/homeassistant-mojelektro).",
-      "already_configured": "Every Moj Elektro meter already has a Daily Energy dashboard."
+      "already_configured": "This meter already has a Daily Energy dashboard."
     }
   },
   "options": {
@@ -25,13 +51,20 @@
         "data": {
           "pin": "PIN (optional)",
           "sidebar": "Show Daily Energy in the sidebar",
-          "lite_users": "Light mode for these users"
+          "lite_users": "Light mode for these users",
+          "token": "New API token"
         },
         "data_description": {
           "pin": "Protects the manual meter reading and deleting readings. Leave empty for no PIN.",
-          "lite_users": "Comma-separated user names (for example: tablet). Their dashboard skips blur and animations, for slow devices."
+          "lite_users": "Comma-separated user names (for example: tablet). Their dashboard skips blur and animations, for slow devices.",
+          "token": "Only if you created a new token in Moj Elektro. Leave empty to keep the current one."
         }
       }
+    },
+    "error": {
+      "invalid_auth": "Moj Elektro did not accept this API token.",
+      "invalid_meter": "Moj Elektro refused the request. Check that the token belongs to this meter.",
+      "cannot_connect": "Could not reach the Moj Elektro API. Try again later."
     }
   }
 }
