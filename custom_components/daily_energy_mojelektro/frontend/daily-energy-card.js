@@ -1335,6 +1335,8 @@ ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">
       const opt = (k, v, b, d) => `<div class="opt${s[k] === v ? ' on' : ''}" data-act="set" data-k="${k}" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`;
       this.$('dw').innerHTML = `<div class="${open ? 'dw-open' : ''}"><div class="dw-bg" data-act="close"></div><aside class="dw">
 <div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Settings')}</h3><button class="ibtn" data-act="close">${ic('x')}</button></div>
+<div class="dw-s"><div class="dw-t">${t('Language')}</div>
+${[['auto', t('Automatic'), t('Follows the Home Assistant language.')], ['en', 'English', ''], ['sl', 'Slovenščina', '']].map(([v, b, d]) => `<div class="opt${lang === v ? ' on' : ''}" data-act="lang" data-v="${v}"><i></i><div><b>${b}</b>${d ? `<span>${d}</span>` : ''}</div></div>`).join('')}</div>
 ${this._me && this._sync === 'shared' && !this._demo ? `<div class="dw-s"><div class="dw-t">${t('Grid')}</div>
 ${opt('grid', 'in', 'Grid in', 'Energy you take from the grid.')}
 ${opt('grid', 'both', 'Grid in &amp; Grid out', 'Also the energy you send to the grid (for example from solar panels), with a Grid in / Grid out switch at the top.')}</div>` : ''}
@@ -1344,13 +1346,6 @@ ${opt('mult', 1, 'Plain kWh', 'The counter already shows kWh (e.g. 120622 or 12.
 <div class="dw-s"><div class="dw-t">${t('Energija VT / MT input')}</div>
 ${opt('tmode', 'reading', 'Counter readings', 'Type the VT and MT registers from the meter; usage is the difference between readings.')}
 ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT for that day.')}</div>`}
-<div class="dw-s"><div class="dw-t">${t('Prices (optional)')}</div>
-<div class="two"><label class="fld vt"><span><i class="dot vt"></i>VT / kWh</span><input class="in" data-set="pVT" inputmode="decimal" value="${s.pVT || ''}" placeholder="0.12"></label>
-<label class="fld mt"><span><i class="dot mt"></i>MT / kWh</span><input class="in" data-set="pMT" inputmode="decimal" value="${s.pMT || ''}" placeholder="0.08"></label></div>
-<label class="fld"><span>${t('Currency symbol')}</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
-<div class="dw-note">${t('Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).')}</div></div>
-<div class="dw-s"><div class="dw-t">${t('Language')}</div>
-${[['auto', t('Automatic'), t('Follows the Home Assistant language.')], ['en', 'English', ''], ['sl', 'Slovenščina', '']].map(([v, b, d]) => `<div class="opt${lang === v ? ' on' : ''}" data-act="lang" data-v="${v}"><i></i><div><b>${b}</b>${d ? `<span>${d}</span>` : ''}</div></div>`).join('')}</div>
 <div class="dw-s"><div class="dw-t">${t('This device')}</div>
 ${[['auto', 'Automatic', 'Light on tablets and on devices that ask for reduced motion.'], ['light', 'Light', 'No animations, blur or glow — for slow tablets and wall panels.'], ['full', 'Full', 'All animations and effects.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}
 <div class="dw-note">${t('Now: {0}', `<b>${t(this._lite ? 'light' : 'full')}</b>`)}${mode === 'auto' ? t(' — automatic') : ''}${user ? t(' · signed in as {0}', `<b>${esc(user)}</b>`) : ''}${t('. Saved on this device only.')}</div></div>
@@ -1359,6 +1354,11 @@ ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">${t('Moj Elektro h
 <div class="two"><label class="fld"><span>${t('From')}</span><input class="in" type="date" id="imp-from" value="${this._ui.impFrom}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label>
 <label class="fld"><span>${t('To')}</span><input class="in" type="date" id="imp-to" value="${this._ui.impTo}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label></div>
 <div class="row"><button class="btn sm gh" data-act="api-import"${this._importing ? ' disabled' : ''}>${ic('sync', this._importing ? 'spin' : '')}${t(this._importing ? 'Importing…' : 'Export &amp; import from Moj Elektro')}</button></div></div>` : ''}
+<div class="dw-s"><div class="dw-t">${t('Prices (optional)')}</div>
+<div class="two"><label class="fld vt"><span><i class="dot vt"></i>VT / kWh</span><input class="in" data-set="pVT" inputmode="decimal" value="${s.pVT || ''}" placeholder="0.12"></label>
+<label class="fld mt"><span><i class="dot mt"></i>MT / kWh</span><input class="in" data-set="pMT" inputmode="decimal" value="${s.pMT || ''}" placeholder="0.08"></label></div>
+<label class="fld"><span>${t('Currency symbol')}</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
+<div class="dw-note">${t('Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).')}</div></div>
 <div class="dw-s"><div class="dw-t">${t('Your data')}</div>
 <div class="dw-note">${t(this._sync === 'shared' ? 'Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.' : 'The Daily Energy integration is not set up, so nothing can be saved.')}</div>
 <div class="row"><button class="btn sm gh" data-act="export">${ic('down')}${t('Export JSON')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import CSV / JSON')}</button></div>
