@@ -1,0 +1,96 @@
+alias: Daily Energy – log Moj Elektro day
+description: >-
+  Saves Moj Elektro values into the shared Daily Energy Log (todo.daily_energy_log), each under the
+  calendar day the energy was used (reading dated D is taken at 00:00 on D, so D+1 minus D is day D,
+  published two days later). Waits 30 s for all sensors to finish updating, saves usage only when
+  day total = VT + MT and month total = month VT + month MT, and picks the day from the month totals
+  of the stored records (fallback today - 2). Tariff blocks cover yesterday and are stored under
+  yesterday. Each day is one to-do item that is merged, so repeated runs never duplicate a day.
+mode: restart
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.moj_elektro_daily_input
+      - sensor.moj_elektro_monthly_input
+      - sensor.moj_elektro_daily_input_blok_2
+      - sensor.moj_elektro_daily_input_blok_3
+    not_to:
+      - unavailable
+      - unknown
+  - trigger: time
+    at:
+      - "06:30:00"
+      - "12:00:00"
+      - "20:00:00"
+  - trigger: homeassistant
+    event: start
+conditions:
+  - condition: time
+    after: "06:00:00"
+  - condition: numeric_state
+    entity_id: sensor.moj_elektro_daily_input
+    above: 0.1
+  - condition: numeric_state
+    entity_id: sensor.moj_elektro_monthly_input
+    above: 0
+actions:
+  - alias: Let all Moj Elektro sensors finish updating
+    delay:
+      seconds: 30
+  - alias: Read the log
+    action: todo.get_items
+    target:
+      entity_id: todo.daily_energy_log
+    response_variable: log
+  - alias: Work out which day the values belong to
+    variables:
+      p: sensor.moj_elektro_
+      u: "{{ states(p ~ 'daily_input') | float(0) }}"
+      mo: "{{ states(p ~ 'monthly_input') | float(0) }}"
+      vt: "{{ states(p ~ 'daily_input_peak') | float(0) }}"
+      mt: "{{ states(p ~ 'daily_input_offpeak') | float(0) }}"
+      mvt: "{{ states(p ~ 'monthly_input_peak') | float(0) }}"
+      mmt: "{{ states(p ~ 'monthly_input_offpeak') | float(0) }}"
+      b: "{{ [1,2,3,4,5] | map('string') | map('regex_replace', '^', p ~ 'daily_input_blok_') | map('states') | map('float', 0) | list }}"
+      recs: "{{ log['todo.daily_energy_log']['items'] | selectattr('summary', 'match', '^Moj Elektro · ') | map(attribute='description') | map('from_json') | list }}"
+      ok_u: "{{ (u - vt - mt) | abs < 0.02 and (mo - mvt - mmt) | abs < 0.05 and mo >= u - 0.01 }}"
+      day_u: >-
+        {%- set base = mo - u -%}
+        {%- set lim = (now() - timedelta(days=45)).strftime('%Y-%m-%d') -%}
+        {%- set withu = recs | selectattr('u', 'defined') | selectattr('mo', 'defined') | selectattr('d', 'ge', lim) | sort(attribute='d') | list -%}
+        {%- set prev = withu | selectattr('mo', 'ge', base - 0.01) | selectattr('mo', 'le', base + 0.01) | list -%}
+        {%- set same = withu | selectattr('mo', 'ge', mo - 0.01) | selectattr('mo', 'le', mo + 0.01) | selectattr('u', 'ge', u - 0.01) | selectattr('u', 'le', u + 0.01) | list -%}
+        {%- if base > 0.01 and prev | count > 0 -%}{{ (as_datetime(prev[0].d) + timedelta(days=1)).strftime('%Y-%m-%d') }}
+        {%- elif same | count > 0 -%}{{ same[0].d }}
+        {%- else -%}{{ (now() - timedelta(days=2)).strftime('%Y-%m-%d') }}{%- endif -%}
+      day_b: "{{ (now() - timedelta(days=1)).strftime('%Y-%m-%d') }}"
+      patch_u: "{{ {'d': day_u, 'me': true, 'u': u, 'vt': vt, 'mt': mt, 'mo': mo, 'mvt': mvt, 'mmt': mmt} }}"
+      writes: >-
+        {%- set hasb = (b | sum) > 0.1 -%}
+        {%- if ok_u and hasb and day_b == day_u -%}{{ [{'d': day_u, 'patch': dict(patch_u, **{'b': b})}] }}
+        {%- else -%}{{ ([{'d': day_u, 'patch': patch_u}] if ok_u else []) + ([{'d': day_b, 'patch': {'d': day_b, 'me': true, 'b': b}}] if hasb else []) }}{%- endif -%}
+  - alias: Merge each day into its own item
+    repeat:
+      for_each: "{{ writes }}"
+      sequence:
+        - variables:
+            label: "Moj Elektro · {{ repeat.item.d }}"
+            old: "{{ recs | selectattr('d', 'eq', repeat.item.d) | first | default({}, true) }}"
+            payload: "{{ dict(old, **repeat.item.patch) | to_json }}"
+        - if:
+            - condition: template
+              value_template: "{{ log['todo.daily_energy_log']['items'] | selectattr('summary', 'eq', label) | list | count > 0 }}"
+          then:
+            - action: todo.update_item
+              target:
+                entity_id: todo.daily_energy_log
+              data:
+                item: "{{ label }}"
+                description: "{{ payload }}"
+          else:
+            - action: todo.add_item
+              target:
+                entity_id: todo.daily_energy_log
+              data:
+                item: "{{ label }}"
+                description: "{{ payload }}"

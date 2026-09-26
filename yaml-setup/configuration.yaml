@@ -1,0 +1,17 @@
+# Add this to configuration.yaml (if "rest_command:" already exists, add only the two entries under it).
+# Then restart Home Assistant.
+rest_command:
+  mojelektro_15min:
+    url: "https://api.informatika.si/mojelektro/v1/meter-readings?usagePoint={{ meter }}&startTime={{ start }}&endTime={{ end }}&option=ReadingType%3D32.0.2.4.1.2.12.0.0.0.0.0.0.0.0.3.72.0"
+    method: get
+    headers:
+      accept: application/json
+      X-API-TOKEN: !secret mojelektro_token
+    timeout: 30
+  mojelektro_readings:
+    url: "https://api.informatika.si/mojelektro/v1/meter-readings?usagePoint={{ meter }}&startTime={{ start }}&endTime={{ end }}&option=ReadingType%3D{{ rt }}"
+    method: get
+    headers:
+      accept: application/json
+      X-API-TOKEN: !secret mojelektro_token
+    timeout: 30
