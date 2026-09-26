@@ -259,9 +259,11 @@ class DailyEnergyManager:
                     cutoff,
                 )
             if direction is logic.GRID_IN:
+                # blocks follow the best 15-minute data there is: a day with quarter hours Moj Elektro has not
+                # received yet still gets blocks (and so a provisional day total); they are updated once it has them
                 for d in watched[:2]:
                     values = self.data["q15"].get(d)
-                    if values and not self.data["q15_miss"].get(d):
+                    if values:
                         blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
                         old = self.data["days"].get(d, {}).get("b")
                         if blocks and (not old or len(old) != 5 or any(abs(a - b) > 0.0015 for a, b in zip(old, blocks))):
