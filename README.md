@@ -6,7 +6,7 @@
 
 ![Daily Energy](assets/dashboard.webp)
 
-Pregled porabe energije za Home Assistant, neposredno iz API-ja Moj Elektro. Vnesete ID merilnega mesta in API-žeton – in to je to.
+Pregled porabe energije za Home Assistant, neposredno iz API-ja Moj Elektro.
 
 ## Funkcije
 
