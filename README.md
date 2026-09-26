@@ -1,8 +1,6 @@
 # Daily Energy for Moj Elektro
 
-![Daily Energy – overview](assets/dashboard-overview.webp)
-![Daily Energy – consumption charts and high / low tariff](assets/dashboard-charts.webp)
-![Daily Energy – tariff blocks and log](assets/dashboard-blocks-log.webp)
+![Daily Energy dashboard](assets/dashboard.webp)
 
 A full-screen energy dashboard for Home Assistant, built on top of the
 [Moj Elektro integration](https://github.com/frlequ/homeassistant-mojelektro) by frlequ.
