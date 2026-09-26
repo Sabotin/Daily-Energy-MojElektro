@@ -443,7 +443,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       });
       this._q15 = s.q15 || {}; this._ents = s.entities || {}; this._hasPin = !!s.has_pin;
       const wasMe = this._me;
-      this._me = !!this._ents.daily_input; this._qEnt = this._ents['15min_input'];
+      this._me = !!(this._ents.daily_input || s.api); this._qEnt = this._ents['15min_input'];
       this._applyLite(s.lite_users);
       this._data = { entries, me, settings: { ...DEF, ...(s.settings || {}) } };
       const first = !this._loaded; this._loaded = true;
@@ -866,6 +866,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
        recorded history on the quarter grid and shifting it back 24 h rebuilds the real load curve. */
     async _loadProfile() {
       if (!this._me || !this._hass || this._profBusy) return;
+      // without the Moj Elektro integration there is no sensor history: the chart uses the days fetched from the API
+      if (!this._qEnt || !this._hass.states[this._qEnt]) { this._hist = []; this._histErr = null; this._buildProf(true); return; }
       this._profBusy = true;
       try {
         const ent = this._qEnt, end = Date.now(), Q = 9e5;
@@ -915,7 +917,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const el = this.$('prof'); if (!this._me || !el || !this._built) return;
       const P = this._prof, L = P && P.last;
       let h = `<div class="ch-h"><div><div class="h-t">15-minute power</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${fdate(iso(L[L.length - 1].t))} ${hm(L[L.length - 1].t)}` : 'Moj Elektro · 24 h delay'}</div></div><span class="badge">kW</span></div>`;
-      if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…'}</b><span>${P && P.err ? esc(P.err) : 'Moj Elektro sends yesterday’s load curve one quarter hour at a time, so this chart fills in over the next 24 hours.'}</span></div>`; return; }
+      if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…'}</b><span>${P && P.err ? esc(P.err) : 'Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.'}</span></div>`; return; }
       const pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw);
       const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">Power<span class="v">${fk(s.kw)} kW</span></div><div class="r">Energy<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i></div>`).join('');
       const xl = L.map((s, i) => s.t.getMinutes() === 0 && s.t.getHours() % 6 === 0 ? `<span style="left:${(i + .5) / L.length * 100}%">${pad(s.t.getHours())}:00</span>` : '').join('');
