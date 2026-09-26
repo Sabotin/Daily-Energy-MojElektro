@@ -1,7 +1,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 MOJ_ELEKTRO_DOMAIN = "mojelektro"
 
@@ -36,3 +36,5 @@ EARLIEST_HOUR = 6
 KEEP_Q15_DAYS = 21
 
 SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur")
+# Import from Moj Elektro (Settings): the longest range fetched in one call; the card asks month by month.
+MAX_IMPORT_DAYS = 400
