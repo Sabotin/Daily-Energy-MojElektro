@@ -35,6 +35,7 @@ from .const import (
     DOMAIN,
     EARLIEST_HOUR,
     KEEP_Q15_DAYS,
+    MAX_IMPORT_DAYS,
     REFRESH_TIMES,
     SETTINGS_KEYS,
     SETTLE_SECONDS,
@@ -325,6 +326,94 @@ class DailyEnergyManager:
         if changed:
             self._changed()
         return {"changed": changed, "missing": self.missing(today)}
+
+    async def async_import_range(self, start: date, end: date) -> dict:
+        """Fetch past days from the Moj Elektro API and fill them in (Settings > Import from Moj Elektro).
+
+        Month by month: daily meter readings (usage, VT, MT, month totals) and 15-minute data (tariff
+        blocks of every complete day; the 15-minute chart for the last KEEP_Q15_DAYS days). Moj Elektro's
+        numbers replace what is stored for those days. Returns {"days": days changed, ...} or {"error": ...}.
+        """
+        today = dt_util.now().date()
+        end = min(end, today - timedelta(days=1))
+        if start > end:
+            return {"days": 0, "error": "Pick days before today"}
+        if (end - start).days > MAX_IMPORT_DAYS:
+            return {"days": 0, "error": f"At most {MAX_IMPORT_DAYS} days at a time"}
+        meter, token = self.credentials()
+        if not token or not meter:
+            return {"days": 0, "error": "No Moj Elektro meter ID and token"}
+        if self._fetching:
+            return {"days": 0, "error": "Daily Energy is already fetching, try again in a moment"}
+
+        day = timedelta(days=1)
+        registers: dict[str, dict] = {"et": {}, "vt": {}, "mt": {}}
+        quarters: dict[str, list[float]] = {}
+        missing: dict[str, int] = {}
+        answered = False
+        self._fetching = True
+        try:
+            session = async_get_clientsession(self.hass)
+            for span_start, span_end in logic.month_spans(start, end):
+                await asyncio.sleep(API_PAUSE)
+                payload = await self._get_json(
+                    session, logic.quarters_range_url(meter, span_start, span_end + day), token
+                )
+                if payload is not None:
+                    answered = True
+                    quarters.update(logic.quarters_from_api(payload, today))
+                    missing.update(logic.quarters_missing(payload, today))
+                # readings from the 1st of the month (month totals) up to the day after the last day, in two
+                # requests so that none is longer than a month
+                first = span_start.replace(day=1)
+                for key, reading_type in (("et", logic.READING_ET), ("vt", logic.READING_VT), ("mt", logic.READING_MT)):
+                    for req_start, req_end in ((first, span_end + day), (span_end + day, span_end + 2 * day)):
+                        await asyncio.sleep(API_PAUSE)
+                        payload = await self._get_json(
+                            session, logic.readings_url(meter, reading_type, req_start, req_end), token
+                        )
+                        if payload is not None:
+                            answered = True
+                            registers[key].update(logic.readings_from_api(payload))
+        finally:
+            self._fetching = False
+        if not answered:
+            return {"days": 0, "error": "Moj Elektro did not answer"}
+
+        wanted = [start + timedelta(days=n) for n in range((end - start).days + 1)]
+        touched: set[str] = set()
+        totals = logic.totals_from_readings(registers["et"], registers["vt"], registers["mt"], wanted)
+        for d, rec in totals.items():
+            if self._merge_day(d, rec):
+                touched.add(d)
+        blocks_days = 0
+        cutoff = (today - timedelta(days=KEEP_Q15_DAYS)).isoformat()
+        for d, values in quarters.items():
+            if not start.isoformat() <= d <= end.isoformat():
+                continue
+            flagged = missing.get(d, 0)
+            blocks = logic.blocks_from_quarters(date.fromisoformat(d), values)
+            # quarter hours Moj Elektro has not received are sent as 0 or an even share: only use such a
+            # day's blocks when there are none yet
+            if blocks and (not flagged or not self.data["days"].get(d, {}).get("b")):
+                blocks_days += 1
+                if self._merge_day(d, {"b": blocks}):
+                    touched.add(d)
+            if d >= cutoff and (d not in self.data["q15"] or flagged <= self.data["q15_miss"].get(d, 0)):
+                if self.data["q15"].get(d) != values:
+                    touched.add(d)
+                self.data["q15"][d] = values
+                self.data["q15_miss"][d] = flagged
+        if touched:
+            self._changed()
+        return {
+            "days": len(touched),
+            "totals": len(totals),
+            "blocks": blocks_days,
+            "no_total": len(wanted) - len(totals),
+            "first": start.isoformat(),
+            "last": end.isoformat(),
+        }
 
     async def async_update(self) -> None:
         """Copy the current Moj Elektro values into the day log (same rules as the original automation)."""

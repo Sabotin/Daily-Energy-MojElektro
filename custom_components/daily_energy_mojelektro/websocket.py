@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 
 from . import logic
@@ -28,6 +29,7 @@ def async_register(hass: HomeAssistant) -> None:
         ws_import_csv,
         ws_import_backup,
         ws_check_updates,
+        ws_import_api,
     ):
         websocket_api.async_register_command(hass, command)
 
@@ -175,3 +177,20 @@ async def ws_check_updates(hass: HomeAssistant, connection, msg: dict[str, Any])
     manager = _manager(hass, connection, msg)
     if manager is not None:
         connection.send_result(msg["id"], await manager.async_check_updates(force=True))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/import_api",
+        ENTRY: str,
+        vol.Required("start"): cv.date,
+        vol.Required("end"): cv.date,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_import_api(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Settings > Import from Moj Elektro: fetch the days from start to end (the card sends a month at a time)."""
+    manager = _manager(hass, connection, msg)
+    if manager is not None:
+        connection.send_result(msg["id"], await manager.async_import_range(msg["start"], msg["end"]))

@@ -228,3 +228,16 @@ def test_blocks_from_quarters():
     assert b == [0.0, 11.0, 5.0, 8.0, 0.0]
     assert round(sum(b), 3) == 24.0
     assert logic.blocks_from_quarters(date(2026, 3, 29), [0.25] * 92) is None  # clock change day
+
+
+def test_month_spans():
+    assert logic.month_spans(date(2026, 1, 15), date(2026, 3, 2)) == [
+        (date(2026, 1, 15), date(2026, 1, 31)),
+        (date(2026, 2, 1), date(2026, 2, 28)),
+        (date(2026, 3, 1), date(2026, 3, 2)),
+    ]
+    assert logic.month_spans(date(2025, 12, 1), date(2025, 12, 31)) == [(date(2025, 12, 1), date(2025, 12, 31))]
+    assert logic.month_spans(date(2026, 5, 3), date(2026, 5, 2)) == []
+    assert logic.quarters_range_url("4-1", date(2026, 1, 1), date(2026, 2, 1)).endswith(
+        "startTime=2026-01-01&endTime=2026-02-01&option=ReadingType%3D" + logic.READING_A_PLUS_15
+    )

@@ -14,7 +14,7 @@ No `configuration.yaml` editing and no other integration needed.
 - **Tariff blocks** – energy per network tariff time block (Block 1–5), per day, week and month.
 - **15-minute power** chart with the highest 15-minute power per tariff block (what your billed power is based on).
 - **Energy rhythm** heat map and average by weekday.
-- A **log** of every day, with CSV import of your history from the Moj Elektro portal.
+- A **log** of every day, and your **history fetched straight from Moj Elektro** for any date range.
 - Works for every user of your Home Assistant, updates live, and has a **light mode** for slow wall tablets.
 
 Every value is shown on the day the energy was actually used (00:00–24:00).
@@ -90,8 +90,14 @@ Energy prices for the cost estimates are set in the dashboard itself (⚙).
 
 ## Your history (optional)
 
-New days are logged automatically from the day you install it. To fill in the past, download CSV exports from the
-[Moj Elektro portal](https://mojelektro.si) and use **Log → Import**:
+New days are logged automatically from the day you install it. To fill in the past:
+
+**Settings (⚙) → Moj Elektro history** – pick a **From** and **To** date and tap **Export & import from Moj Elektro**.
+Daily Energy fetches those days straight from the Moj Elektro API, one month at a time (the progress is shown), and
+fills in daily usage, the high / low tariff split, month totals and tariff blocks – plus the 15-minute chart for the
+last three weeks. A year takes about a minute.
+
+Or download CSV exports from the [Moj Elektro portal](https://mojelektro.si) and use **Import CSV / JSON**:
 
 | Portal export | What it adds |
 |---|---|
@@ -99,7 +105,8 @@ New days are logged automatically from the day you install it. To fill in the pa
 | Daily quantities by tariff block | Energy per tariff block |
 | 15-minute data | 15-minute power (last ~3 weeks) and exact tariff blocks |
 
-Importing is safe to repeat; days are updated, never duplicated. Only administrators can import.
+Importing is safe to repeat; days are updated with Moj Elektro's numbers, never duplicated. Only administrators can
+import. Days for which Moj Elektro has no meter reading (for example before your smart meter was installed) stay empty.
 
 ## How the data works
 
