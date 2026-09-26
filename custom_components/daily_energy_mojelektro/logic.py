@@ -12,53 +12,11 @@ from __future__ import annotations
 
 import csv
 import io
-import re
 from datetime import date, datetime, timedelta
-
-# Moj Elektro measurement names (keys of the integration's data dict) that we use.
-USAGE_KEYS = (
-    "daily_input",
-    "daily_input_peak",
-    "daily_input_offpeak",
-    "monthly_input",
-    "monthly_input_peak",
-    "monthly_input_offpeak",
-)
-BLOCK_KEYS = tuple(f"daily_input_blok_{i}" for i in range(1, 6))
-QUARTER_KEY = "15min_input"
-KNOWN_KEYS = USAGE_KEYS + BLOCK_KEYS + (QUARTER_KEY,)
-
-_UID_MARK = "-sensor.mojelektro_"
-
-
-def measurement_from_unique_id(unique_id: str | None) -> str | None:
-    """Return the Moj Elektro measurement name from an entity unique_id.
-
-    The Moj Elektro integration builds unique ids as "<meter id>-sensor.mojelektro_<measurement>",
-    where Home Assistant may have appended "_2", "_3"... to keep the generated id unique.
-    """
-    if not unique_id or _UID_MARK not in unique_id:
-        return None
-    name = unique_id.split(_UID_MARK, 1)[1]
-    if name in KNOWN_KEYS:
-        return name
-    base = re.sub(r"_\d+$", "", name)
-    return base if base in KNOWN_KEYS else None
-
-
-def measurement_from_name(original_name: str | None) -> str | None:
-    """Fallback: "Moj Elektro daily input peak" -> "daily_input_peak"."""
-    if not original_name:
-        return None
-    name = original_name.strip().lower()
-    if name.startswith("moj elektro "):
-        name = name[len("moj elektro ") :]
-    key = name.replace(" ", "_")
-    return key if key in KNOWN_KEYS else None
 
 
 def to_float(value) -> float | None:
-    """Parse a sensor state or CSV cell; None for unknown/unavailable/empty."""
+    """Parse an API value or CSV cell; None for empty or unknown."""
     if value is None:
         return None
     text = str(value).strip().replace(" ", "")
@@ -70,53 +28,6 @@ def to_float(value) -> float | None:
         return float(text)
     except ValueError:
         return None
-
-
-def snapshot_consistent(
-    u: float, vt: float | None, mt: float | None, mo: float, mvt: float | None, mmt: float | None
-) -> bool:
-    """True when the Moj Elektro sensors agree with each other.
-
-    Moj Elektro updates its sensors one after another, so for a moment the day total can already be
-    new while VT, MT or the month totals are still yesterday's. Such a half-updated set must never
-    be saved: VT + MT has to equal the day and month VT + month MT the month.
-    """
-    if None in (vt, mt, mvt, mmt):
-        return False
-    return abs(u - vt - mt) < 0.02 and abs(mo - mvt - mmt) < 0.05 and mo >= u - 0.01
-
-
-def pick_usage_day(days: dict, u: float, mo: float, today: date) -> str:
-    """Which calendar day the current daily_input value belongs to.
-
-    monthly_input is month-to-date including the newest day, so (mo - u) is the month total of the
-    day before it. Only records of the last 45 days that have a usage value are considered:
-    * the earliest record whose mo equals (mo - u) is the day before  -> that day + 1
-      (earliest, so a record saved with a stale month total can never push the day forward)
-    * a record with the same mo and u                                -> the same day again
-    * anything else (first run, 1st of the month, a gap)             -> today - 2, when Moj Elektro
-      normally has it.
-    """
-    base = mo - u
-    limit = (today - timedelta(days=45)).isoformat()
-    recs = [
-        (d, rec)
-        for d, rec in sorted(days.items())
-        if d >= limit and isinstance(rec.get("u"), (int, float)) and isinstance(rec.get("mo"), (int, float))
-    ]
-    if base > 0.01:
-        for d, rec in recs:
-            if abs(rec["mo"] - base) < 0.01:
-                return (date.fromisoformat(d) + timedelta(days=1)).isoformat()
-    for d, rec in recs:
-        if abs(rec["mo"] - mo) < 0.01 and abs(rec["u"] - u) < 0.01:
-            return d
-    return (today - timedelta(days=2)).isoformat()
-
-
-def blocks_day(today: date) -> str:
-    """Tariff blocks from the sensors always cover yesterday 00:00-24:00."""
-    return (today - timedelta(days=1)).isoformat()
 
 
 # ---------------------------------------------------------------- Moj Elektro API (15-minute data)

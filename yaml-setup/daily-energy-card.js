@@ -411,15 +411,11 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
         this._lite = typeof c.lite === 'boolean' ? c.lite : names.includes(String(u.name || '').toLowerCase()) || names.includes(u.id);
         this.toggleAttribute('lite', this._lite);
         if (!this._lite) loadFonts();
-        // Moj Elektro: data comes from the check-for-updates script (API) and, if installed, the Moj Elektro sensors
-        const pre = c.mojelektro_prefix || 'sensor.moj_elektro_';
+        // Moj Elektro mode: the data comes from the check-for-updates script (Moj Elektro API)
         const scr = h.services && h.services.script;
-        this._me = c.mojelektro !== false && (!!h.states[pre + 'daily_input'] || !!(scr && scr.daily_energy_check_updates));
-        this._qEnt = pre + '15min_input';
+        this._me = c.mojelektro !== false && !!(scr && scr.daily_energy_check_updates);
         this._shell(); this._load();
       }
-      const q = this._me && h.states[this._qEnt];
-      if (q && q.last_updated !== this._qLU) { this._qLU = q.last_updated; this._loadProfile(); }
     }
     connectedCallback() { this._shell(); if (this._hass && this._sync === 'shared' && !this._unsub) this._load(); }
     disconnectedCallback() { if (this._unsub) { this._unsub(); this._unsub = null; } }
@@ -443,11 +439,12 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       return v && Array.isArray(v.entries) ? v : null;
     }
     _onItems(items) {
-      const entries = [], uids = {}, me = [], meUids = {}, q15 = {}; let settings = null, sUid = null;
+      const entries = [], uids = {}, me = [], meUids = {}, q15 = {}, dataUids = []; let settings = null, sUid = null;
       for (const it of items) {
         let j = null; try { j = JSON.parse(it.description || ''); } catch (e) { }
         if (!j || typeof j !== 'object') continue;
         if (it.summary === SET_SUM) { settings = j; sUid = it.uid; continue; }
+        dataUids.push(it.uid); // every item except the settings: what "Delete all data" removes
         // exact 15-min kWh per quarter hour for one day (from a Moj Elektro CSV export)
         if (Array.isArray(j.q15)) { if (/^\d{4}-\d{2}-\d{2}$/.test(j.d)) q15[j.d] = j.q15.map(Number); continue; }
         if (j.me === true) {
@@ -460,7 +457,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
         if (uids[j.d]) entries.splice(entries.findIndex(x => x.d === j.d), 1);
         entries.push(e); uids[j.d] = it.uid;
       }
-      this._uids = uids; this._sUid = sUid; this._meUids = meUids; this._q15 = q15;
+      this._uids = uids; this._sUid = sUid; this._meUids = meUids; this._q15 = q15; this._dataUids = dataUids;
       this._data = { entries, me, settings: { ...DEF, ...(settings || {}) } };
       const first = !this._loaded; this._loaded = true;
       if (this._me) this._buildProf(false);
@@ -902,49 +899,17 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     }
 
     /* ----- Moj Elektro: 15-minute load profile -----
-       The 15min sensor shows, every quarter hour, the matching quarter of *yesterday*. Sampling its
-       recorded history on the quarter grid and shifting it back 24 h rebuilds the real load curve. */
-    async _loadProfile() {
-      if (!this._me || !this._hass || this._profBusy) return;
-      // without the Moj Elektro integration there is no sensor history: the chart uses the days fetched from the API
-      if (!this._hass.states[this._qEnt]) { this._hist = []; this._histErr = null; this._buildProf(true); return; }
-      this._profBusy = true;
-      try {
-        const ent = this._qEnt, end = Date.now(), Q = 9e5;
-        const r = await this._hass.callWS({ type: 'history/history_during_period', start_time: new Date(end - 10 * 864e5).toISOString(), end_time: new Date(end).toISOString(), entity_ids: [ent], minimal_response: true, no_attributes: true, significant_changes_only: false });
-        const pts = (r[ent] || []).map(x => ({ t: x.lu != null ? x.lu * 1000 : Date.parse(x.last_updated || x.last_changed), v: parseFloat(x.s != null ? x.s : x.state) }))
-          .filter(p => isFinite(p.t) && isFinite(p.v)).sort((a, b) => a.t - b.t);
-        const slots = [];
-        let i = 0, cur = null;
-        if (pts.length) for (let q = Math.floor(pts[0].t / Q) * Q; q <= end; q += Q) {
-          while (i < pts.length && pts[i].t <= q + 3e5) cur = pts[i++]; // the sensor refreshes a few seconds after each quarter
-          // an unchanged value is not re-recorded, so carry it forward, but not across real gaps (restart, API outage)
-          if (!cur || q + 3e5 - cur.t > 72e5) continue;
-          const st = new Date(q - 864e5);
-          slots.push({ t: st, kwh: cur.v, kw: cur.v * 4, b: blockOf(st) });
-        }
-        this._hist = slots; this._histErr = null;
-      } catch (e) { this._histErr = String(e && e.message || e); }
-      this._profBusy = false;
-      this._buildProf(true);
-    }
-    // Only whole days are shown: the full days fetched from Moj Elektro (or imported from a CSV) are exact;
-    // history-derived quarters are a fallback and count only when they cover a complete past day. The chart
-    // keeps showing the newest complete day until the next one has arrived, then switches all at once.
+       Only whole days are shown, all fetched from Moj Elektro by the check-for-updates script (or imported from a
+       CSV export). The chart keeps showing the newest complete day until the next one has arrived. */
     _buildProf(render) {
-      const Q = 9e5, from = Date.now() - 11 * 864e5, today = iso(new Date()), q15 = this._q15 || {}, byDay = new Map();
-      for (const s of this._hist || []) {
-        const d = iso(s.t); if (q15[d] || d >= today) continue;
-        if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(s);
-      }
-      for (const [d, a] of byDay) if (a.length < 92) byDay.delete(d); // DST days have 92 / 100 quarters
+      const Q = 9e5, from = Date.now() - 11 * 864e5, q15 = this._q15 || {}, byDay = new Map();
       for (const d in q15) {
         const t0 = pd(d).getTime(), a = [];
         q15[d].forEach((v, i) => { const st = new Date(t0 + i * Q); if (+st >= from && isFinite(v)) a.push({ t: st, kwh: v, kw: v * 4, b: blockOf(st) }); });
         if (a.length) byDay.set(d, a);
       }
       const keys = [...byDay.keys()].sort(), slots = keys.flatMap(d => byDay.get(d)).sort((a, b) => a.t - b.t);
-      if (!slots.length) this._prof = this._histErr ? { err: this._histErr } : null;
+      if (!slots.length) this._prof = null;
       else {
         const peaks = [null, null, null, null, null];
         for (const s of slots) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
@@ -1029,11 +994,11 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
 <label class="fld"><span>Currency symbol</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
 <div class="dw-note">Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).</div></div>
 <div class="dw-s"><div class="dw-t">Your data</div>
-<div class="dw-note">${this._sync === 'shared' ? `Readings and settings are shared by every user. They live in the Home Assistant to-do list <b>${esc(this._ent)}</b> (included in HA backups), and changes show up live on every open dashboard. Please don't edit those to-do items by hand.${this._me ? ' Moj Elektro days are added automatically every morning by the automation “Daily Energy – log Moj Elektro day”.' : ''}` : `The shared list <b>${esc(this._ent)}</b> is unavailable, so readings are saved for your user only.`}</div>
+<div class="dw-note">${this._sync === 'shared' ? `Readings and settings are shared by every user. They live in the Home Assistant to-do list <b>${esc(this._ent)}</b> (included in HA backups), and changes show up live on every open dashboard. Please don't edit those to-do items by hand.${this._me ? ' Moj Elektro days are fetched every hour by the automation “Daily Energy – fetch from Moj Elektro API”.' : ''}` : `The shared list <b>${esc(this._ent)}</b> is unavailable, so readings are saved for your user only.`}</div>
 <div class="row"><button class="btn sm gh" data-act="export">${ic('down')}Export JSON</button><button class="btn sm gh" data-act="import">${ic('up')}Import JSON</button></div>
 <div class="row" style="align-items:center">${this._ui.pin
         ? `<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN"><button class="btn sm warn" data-act="clear-ok">${ic('del')}Delete</button><button class="btn sm gh" data-act="clear-no">Cancel</button>`
-        : `<button class="btn sm warn" data-act="clear">${ic('del')}Delete all readings</button>`}</div></div>
+        : `<button class="btn sm warn" data-act="clear">${ic('del')}Delete all data</button>`}</div></div>
 </aside></div>`;
     }
     _drawer(o) { this._dwOpen = o; if (!o && this._ui.pin) { this._ui.pin = false; this._renderDrawer(); } const w = this.$('dw').firstElementChild; if (w) w.classList.toggle('dw-open', o); }
@@ -1068,7 +1033,10 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
       else if (a === 'demo-off') { this._demo = null; this._shown = 0; this._renderAll(); }
       else if (a === 'export') this._export();
       else if (a === 'import') this.$('file').click();
-      else if (a === 'clear') { this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50); }
+      else if (a === 'clear') {
+        if (!confirm('Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed from the log; settings stay. Export JSON first if you want a backup.')) return;
+        this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50);
+      }
       else if (a === 'clear-no') { this._ui.pin = false; this._renderDrawer(); }
       else if (a === 'clear-ok') this._clearAll();
     }
@@ -1079,13 +1047,21 @@ ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT fo
       this._ui.formPin = false; this._ui.formOpen = true; this._renderForm();
       setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 100);
     }
-    // "Delete all readings" asks for a PIN first. It only guards against accidental taps: the PIN is in the card code.
+    // "Delete all data" asks for a PIN first. It only guards against accidental taps: the PIN is in the card code.
+    // It removes every item of the log (Moj Elektro days, 15-minute days, manual readings); the settings item stays.
     async _clearAll() {
       const p = this.$('pin');
       if (!p || p.value !== DEL_PIN) { this._toast('Wrong PIN'); if (p) { p.value = ''; p.focus(); } return; }
       this._ui.pin = false;
-      const all = this._data.entries.map(x => x.d); this._data.entries = []; this._demo = null; this._renderAll(); this._drawer(true);
-      await this._commit({ del: all }); this._toast('All readings deleted');
+      const gone = [...(this._dataUids || [])];
+      this._data = { ...this._data, entries: [], me: [] }; this._q15 = {}; this._demo = null; this._shown = 0;
+      this._buildProf(false); this._renderAll(); this._drawer(true);
+      if (this._sync !== 'shared') { await this._commit(); this._toast('All data deleted'); return; }
+      this._toast(`Deleting ${gone.length} items…`, { hold: true });
+      try {
+        for (let i = 0; i < gone.length; i += 100) await this._svc('remove_item', { item: gone.slice(i, i + 100) });
+        this._toast('All data deleted');
+      } catch (err) { this._toast('Could not delete everything — ' + (err && err.message || err)); }
     }
     async _change(e) {
       const t = e.target;

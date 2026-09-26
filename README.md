@@ -29,9 +29,6 @@ Every value is shown on the day the energy was actually used (00:00–24:00).
      pick unlimited expiration and copy the token.
   2. The meter ID is the **EIMM** number under **Merilna mesta / merilne točke** (for example `4-123456`).
 
-The [Moj Elektro integration](https://github.com/frlequ/homeassistant-mojelektro) by frlequ is **optional**. If you
-already have it, setup can reuse its meter and token, and its sensors are then logged too, as a backup.
-
 ## Installation (HACS)
 
 1. HACS → ⋮ → **Custom repositories** → add `https://github.com/Sabotin/Daily-Energy-MojElektro`, category **Integration**.
@@ -40,7 +37,6 @@ already have it, setup can reuse its meter and token, and its sensors are then l
 4. Settings → Devices & services → **Add integration** → **Daily Energy for Moj Elektro**.
 5. Enter your **meter ID** and **API token** (and optionally a PIN). Daily Energy checks them with Moj Elektro,
    and **Daily Energy** appears in the sidebar.
-   (With the Moj Elektro integration installed you are first asked: enter a meter ID and token, or use the integration's.)
 
 Manual installation: copy `custom_components/daily_energy_mojelektro` into your `config/custom_components` folder and restart.
 
@@ -83,8 +79,9 @@ Settings → Devices & services → Daily Energy for Moj Elektro → **Configure
 
 | Option | What it does |
 |---|---|
-| PIN | Asked before opening the manual meter reading and before deleting readings. Empty = no PIN. Checked by Home Assistant, never stored in the browser. |
+| PIN | Asked before opening the manual meter reading and before deleting data. Empty = no PIN. Checked by Home Assistant, never stored in the browser. |
 | Show in sidebar | Adds the Daily Energy page to the sidebar. |
+| Meter ID | Your Moj Elektro meter (EIMM). Checked with Moj Elektro before it is saved. |
 | New API token | Only when you created a new token in Moj Elektro. It is checked before it is saved; empty keeps the current one. |
 
 In the dashboard itself (⚙):
@@ -95,6 +92,7 @@ In the dashboard itself (⚙):
 | Prices | Energy prices for the cost estimates (grid in only). |
 | This device | **Automatic** (light on tablets and on devices that ask for reduced motion), **Light** (no animations, blur or glow – for slow tablets and wall panels) or **Full**. Saved on each device separately. |
 | Moj Elektro history | Fetch any date range from Moj Elektro (see below). |
+| Your data | Export a JSON backup, import CSV / JSON, and **Delete all data** (administrators only; asks for the PIN when one is set): removes every Moj Elektro day, the 15-minute data and all manual readings – settings stay. |
 
 ## Your history (optional)
 
@@ -132,9 +130,7 @@ import. Days for which Moj Elektro has no meter reading (for example before your
 - Moj Elektro sometimes publishes a day before every quarter hour has arrived from the meter (those come as 0 and are
   flagged); such a day is fetched again until they are filled in. The 15-minute chart always shows one whole day and
   switches to the next day all at once.
-- **With the Moj Elektro integration linked**, its sensors are logged as well, as a backup. Half-updated sensors are
-  never saved: Daily Energy waits until they have settled and only logs a day when VT + MT equals the day total and
-  the month totals agree.
+- A day's meter total is only saved when VT + MT equals the day total.
 - The log is stored by Home Assistant itself (`.storage/daily_energy_mojelektro.*`) and is part of your backups.
 - Your data goes nowhere else: the only requests are those to the Moj Elektro API. The token is stored in Home
   Assistant and never reaches the browser.
@@ -145,10 +141,6 @@ You can also add the dashboard to any existing dashboard as a card:
 type: custom:daily-energy-card
 ```
 
-## Credits and licence
-
-Inspired by and optionally working with the [Moj Elektro integration](https://github.com/frlequ/homeassistant-mojelektro)
-by frlequ (MIT). This project does not include any of its code; when it is linked, Daily Energy reads the sensors it
-creates and reuses its meter and API token.
+## Licence
 
 MIT licence – see [LICENSE](LICENSE). Not affiliated with Elektro Slovenije or any distribution company.

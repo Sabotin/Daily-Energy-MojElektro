@@ -424,7 +424,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const y = new Date(); y.setDate(y.getDate() - 1);
       this._ui = { range: 'day', trange: 'day', all: false, impFrom: `${y.getFullYear()}-01-01`, impTo: iso(y) };
       this._demo = null; this._loaded = false; this._shown = 0; this._sync = null;
-      this._dirty = false; this._me = false; this._q15 = {}; this._q15o = {}; this._ents = {}; this._pinOk = '';
+      this._dirty = false; this._me = false; this._q15 = {}; this._q15o = {}; this._pinOk = '';
       this._view = LS.get('daily-energy-view') === 'out' ? 'out' : 'in';
     }
     setConfig(c) { this._config = c || {}; }
@@ -432,8 +432,6 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     set hass(h) {
       const first = !this._hass; this._hass = h;
       if (first) { this._shell(); this._load(); }
-      const q = this._me && this._qEnt && h.states[this._qEnt];
-      if (q && q.last_updated !== this._qLU) { this._qLU = q.last_updated; this._loadProfile(); }
     }
     // Settings > This device: Light, Full or Automatic (light on tablets and on devices that ask for reduced motion)
     _mode() { const v = LS.get('daily-energy-mode'); return v === 'light' || v === 'full' ? v : 'auto'; }
@@ -485,15 +483,14 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       // grid out (energy sent to the grid) is stored in the same day records as o, ovt, omt, omo, omvt, ommt
       const meOut = Object.entries(s.days || {}).filter(([d, r]) => ok(d) && r && typeof r.o === 'number')
         .map(([d, r]) => ({ d, me: true, u: r.o, vt: r.ovt, mt: r.omt, mo: r.omo, mvt: r.omvt, mmt: r.ommt }));
-      this._q15 = s.q15 || {}; this._q15o = s.q15o || {}; this._ents = s.entities || {}; this._hasPin = !!s.has_pin;
-      const wasMe = this._me;
-      this._api = !!s.api; this._me = !!(this._ents.daily_input || s.api); this._qEnt = this._ents['15min_input'];
+      this._q15 = s.q15 || {}; this._q15o = s.q15o || {}; this._hasPin = !!s.has_pin;
+      // the integration always fetches from Moj Elektro, so the dashboard is always in Moj Elektro mode
+      this._api = !!s.api; this._me = true;
       this._applyLite();
       this._data = { entries, me, meOut, settings: { ...DEF, ...(s.settings || {}) } };
       const first = !this._loaded; this._loaded = true;
       if (this._me) this._buildProf(false);
       this._renderAll(!first);
-      if (this._me && !wasMe) this._loadProfile();
     }
     async _commit({ put = [], del = [], settings = false } = {}) {
       try {
@@ -920,51 +917,17 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     }
 
     /* ----- Moj Elektro: 15-minute load profile -----
-       The 15min sensor shows, every quarter hour, the matching quarter of *yesterday*. Sampling its
-       recorded history on the quarter grid and shifting it back 24 h rebuilds the real load curve. */
-    async _loadProfile() {
-      if (!this._me || !this._hass || this._profBusy) return;
-      // without the Moj Elektro integration there is no sensor history: the chart uses the days fetched from the API
-      if (!this._qEnt || !this._hass.states[this._qEnt]) { this._hist = []; this._histErr = null; this._buildProf(true); return; }
-      this._profBusy = true;
-      try {
-        const ent = this._qEnt, end = Date.now(), Q = 9e5;
-        const r = await this._hass.callWS({ type: 'history/history_during_period', start_time: new Date(end - 10 * 864e5).toISOString(), end_time: new Date(end).toISOString(), entity_ids: [ent], minimal_response: true, no_attributes: true, significant_changes_only: false });
-        const pts = (r[ent] || []).map(x => ({ t: x.lu != null ? x.lu * 1000 : Date.parse(x.last_updated || x.last_changed), v: parseFloat(x.s != null ? x.s : x.state) }))
-          .filter(p => isFinite(p.t) && isFinite(p.v)).sort((a, b) => a.t - b.t);
-        const slots = [];
-        let i = 0, cur = null;
-        if (pts.length) for (let q = Math.floor(pts[0].t / Q) * Q; q <= end; q += Q) {
-          while (i < pts.length && pts[i].t <= q + 3e5) cur = pts[i++]; // the sensor refreshes a few seconds after each quarter
-          // an unchanged value is not re-recorded, so carry it forward, but not across real gaps (restart, API outage)
-          if (!cur || q + 3e5 - cur.t > 72e5) continue;
-          const st = new Date(q - 864e5);
-          slots.push({ t: st, kwh: cur.v, kw: cur.v * 4, b: blockOf(st) });
-        }
-        this._hist = slots; this._histErr = null;
-      } catch (e) { this._histErr = String(e && e.message || e); }
-      this._profBusy = false;
-      this._buildProf(true);
-    }
-    // Days imported from a CSV export are exact, so they replace the history-derived quarters of that day.
-    // Only whole days are shown: the full days fetched from Moj Elektro (or imported from a CSV) are exact;
-    // history-derived quarters are a fallback and count only when they cover a complete past day. The chart
-    // keeps showing the newest complete day until the next one has arrived, then switches all at once.
+       Only whole days are shown, all fetched from Moj Elektro (or imported from a CSV export). The chart keeps
+       showing the newest complete day until the next one has arrived, then switches all at once. */
     _buildProf(render) {
-      // grid out only has the days fetched from Moj Elektro (the sensor history is grid in)
-      const out = this._isOut(), Q = 9e5, from = Date.now() - 11 * 864e5, today = iso(new Date()), q15 = (out ? this._q15o : this._q15) || {}, byDay = new Map();
-      for (const s of out ? [] : this._hist || []) {
-        const d = iso(s.t); if (q15[d] || d >= today) continue;
-        if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(s);
-      }
-      for (const [d, a] of byDay) if (a.length < 92) byDay.delete(d); // DST days have 92 / 100 quarters
+      const out = this._isOut(), Q = 9e5, from = Date.now() - 11 * 864e5, q15 = (out ? this._q15o : this._q15) || {}, byDay = new Map();
       for (const d in q15) {
         const t0 = pd(d).getTime(), a = [];
         q15[d].forEach((v, i) => { const st = new Date(t0 + i * Q); if (+st >= from && isFinite(v)) a.push({ t: st, kwh: v, kw: v * 4, b: blockOf(st) }); });
         if (a.length) byDay.set(d, a);
       }
       const keys = [...byDay.keys()].sort(), slots = keys.flatMap(d => byDay.get(d)).sort((a, b) => a.t - b.t);
-      if (!slots.length) this._prof = this._histErr ? { err: this._histErr } : null;
+      if (!slots.length) this._prof = null;
       else {
         const peaks = [null, null, null, null, null];
         for (const s of slots) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
@@ -1086,9 +1049,9 @@ ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">Moj Elektro histor
 <div class="dw-s"><div class="dw-t">Your data</div>
 <div class="dw-note">${this._sync === 'shared' ? `Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.` : `The Daily Energy integration is not set up, so nothing can be saved.`}</div>
 <div class="row"><button class="btn sm gh" data-act="export">${ic('down')}Export JSON</button><button class="btn sm gh" data-act="import">${ic('up')}Import CSV / JSON</button></div>
-<div class="row" style="align-items:center">${this._ui.pin
+${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-items:center">${this._ui.pin
         ? `<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN"><button class="btn sm warn" data-act="clear-ok">${ic('del')}Delete</button><button class="btn sm gh" data-act="clear-no">Cancel</button>`
-        : `<button class="btn sm warn" data-act="clear">${ic('del')}Delete all readings</button>`}</div></div>
+        : `<button class="btn sm warn" data-act="clear">${ic('del')}Delete all data</button>`}</div>` : ''}</div>
 </aside></div>`;
     }
     // Import from Moj Elektro: administrators only (checked by Home Assistant too), with API access
@@ -1162,7 +1125,8 @@ ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">Moj Elektro histor
       else if (a === 'import') this.$('file').click();
       else if (a === 'api-import') this._apiImport();
       else if (a === 'clear') {
-        if (!this._hasPin) { if (confirm('Delete all manual meter readings for every user? Moj Elektro days are not affected.')) this._clearAll(''); return; }
+        if (!confirm('Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed; settings stay. Export JSON first if you want a backup — Moj Elektro days can be fetched again with Moj Elektro history.')) return;
+        if (!this._hasPin) { this._clearAll(''); return; }
         this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50);
       }
       else if (a === 'clear-no') { this._ui.pin = false; this._renderDrawer(); }
@@ -1179,10 +1143,11 @@ ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">Moj Elektro histor
     }
     async _clearAll(given) {
       const p = this.$('pin'), pin = given != null ? given : (p ? p.value : '');
-      try { await this._ws('clear_manual', { pin }); }
-      catch (e) { this._toast(e && e.code === 'wrong_pin' ? 'Wrong PIN' : 'Could not delete — ' + (e && e.message || e)); if (p) { p.value = ''; p.focus(); } return; }
-      this._ui.pin = false; this._demo = null; this._renderDrawer(); this._drawer(true); this._toast('All manual readings deleted');
+      try { await this._ws('clear_all', { pin }); }
+      catch (e) { this._toast(e && e.code === 'wrong_pin' ? 'Wrong PIN' : e && e.code === 'unauthorized' ? 'Only administrators can delete data' : 'Could not delete — ' + (e && e.message || e)); if (p) { p.value = ''; p.focus(); } return; }
+      this._ui.pin = false; this._demo = null; this._shown = 0; this._renderDrawer(); this._drawer(true); this._toast('All data deleted');
     }
+    _isAdmin() { return !!(this._hass && this._hass.user && this._hass.user.is_admin); }
     async _change(e) {
       const t = e.target;
       if (t.id === 'f-d') { this._fd = t.value || null; const ex = this._c.E.find(x => x.d === t.value); if (ex) this._renderForm(); else { const b = this.$('f-badge'); b.textContent = 'New entry'; b.className = 'badge'; this._preview(); } }

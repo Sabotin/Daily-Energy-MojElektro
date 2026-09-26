@@ -25,7 +25,7 @@ def async_register(hass: HomeAssistant) -> None:
         ws_verify_pin,
         ws_save_settings,
         ws_save_manual,
-        ws_clear_manual,
+        ws_clear_all,
         ws_import_csv,
         ws_import_backup,
         ws_check_updates,
@@ -123,17 +123,19 @@ def ws_save_manual(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/clear_manual", ENTRY: str, vol.Optional("pin", default=""): str}
+    {vol.Required("type"): f"{DOMAIN}/clear_all", ENTRY: str, vol.Optional("pin", default=""): str}
 )
+@websocket_api.require_admin
 @callback
-def ws_clear_manual(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+def ws_clear_all(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Settings > Delete all data (administrators only, and the PIN when one is set)."""
     manager = _manager(hass, connection, msg)
     if manager is None:
         return
     if not manager.check_pin(msg["pin"]):
         connection.send_error(msg["id"], "wrong_pin", "Wrong PIN")
         return
-    manager.clear_manual()
+    manager.clear_all()
     connection.send_result(msg["id"])
 
 
