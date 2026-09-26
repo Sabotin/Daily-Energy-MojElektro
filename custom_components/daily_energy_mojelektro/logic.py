@@ -72,29 +72,45 @@ def to_float(value) -> float | None:
         return None
 
 
-def last_usage_record(days: dict) -> dict | None:
-    """Newest day that has a daily usage value, with its date as "d"."""
-    for d in sorted(days, reverse=True):
-        rec = days[d]
-        if isinstance(rec.get("u"), (int, float)):
-            return {**rec, "d": d}
-    return None
+def snapshot_consistent(
+    u: float, vt: float | None, mt: float | None, mo: float, mvt: float | None, mmt: float | None
+) -> bool:
+    """True when the Moj Elektro sensors agree with each other.
+
+    Moj Elektro updates its sensors one after another, so for a moment the day total can already be
+    new while VT, MT or the month totals are still yesterday's. Such a half-updated set must never
+    be saved: VT + MT has to equal the day and month VT + month MT the month.
+    """
+    if None in (vt, mt, mvt, mmt):
+        return False
+    return abs(u - vt - mt) < 0.02 and abs(mo - mvt - mmt) < 0.05 and mo >= u - 0.01
 
 
-def pick_usage_day(last: dict | None, u: float, mo: float, today: date) -> str:
+def pick_usage_day(days: dict, u: float, mo: float, today: date) -> str:
     """Which calendar day the current daily_input value belongs to.
 
-    monthly_input is month-to-date including the newest day, so (mo - u) is the total before it:
-    * equal to the previous record's (mo - u)  -> the same day again (a repeated update)
-    * equal to the previous record's mo        -> the day after the previous record
-    * anything else (first run, new month, a gap) -> today - 2, when Moj Elektro normally has it.
+    monthly_input is month-to-date including the newest day, so (mo - u) is the month total of the
+    day before it. Only records of the last 45 days that have a usage value are considered:
+    * the earliest record whose mo equals (mo - u) is the day before  -> that day + 1
+      (earliest, so a record saved with a stale month total can never push the day forward)
+    * a record with the same mo and u                                -> the same day again
+    * anything else (first run, 1st of the month, a gap)             -> today - 2, when Moj Elektro
+      normally has it.
     """
     base = mo - u
-    if last and isinstance(last.get("mo"), (int, float)) and isinstance(last.get("u"), (int, float)):
-        if abs(base - (last["mo"] - last["u"])) < 0.01:
-            return last["d"]
-        if abs(base - last["mo"]) < 0.01:
-            return (date.fromisoformat(last["d"]) + timedelta(days=1)).isoformat()
+    limit = (today - timedelta(days=45)).isoformat()
+    recs = [
+        (d, rec)
+        for d, rec in sorted(days.items())
+        if d >= limit and isinstance(rec.get("u"), (int, float)) and isinstance(rec.get("mo"), (int, float))
+    ]
+    if base > 0.01:
+        for d, rec in recs:
+            if abs(rec["mo"] - base) < 0.01:
+                return (date.fromisoformat(d) + timedelta(days=1)).isoformat()
+    for d, rec in recs:
+        if abs(rec["mo"] - mo) < 0.01 and abs(rec["u"] - u) < 0.01:
+            return d
     return (today - timedelta(days=2)).isoformat()
 
 

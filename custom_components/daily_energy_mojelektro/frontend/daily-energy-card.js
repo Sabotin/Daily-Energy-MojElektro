@@ -871,19 +871,27 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       this._buildProf(true);
     }
     // Days imported from a CSV export are exact, so they replace the history-derived quarters of that day.
+    // Only whole days are shown: the full days fetched from Moj Elektro (or imported from a CSV) are exact;
+    // history-derived quarters are a fallback and count only when they cover a complete past day. The chart
+    // keeps showing the newest complete day until the next one has arrived, then switches all at once.
     _buildProf(render) {
-      const Q = 9e5, from = Date.now() - 11 * 864e5, q15 = this._q15 || {}, map = new Map();
-      for (const s of this._hist || []) if (!q15[iso(s.t)]) map.set(+s.t, s);
-      for (const d in q15) {
-        const t0 = pd(d).getTime();
-        q15[d].forEach((v, i) => { const st = new Date(t0 + i * Q); if (+st >= from && isFinite(v)) map.set(+st, { t: st, kwh: v, kw: v * 4, b: blockOf(st) }); });
+      const Q = 9e5, from = Date.now() - 11 * 864e5, today = iso(new Date()), q15 = this._q15 || {}, byDay = new Map();
+      for (const s of this._hist || []) {
+        const d = iso(s.t); if (q15[d] || d >= today) continue;
+        if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(s);
       }
-      const slots = [...map.values()].sort((a, b) => a.t - b.t);
+      for (const [d, a] of byDay) if (a.length < 92) byDay.delete(d); // DST days have 92 / 100 quarters
+      for (const d in q15) {
+        const t0 = pd(d).getTime(), a = [];
+        q15[d].forEach((v, i) => { const st = new Date(t0 + i * Q); if (+st >= from && isFinite(v)) a.push({ t: st, kwh: v, kw: v * 4, b: blockOf(st) }); });
+        if (a.length) byDay.set(d, a);
+      }
+      const keys = [...byDay.keys()].sort(), slots = keys.flatMap(d => byDay.get(d)).sort((a, b) => a.t - b.t);
       if (!slots.length) this._prof = this._histErr ? { err: this._histErr } : null;
       else {
         const peaks = [null, null, null, null, null];
         for (const s of slots) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
-        this._prof = { last: slots.slice(-96), peaks, days: new Set(slots.map(s => iso(s.t))).size };
+        this._prof = { last: byDay.get(keys[keys.length - 1]).slice().sort((a, b) => a.t - b.t), peaks, days: keys.length };
       }
       if (render) this._renderProf();
     }
