@@ -546,6 +546,10 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .ch-g{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
 .ch-g i{height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.03))}
 .ch-g i:last-child{background:rgba(255,255,255,.14)}
+.avgck{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;border:1px solid rgba(255,200,87,.35);background:rgba(255,200,87,.08);color:var(--vt1);font:inherit;font-size:12.5px;cursor:pointer;transition:.25s;white-space:nowrap}
+.avgck i{width:13px;height:13px;border-radius:4px;border:1.5px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-style:normal;line-height:1}
+.avgck.off{border-color:rgba(255,255,255,.12);background:none;color:var(--mut)}
+.avgck:hover{color:var(--txt)}
 .ch-avg{position:absolute;left:0;right:0;border-top:1px dashed rgba(255,200,87,.55);pointer-events:none;z-index:2}
 .ch-avg span{position:absolute;right:0;top:-22px;font-size:11px;color:var(--vt1);background:rgba(5,8,17,.8);padding:2px 8px;border-radius:8px;border:1px solid rgba(255,200,87,.25)}
 .ch-b{position:absolute;inset:0;display:flex;align-items:flex-end;gap:clamp(2px,.6%,10px)}
@@ -1219,7 +1223,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 
     /* ----- charts ----- */
     // stack: false = total, true = VT/MT, 'b' = tariff blocks 1–5
-    _bars(bk, stack, sm) {
+    _bars(bk, stack, sm, ak) {
       const V = b => stack === 'b' ? b.b.reduce((a, x) => a + x, 0) : stack ? b.vt + b.mt : b.t;
       const vals = bk.map(V);
       const hasF = b => stack === 'b' ? b.bh : stack ? b.has : b.n > 0;
@@ -1229,7 +1233,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       // Časovni bloki in edit mode (Log > Edit): a pencil under each day whose blocks do not match its total
       const bedit = stack === 'b' && !this._demo && !!this._ui.editMode, pen = b => bedit && b.bwarn && b.from === b.to;
       let h = `<div class="ch${sm ? ' sm' : ''}${bk.some(pen) ? ' edb' : ''}"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>`;
-      if (avg > 0) h += `<div class="ch-avg" style="bottom:${avg / mx * 100}%"><span>${t('avg {0}', fk(avg))}</span></div>`;
+      if (avg > 0 && this._avgOn(ak)) h += `<div class="ch-avg" style="bottom:${avg / mx * 100}%"><span>${t('avg {0}', fk(avg))}</span></div>`;
       h += `<div class="ch-b${bk.length > 20 ? ' dense' : ''}">`;
       bk.forEach((b, i) => {
         const v = vals[i], has = hasF(b), part = has && b.n < b.span && b.span > 1;
@@ -1264,11 +1268,14 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const c = bk.reduce((a, b) => { const x = this._cost(b); return x == null ? a : (a || 0) + x; }, null);
       return `<div class="stats">${st(t('Total'), tot, c != null ? '≈ ' + this._money(c) : t('{0} periods', wd.length))}${st(t('Average'), av, t('per period'))}${st(t(this._c.out ? 'Highest sent out' : 'Highest'), V(hi), hi.title)}${st(t(this._c.out ? 'Lowest sent out' : 'Lowest'), V(lo), lo.title)}</div>`;
     }
+    // Povprečje chip: the dashed average line, on or off per chart (use / vtmt / blk), remembered per device
+    _avgOn(k) { return LS.get('daily-energy-avg-' + k) !== '0'; }
+    _avgChip(k) { const on = this._avgOn(k); return `<button class="avgck${on ? '' : ' off'}" data-act="avgline" data-v="${k}"><i>${on ? '✓' : ''}</i>${t('Average')}</button>`; }
     _tabs(cur, act, opts) { return `<div class="seg-tabs">${opts.map(([k, l]) => `<button class="${k === cur ? 'on' : ''}" data-act="${act}" data-v="${k}">${t(l)}</button>`).join('')}</div>`; }
     _renderChart() {
       const r = this._ui.range, bk = this._buckets(r);
       const sub = t({ day: 'Last 30 days', week: 'Last 12 weeks', month: 'Last 12 months', year: 'By year' }[r]);
-      this.$('chart').innerHTML = `<div class="ch-h"><div><div class="h-t">${t(this._c.out ? 'Sent to the grid' : 'Consumption')}</div><div class="h-s">${sub} · kWh</div></div>${this._tabs(r, 'range', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div>${this._bars(bk, false)}${this._stats(bk, false)}`;
+      this.$('chart').innerHTML = `<div class="ch-h"><div><div class="h-t">${t(this._c.out ? 'Sent to the grid' : 'Consumption')}</div><div class="h-s">${sub} · kWh</div></div><div class="row" style="align-items:center;gap:18px">${this._avgChip('use')}${this._tabs(r, 'range', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div></div>${this._bars(bk, false, false, 'use')}${this._stats(bk, false)}`;
     }
     _renderHeat() {
       const { today, days } = this._c;
@@ -1301,7 +1308,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const bk = this._buckets(r);
       const any = bk.some(b => b.has);
       // with Moj Elektro the title says it all, so there is no subtitle
-      const head = `<div class="ch-h"><div><div class="h-t">Energija VT · MT</div>${this._me ? '' : `<div class="h-s">${t('Big (VT) and small (MT) tariff split')}</div>`}</div><div class="row" style="align-items:center;gap:18px"><div class="legend"><span><i class="dot vt"></i>${t('VT · big')}</span><span><i class="dot mt"></i>${t('MT · small')}</span></div>${this._tabs(r, 'trange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
+      const head = `<div class="ch-h"><div><div class="h-t">Energija VT · MT</div>${this._me ? '' : `<div class="h-s">${t('Big (VT) and small (MT) tariff split')}</div>`}</div><div class="row" style="align-items:center;gap:18px">${this._avgChip('vtmt')}<div class="legend"><span><i class="dot vt"></i>${t('VT · big')}</span><span><i class="dot mt"></i>${t('MT · small')}</span></div>${this._tabs(r, 'trange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
       if (!any) { this.$('tariff').innerHTML = head + `<div class="empty">${ic('sun')}<b>${t('No tariff data yet')}</b><span>${t('Fill in the Energija VT and MT fields when you log a reading{0} to unlock this split.', this._c.s.tmode === 'reading' ? t(' (both readings are needed on two consecutive entries)') : '')}</span></div>`; return; }
       const cur = [...bk].reverse().find(b => b.has);
       const nm = { day: cur.now ? t('Today') : fdate(cur.from), week: cur.now ? t('This week') : cur.title, month: cur.now ? t('This month') : cur.title }[r];
@@ -1321,7 +1328,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 <div class="dn-c"><div class="dn-l">${nm}</div><div class="dn-v">${fk(tot)}<small>kWh</small></div><div class="dn-l">${Math.round(fv * 100)}% VT · ${100 - Math.round(fv * 100)}% MT</div></div></div>
 <div class="tl"><div class="tl-i vt"><div class="tl-n">${ic('sun')}Energija VT</div><div class="tl-v">${fk(cur.vt)}<small>kWh</small></div><div class="tl-s">${cv != null ? '≈ ' + this._money(cv) : t('big tariff')}</div></div>
 <div class="tl-i mt"><div class="tl-n">${ic('moon')}Energija MT</div><div class="tl-v">${fk(cur.mt)}<small>kWh</small></div><div class="tl-s">${cm != null ? '≈ ' + this._money(cm) : t('small tariff')}</div></div></div></div>
-<div>${this._bars(bk, true, true)}<div class="stats"><div class="st"><div class="st-l">VT · ${sp}</div><div class="st-v" style="color:var(--vt1)">${fk(vS)}<small>kWh</small></div><div class="st-s">${s.pVT > 0 ? '≈ ' + this._money(vS * s.pVT) : t('big tariff')}</div></div><div class="st"><div class="st-l">MT · ${sp}</div><div class="st-v" style="color:var(--mt1)">${fk(mS)}<small>kWh</small></div><div class="st-s">${s.pMT > 0 ? '≈ ' + this._money(mS * s.pMT) : t('small tariff')}</div></div><div class="st"><div class="st-l">${t('MT share')}</div><div class="st-v">${vS + mS ? Math.round(mS / (vS + mS) * 100) : 0}<small>%</small></div><div class="st-s">${t('of tariff energy')}</div></div><div class="st"><div class="st-l">${t('Energy cost')}</div><div class="st-v">${totC != null ? this._money(totC) : '—'}</div><div class="st-s">${totC != null ? sp : t('set prices in ⚙')}</div></div></div></div></div>`;
+<div>${this._bars(bk, true, true, 'vtmt')}<div class="stats"><div class="st"><div class="st-l">VT · ${sp}</div><div class="st-v" style="color:var(--vt1)">${fk(vS)}<small>kWh</small></div><div class="st-s">${s.pVT > 0 ? '≈ ' + this._money(vS * s.pVT) : t('big tariff')}</div></div><div class="st"><div class="st-l">MT · ${sp}</div><div class="st-v" style="color:var(--mt1)">${fk(mS)}<small>kWh</small></div><div class="st-s">${s.pMT > 0 ? '≈ ' + this._money(mS * s.pMT) : t('small tariff')}</div></div><div class="st"><div class="st-l">${t('MT share')}</div><div class="st-v">${vS + mS ? Math.round(mS / (vS + mS) * 100) : 0}<small>%</small></div><div class="st-s">${t('of tariff energy')}</div></div><div class="st"><div class="st-l">${t('Energy cost')}</div><div class="st-v">${totC != null ? this._money(totC) : '—'}</div><div class="st-s">${totC != null ? sp : t('set prices in ⚙')}</div></div></div></div></div>`;
     }
 
     /* ----- Moj Elektro: 15-minute load profile -----
@@ -1388,7 +1395,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const el = this.$('blocks'); if (!this._me || !el) return;
       const { days, bLast: meLast, today } = this._c, r = this._ui.brange || 'day';
       const legend = `<div class="blegend">${BLK.map((c, i) => `<span><i style="background:${c}"></i>Blok ${i + 1}</span>`).join('')}</div>`;
-      const head = `<div class="ch-h"><div><div class="h-t">${t('Časovni bloki · tariff blocks')}</div><div class="h-s">${t('Energy per network tariff block, from Moj Elektro')}</div></div><div class="row" style="align-items:center;gap:18px">${legend}${this._tabs(r, 'brange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Časovni bloki · tariff blocks')}</div><div class="h-s">${t('Energy per network tariff block, from Moj Elektro')}</div></div><div class="row" style="align-items:center;gap:18px">${this._avgChip('blk')}${legend}${this._tabs(r, 'brange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
       const y = meLast && days.get(meLast);
       if (!y || !y.b) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<b>${t('No block data yet')}</b><span>${t('The daily automation adds it every morning.')}</span></div>`; return; }
       const rows = (vals, tot) => vals.map((x, i) => `<div class="brow"><span>Blok ${i + 1}</span><div class="bt"><i style="width:${tot ? x / tot * 100 : 0}%;background:${BLK[i]}"></i></div><span class="bv">${fk(x)} kWh<small>${tot ? Math.round(x / tot * 100) : 0}%</small></span></div>`).join('');
@@ -1400,7 +1407,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 <div class="bgap"></div>
 <div class="bsub">${MONL[d.getMonth()]} · ${count(mdays, 'logged day', 'logged days', 'zabeleženi dnevi')} · ${fk(mt)} kWh</div>${rows(ms.b, mt)}
 <div class="bnote">${t('Blok 1 is the most expensive network block and only applies on working days from November to February. Weekends, holidays and the lower season (March–October) fall into the cheaper blocks 2–5.')}</div>
-</div><div>${this._bars(this._buckets(r), 'b', true)}${this._blEditor()}</div></div>`;
+</div><div>${this._bars(this._buckets(r), 'b', true, 'blk')}${this._blEditor()}</div></div>`;
     }
     // Časovni bloki > Edit (edit mode, pencil under a day): the five blocks of that day, with their total against
     // the day's Used; saved as a manual edit, so fetching never overwrites it
@@ -1553,6 +1560,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       const t = e.target.closest('[data-act]'); if (!t) return;
       const a = t.dataset.act;
       if (a === 'range') { this._ui.range = t.dataset.v; this._renderChart(); }
+      else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'brange') { this._ui.brange = t.dataset.v; this._renderBlocks(); }
       else if (a === 'form-toggle') {
