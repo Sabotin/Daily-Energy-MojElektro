@@ -112,7 +112,7 @@
     'Open': 'Odpri',
     'Cancel': 'Prekliči',
     // adding a manual reading or deleting days from the log
-    'Manual meter reading or delete': 'Ročni vnos števca ali izbris',
+    'To edit, delete or add usage data.': 'Za urejanje, izbris ali dodajanje podatkov o porabi.',
     'Add': 'Dodaj',
     'Remove entry': 'Odstrani vnos',
     'Delete mode: tap the bin next to a day in the Log.': 'Način brisanja: v dnevniku tapnite koš ob dnevu.',
@@ -450,6 +450,7 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .ch-h{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
 .h-t{font-size:18px;font-weight:600;letter-spacing:-.01em}
 .h-s{font-size:13px;color:var(--mut);margin-top:3px}
+.h-n{font-size:11.5px;color:var(--mut);opacity:.7;margin-top:3px}
 .seg-tabs{display:inline-flex;padding:4px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06)}
 .seg-tabs button{border:0;background:none;color:var(--mut);font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:10px;cursor:pointer;transition:.25s}
 .seg-tabs button:hover{color:var(--txt)}
@@ -1144,7 +1145,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
           : ui.formPin
             ? `<div class="row" style="align-items:center">${this._hasPin && !this._pinOk ? `<input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN">` : ''}<button class="btn sm gh" data-act="form-pin-ok" data-v="add">${ic('up')}${t('Add')}</button><button class="btn sm gh" data-act="form-pin-ok" data-v="edit">${ic('edit')}${t('Edit')}</button><button class="btn sm gh" data-act="form-pin-ok" data-v="del">${ic('del')}${t('Remove entry')}</button><button class="btn sm gh" data-act="form-pin-no">${t('Cancel')}</button></div>`
             : `<button class="btn sm gh" data-act="form-toggle">${ic('edit')}${t('Open')}</button>`;
-        host.innerHTML = `<div class="fold"><div><div class="h-t">${t('Manual meter reading or delete')}</div><div class="h-s">${t('Optional — Moj Elektro now logs your usage automatically every day')}</div></div>${acts}</div>`;
+        host.innerHTML = `<div class="fold"><div><div class="h-t">${t('Manual meter reading')}</div><div class="h-s">${t('To edit, delete or add usage data.')}</div><div class="h-n">${t('Optional — Moj Elektro now logs your usage automatically every day')}</div></div>${acts}</div>`;
         return;
       }
       host.innerHTML = `<div class="ch-h" style="margin-bottom:4px"><div><div class="h-t">${t(this._me ? 'Manual meter reading' : 'Log a reading')}</div><div class="h-s">${t('Type exactly what your energy counter shows')}</div></div><div class="row" style="align-items:center"><span class="badge ${ex ? 'ed' : ''}" id="f-badge">${t(ex ? (d === today ? 'Logged today ✓' : 'Editing') : 'New entry')}</span>${this._me ? `<button class="btn sm gh" data-act="form-toggle">${t('Close')}</button>` : ''}</div></div>
@@ -1445,7 +1446,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       for (const d of Object.keys(ED)) if (edv(d) && !ME.some(m => m.d === d)) ME.push({ d, added: true });
       const el = this.$('log');
       if (!E.length && !ME.length) { el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Reading log')}</div><div class="h-s">${t("Every counter reading you've entered")}</div></div></div><div class="empty" style="min-height:120px">${ic('meter')}<span>${t('No readings yet')}</span></div>`; return; }
-      // after the PIN (Manual meter reading or delete > Edit / Remove entry): a pencil or a bin on every day, and the
+      // after the PIN (Manual meter reading > Edit / Remove entry): a pencil or a bin on every day, and the
       // export / import buttons
       const del = !this._demo && !!ui.delMode, edm = !this._demo && !!ui.editMode, act = del || edm;
       const unlocked = !this._demo && (del || edm || !!ui.formOpen || !!ui.outAdd);
