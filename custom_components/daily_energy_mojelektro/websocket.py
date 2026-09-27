@@ -27,6 +27,7 @@ def async_register(hass: HomeAssistant) -> None:
         ws_save_manual,
         ws_clear_all,
         ws_delete_day,
+        ws_save_edit,
         ws_import_csv,
         ws_import_backup,
         ws_check_updates,
@@ -160,6 +161,42 @@ def ws_delete_day(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
         return
     deleted = manager.delete_day(msg["day"].isoformat(), msg["grid"] == "out")
     connection.send_result(msg["id"], {"deleted": deleted})
+
+
+KWH = vol.All(vol.Coerce(float), vol.Range(min=0, max=100000))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/save_edit",
+        ENTRY: str,
+        vol.Required("day"): cv.date,
+        vol.Required("grid"): vol.In(["in", "out"]),
+        vol.Required("values"): {
+            vol.Optional("u"): KWH,
+            vol.Optional("vt"): KWH,
+            vol.Optional("mt"): KWH,
+            vol.Optional("o"): KWH,
+        },
+        vol.Optional("pin", default=""): str,
+    }
+)
+@callback
+def ws_save_edit(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Log > Edit, or Add on grid out: a manual day value that fetching never overwrites (the PIN when one is set)."""
+    manager = _manager(hass, connection, msg)
+    if manager is None:
+        return
+    if not manager.check_pin(msg["pin"]):
+        connection.send_error(msg["id"], "wrong_pin", "Wrong PIN")
+        return
+    values, out = msg["values"], msg["grid"] == "out"
+    complete = "o" in values if out else ("vt" in values and "mt" in values) or "u" in values
+    if not complete:
+        connection.send_error(msg["id"], "invalid_format", "Grid out needs o; grid in needs vt and mt, or u")
+        return
+    manager.save_edit(msg["day"].isoformat(), out, values)
+    connection.send_result(msg["id"])
 
 
 @websocket_api.websocket_command(

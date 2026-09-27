@@ -65,10 +65,11 @@ class DailyEnergyManager:
         self.panel_url: str | None = None
         self._store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
         # days: {date: {u, vt, mt, mo, mvt, mmt, b} + grid out {o, ovt, omt, omo, omvt, ommt}},
-        # manual: {date: {t, vt, mt}}, q15 / q15o: {date: [kWh]} grid in / grid out,
+        # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {o}} manual values that fetching never
+        # overwrites, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched}
         self.data: dict = {
-            "days": {}, "manual": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {}
+            "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {}
         }
         self._listeners: set[Callable[[dict], None]] = set()
         self._fetching = False
@@ -397,6 +398,7 @@ class DailyEnergyManager:
             "title": self.entry.title,
             "days": self.data["days"],
             "manual": self.data["manual"],
+            "edits": self.data["edits"],
             "settings": self.data["settings"],
             "q15": self.data["q15"],
             "q15o": self.data["q15o"],
@@ -426,20 +428,22 @@ class DailyEnergyManager:
     @callback
     def clear_all(self) -> None:
         """Settings > Delete all data: every Moj Elektro day, 15-minute day and manual reading. Settings stay."""
-        for key in ("days", "manual", "q15", "q15_miss", "q15o", "q15o_miss"):
+        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss"):
             self.data[key] = {}
         self._changed()
 
     @callback
     def delete_day(self, day: str, grid_out: bool = False) -> bool:
-        """Log > delete one day: its grid-in data (usage, VT / MT, month totals, tariff blocks and 15-minute data)
-        or its grid-out data; the other direction and manual readings stay. Returns whether anything was removed."""
+        """Log > delete one day: its grid-in data (usage, VT / MT, month totals, tariff blocks, 15-minute data and
+        manual edit) or its grid-out data and edit; the other direction and manual readings stay. Returns whether
+        anything was removed."""
         direction = logic.GRID_OUT if grid_out else logic.GRID_IN
         keys = set(direction["keys"].values()) | (set() if grid_out else {"b"})
         q_key, miss_key = ("q15o", "q15o_miss") if grid_out else ("q15", "q15_miss")
         rec = self.data["days"].get(day, {})
         rest = {k: v for k, v in rec.items() if k not in keys}
-        found = rest != rec or day in self.data[q_key]
+        dropped = self._drop_edit(day, grid_out)
+        found = dropped or rest != rec or day in self.data[q_key]
         if rest:
             self.data["days"][day] = rest
         else:
@@ -449,6 +453,35 @@ class DailyEnergyManager:
         if found:
             self._changed()
         return found
+
+    def _drop_edit(self, day: str, grid_out: bool) -> bool:
+        edit = self.data["edits"].get(day)
+        if not edit:
+            return False
+        rest = {k: v for k, v in edit.items() if (k != "o") == grid_out}
+        if rest:
+            self.data["edits"][day] = rest
+        else:
+            self.data["edits"].pop(day)
+        return rest != edit
+
+    @callback
+    def save_edit(self, day: str, grid_out: bool, values: dict) -> None:
+        """Log > Edit or Add (grid out): a manual value for one day. It is kept apart from Moj Elektro's data, so
+        fetching never overwrites it; only deleting the day removes it. Grid in: {vt, mt} (the day total is their
+        sum) or {u} for a day with only 15-minute data; grid out: {o}."""
+        edit = dict(self.data["edits"].get(day, {}))
+        if grid_out:
+            edit["o"] = round(float(values["o"]), 3)
+        else:
+            for key in ("u", "vt", "mt"):
+                edit.pop(key, None)
+            if values.get("vt") is not None and values.get("mt") is not None:
+                edit.update(vt=round(float(values["vt"]), 3), mt=round(float(values["mt"]), 3))
+            else:
+                edit["u"] = round(float(values["u"]), 3)
+        self.data["edits"][day] = edit
+        self._changed()
 
     @callback
     def apply_import(self, parsed: dict, missing: dict[str, int] | None = None) -> int:
@@ -473,7 +506,7 @@ class DailyEnergyManager:
 
     @callback
     def apply_backup(self, backup: dict) -> int:
-        """Merge a JSON export made by the card (days, manual readings and settings)."""
+        """Merge a JSON export made by the card (days, manual readings, manual edits and settings)."""
         count = 0
         for day, rec in (backup.get("days") or {}).items():
             if isinstance(rec, dict) and self._merge_day(str(day), rec):
@@ -481,6 +514,9 @@ class DailyEnergyManager:
         for day, rec in (backup.get("manual") or {}).items():
             if isinstance(rec, dict):
                 self.data["manual"][str(day)] = rec
+        for day, rec in (backup.get("edits") or {}).items():
+            if isinstance(rec, dict):
+                self.data["edits"][str(day)] = rec
         if isinstance(backup.get("settings"), dict):
             self.save_settings(backup["settings"])
         self._changed()

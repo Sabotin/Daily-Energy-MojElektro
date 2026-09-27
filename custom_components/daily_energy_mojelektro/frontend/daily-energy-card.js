@@ -119,6 +119,13 @@
     'Done': 'Končano',
     'Deleted: {0}': 'Izbrisano: {0}',
     'Nothing to delete for {0}': 'Za {0} ni ničesar za izbris',
+    'Edit mode: tap the pencil next to a day in the Log.': 'Način urejanja: v dnevniku tapnite svinčnik ob dnevu.',
+    'manual edit': 'ročno urejeno',
+    'Manual': 'Ročno',
+    'Saved: {0}': 'Shranjeno: {0}',
+    'Enter a number of kWh': 'Vpišite število kWh',
+    'Save': 'Shrani',
+    'Add a day sent to the grid': 'Dodaj dan oddaje',
     'Close': 'Zapri',
     'Log a reading': 'Vnesi odčitek',
     'Type exactly what your energy counter shows': 'Vpišite točno to, kar kaže vaš števec',
@@ -372,6 +379,7 @@
     gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
     del: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+    ok: '<path d="M5 12l5 5L20 7"/>',
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
     down: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
     up: '<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
@@ -685,6 +693,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .blegend i{width:9px;height:9px;border-radius:3px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .tbl tr.me td:nth-child(2){color:#4cc9f0;font-size:12px}
+.tbl input.in.ed{width:92px;padding:6px 9px;font-size:14px;text-align:right}
+.tbl tr.man td:nth-child(4){color:var(--vt1)}
 .fold{display:flex;align-items:center;justify-content:space-between;gap:14px}
 @media (max-width:860px){.blk-b{grid-template-columns:1fr}.bpk{grid-template-columns:repeat(3,1fr)}}
 /* grid in / grid out */
@@ -796,7 +806,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       // grid out (energy sent to the grid) is stored in the same day records as o, ovt, omt, omo, omvt, ommt
       const meOut = Object.entries(s.days || {}).filter(([d, r]) => ok(d) && r && typeof r.o === 'number')
         .map(([d, r]) => ({ d, me: true, u: r.o, vt: r.ovt, mt: r.omt, mo: r.omo, mvt: r.omvt, mmt: r.ommt }));
-      this._q15 = s.q15 || {}; this._q15o = s.q15o || {}; this._hasPin = !!s.has_pin;
+      this._q15 = s.q15 || {}; this._q15o = s.q15o || {}; this._edits = s.edits || {}; this._hasPin = !!s.has_pin;
       // the integration always fetches from Moj Elektro, so the dashboard is always in Moj Elektro mode
       this._api = !!s.api; this._me = true;
       this._applyLite();
@@ -818,7 +828,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       // the grid-out view only shows Moj Elektro's grid-out days (manual readings are grid in)
       const E = out ? [] : [...(this._demo || this._data.entries)].sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
       const days = new Map();
-      const put = (d, k, v) => { let o = days.get(d); if (!o) { o = { t: 0, vt: 0, mt: 0, n: 0, has: false }; days.set(d, o); } o[k] += v; if (k === 't') o.n = 1; else o.has = true; };
+      const put = (d, k, v) => { let o = days.get(d); if (!o) { o = { t: 0, vt: 0, mt: 0, n: 0, has: false, man: true }; days.set(d, o); } o[k] += v; if (k === 't') o.n = 1; else o.has = true; };
       for (let i = 1; i < E.length; i++) {
         const a = E[i - 1], b = E[i], n = diffD(a.d, b.d);
         if (n < 1) continue;
@@ -838,8 +848,10 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       if (!this._demo) for (const m of ((out ? this._data.meOut : this._data.me) || [])) {
         const b = Array.isArray(m.b) && m.b.length === 5 ? m.b.map(x => +x || 0) : null, off = typeof m.u === 'number';
         if (!off && !b) continue;
-        const bt = b ? b.reduce((a, x) => a + x, 0) : 0;
-        days.set(m.d, off
+        const bt = b ? b.reduce((a, x) => a + x, 0) : 0, cur = days.get(m.d);
+        // a manual reading wins over Moj Elektro; the difference (dl) goes into the month total
+        if (cur && cur.man && cur.n) { if (off) cur.dl = cur.t - m.u; cur.b = b; }
+        else days.set(m.d, off
           ? { t: m.u, vt: +m.vt || 0, mt: +m.mt || 0, n: 1, has: m.vt != null && m.mt != null, me: true, b }
           : { t: bt, vt: 0, mt: 0, n: bt > 0 ? 1 : 0, has: false, me: true, b, q15: bt > 0 });
         const ym = m.d.slice(0, 7);
@@ -854,14 +866,30 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
         const t = q.reduce((a, x) => a + (+x || 0), 0);
         days.set(d, { t, vt: 0, mt: 0, n: 1, has: false, me: true, b: null, q15: true });
       }
+      // Manual edits (Log > Edit, grid-out Add) win over everything from Moj Elektro and stay until the day is
+      // deleted. dl / dvt / dmt: how much they differ from Moj Elektro's day, so month and year totals follow them.
+      if (!this._demo) for (const [d, e] of Object.entries(this._edits || {})) {
+        let v;
+        if (out) { if (typeof e.o !== 'number') continue; v = { t: e.o, vt: 0, mt: 0, has: false }; }
+        else if (typeof e.vt === 'number' && typeof e.mt === 'number') v = { t: e.vt + e.mt, vt: e.vt, mt: e.mt, has: true };
+        else if (typeof e.u === 'number') v = { t: e.u, vt: 0, mt: 0, has: false };
+        else continue;
+        const cur = days.get(d), o = { ...v, n: 1, me: true, edited: true, b: cur ? cur.b : null };
+        if (cur && cur.me && !cur.q15 && !cur.edited) {
+          o.dl = o.t - cur.t;
+          if (o.has && cur.has) { o.dvt = o.vt - cur.vt; o.dmt = o.mt - cur.mt; }
+        } else if (cur && cur.man && cur.dl != null) o.dl = o.t - (cur.t - cur.dl);
+        days.set(d, o);
+      }
       const keys = [...days.keys()].filter(k => days.get(k).n).sort();
       this._c = { s, E, days, keys, months, meLast, bLast, out, today: iso(new Date()) };
       return this._c;
     }
     _sum(from, to) {
-      const r = { t: 0, vt: 0, mt: 0, n: 0, has: false, b: [0, 0, 0, 0, 0], bh: false };
+      const r = { t: 0, vt: 0, mt: 0, n: 0, has: false, b: [0, 0, 0, 0, 0], bh: false, dl: 0, dvt: 0, dmt: 0 };
       for (const [k, o] of this._c.days) if (k >= from && k <= to) {
         r.t += o.t; r.vt += o.vt; r.mt += o.mt; r.n += o.n; if (o.has) r.has = true; if (o.q15) r.q15 = true;
+        r.dl += o.dl || 0; r.dvt += o.dvt || 0; r.dmt += o.dmt || 0;
         if (o.b) { o.b.forEach((x, i) => r.b[i] += x); r.bh = true; }
       }
       return r;
@@ -869,11 +897,12 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     _monthVal(y, mi) {
       const from = iso(new Date(y, mi, 1)), to = iso(new Date(y, mi + 1, 0)), r = this._sum(from, to), mm = this._c.months[from.slice(0, 7)];
       if (mm) {
-        // official month-to-date total + any days logged after it (e.g. yesterday's provisional total)
-        const x = this._sum(addD(mm.thru, 1), to);
-        if (mm.t + x.t >= r.t) {
-          r.t = mm.t + x.t; r.n = pd(mm.thru).getDate() + x.n; r.me = true;
-          if (mm.vt != null && mm.mt != null) { r.vt = +mm.vt + x.vt; r.mt = +mm.mt + x.mt; r.has = true; }
+        // official month-to-date total, corrected by manual values within it, + any days logged after it
+        // (e.g. yesterday's provisional total)
+        const x = this._sum(addD(mm.thru, 1), to), w = this._sum(from, mm.thru);
+        if (mm.t + w.dl + x.t >= r.t - 0.001) {
+          r.t = mm.t + w.dl + x.t; r.n = pd(mm.thru).getDate() + x.n; r.me = true;
+          if (mm.vt != null && mm.mt != null) { r.vt = +mm.vt + w.dvt + x.vt; r.mt = +mm.mt + w.dmt + x.mt; r.has = true; }
         }
       }
       return r;
@@ -922,9 +951,13 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const R = this.shadowRoot;
       this.$ = id => R.getElementById(id);
       R.addEventListener('click', e => this._click(e));
-      R.addEventListener('input', e => { if (e.target.id && e.target.id.startsWith('f-')) { this._dirty = true; this._preview(); } });
+      R.addEventListener('input', e => {
+        if (e.target.id && e.target.id.startsWith('f-')) { this._dirty = true; this._preview(); }
+        // editing a day in the Log: its total is VT + MT
+        if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? '+' + fk(v + m) + ' kWh' : '—'; }
+      });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Escape') this._drawer(false); });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Escape') this._drawer(false); });
       R.addEventListener('pointermove', e => this._tipMove(e));
       R.addEventListener('pointerleave', () => this.$('tip').classList.remove('on'), true);
       this._renderSkeleton();
@@ -1051,14 +1084,22 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const tu = usage ? 'kWh' : u;
       this._dirty = false;
       const host = this.$(this._me ? 'form' : 'prof');
-      // Moj Elektro mode: "Open" asks for the PIN (when one is set), then: add a manual reading, or delete days
-      // in the Log. Grid out has no manual readings, so there only deleting is offered.
-      const out = this._c.out;
-      if (this._me && (!this._ui.formOpen || out)) {
-        const acts = this._ui.delMode
-          ? `<div class="row" style="align-items:center"><span class="h-s" style="margin:0">${t('Delete mode: tap the bin next to a day in the Log.')}</span><button class="btn sm gh" data-act="del-done">${t('Done')}</button></div>`
-          : this._ui.formPin
-            ? `<div class="row" style="align-items:center">${this._hasPin && !this._pinOk ? `<input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN">` : ''}${out ? '' : `<button class="btn sm gh" data-act="form-pin-ok" data-v="add">${ic('edit')}${t('Add')}</button>`}<button class="btn sm gh" data-act="form-pin-ok" data-v="del">${ic('del')}${t('Remove entry')}</button><button class="btn sm gh" data-act="form-pin-no">${t('Cancel')}</button></div>`
+      // Moj Elektro mode: "Open" asks for the PIN (when one is set), then: Add (grid in: a manual counter reading;
+      // grid out: a day's kWh), Edit or Remove entry (a pencil or bin on every day in the Log).
+      const out = this._c.out, ui = this._ui;
+      if (this._me && out && ui.outAdd) {
+        host.innerHTML = `<div class="ch-h" style="margin-bottom:4px"><div><div class="h-t">${t('Add a day sent to the grid')}</div></div><button class="btn sm gh" data-act="del-done">${t('Close')}</button></div>
+<div class="two"><label class="fld"><span>${t('Date')}</span><input class="in" type="date" id="oa-d" value="${addD(today, -1)}" max="${today}"></label>
+<label class="fld"><span>${t('Sent out')}</span><div class="iw"><input class="in" id="oa-o" inputmode="decimal" autocomplete="off" placeholder="12.5"><em>kWh</em></div></label></div>
+<div class="acts"><button class="btn pri" data-act="oa-save">${ic('ok')}${t('Save')}</button></div>`;
+        return;
+      }
+      if (this._me && (!ui.formOpen || out)) {
+        const note = ui.delMode ? 'Delete mode: tap the bin next to a day in the Log.' : ui.editMode ? 'Edit mode: tap the pencil next to a day in the Log.' : null;
+        const acts = note
+          ? `<div class="row" style="align-items:center"><span class="h-s" style="margin:0">${t(note)}</span><button class="btn sm gh" data-act="del-done">${t('Done')}</button></div>`
+          : ui.formPin
+            ? `<div class="row" style="align-items:center">${this._hasPin && !this._pinOk ? `<input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN">` : ''}<button class="btn sm gh" data-act="form-pin-ok" data-v="add">${ic('up')}${t('Add')}</button><button class="btn sm gh" data-act="form-pin-ok" data-v="edit">${ic('edit')}${t('Edit')}</button><button class="btn sm gh" data-act="form-pin-ok" data-v="del">${ic('del')}${t('Remove entry')}</button><button class="btn sm gh" data-act="form-pin-no">${t('Cancel')}</button></div>`
             : `<button class="btn sm gh" data-act="form-toggle">${ic('edit')}${t('Open')}</button>`;
         host.innerHTML = `<div class="fold"><div><div class="h-t">${t('Manual meter reading or delete')}</div><div class="h-s">${t('Optional — Moj Elektro now logs your usage automatically every day')}</div></div>${acts}</div>`;
         return;
@@ -1320,28 +1361,52 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 
     /* ----- log ----- */
     _renderLog() {
-      const { E, s, out } = this._c;
-      const el = this.$('log'), ME = this._demo ? [] : ((out ? this._data.meOut : this._data.me) || []);
+      const { E, s, out } = this._c, ui = this._ui;
+      const ED = this._demo ? {} : (this._edits || {});
+      // the manual value (Log > Edit, grid-out Add) that wins over Moj Elektro's for a day, in the view shown
+      const edv = d => { const e = ED[d]; if (!e) return null; if (out) return typeof e.o === 'number' ? { u: e.o } : null; if (typeof e.vt === 'number' && typeof e.mt === 'number') return { u: e.vt + e.mt, vt: e.vt, mt: e.mt }; return typeof e.u === 'number' ? { u: e.u } : null; };
+      const ME = this._demo ? [] : [...((out ? this._data.meOut : this._data.me) || [])];
+      for (const d of Object.keys(ED)) if (edv(d) && !ME.some(m => m.d === d)) ME.push({ d, added: true });
+      const el = this.$('log');
       if (!E.length && !ME.length) { el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Reading log')}</div><div class="h-s">${t("Every counter reading you've entered")}</div></div></div><div class="empty" style="min-height:120px">${ic('meter')}<span>${t('No readings yet')}</span></div>`; return; }
-      // delete mode (Manual meter reading or delete > Remove entry): a bin on every day of the log shown
-      const del = !this._demo && !!this._ui.delMode, act = !this._demo && (E.length > 0 || del);
-      const bin = (d, k) => del ? `<button class="rb d" data-act="del-day" data-d="${d}" data-k="${k}" title="${t('Delete')}">${ic('del')}</button>` : '';
+      // after the PIN (Manual meter reading or delete > Edit / Remove entry): a pencil or a bin on every day, and the
+      // export / import buttons
+      const del = !this._demo && !!ui.delMode, edm = !this._demo && !!ui.editMode, act = del || edm;
+      const unlocked = !this._demo && (del || edm || !!ui.formOpen || !!ui.outAdd);
+      const tool = (d, k) => del ? `<button class="rb d" data-act="del-day" data-d="${d}" data-k="${k}" title="${t('Delete')}">${ic('del')}</button>` : edm ? `<button class="rb" data-act="${k === 'manual' ? 'edit' : 'ed-day'}" data-d="${d}" title="${t('Edit')}">${ic('edit')}</button>` : '';
+      const dash = '<span class="m">—</span>', inp = (id, v) => `<input class="in ed" id="${id}" inputmode="decimal" autocomplete="off" value="${v == null ? '' : +(+v).toFixed(3)}">`;
       const rows = [];
-      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">${nDays(1)}</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">${t('15-min data · VT / MT tomorrow')}</td>` : `<td class="m">—</td><td class="m">${t('tariff blocks only')}</td>`}${out ? '' : `<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>`}${act ? `<td>${bin(m.d, 'me')}</td>` : ''}</tr>`]);
+      for (const m of ME) {
+        const e = edv(m.d), off = typeof m.u === 'number', bt = Array.isArray(m.b) && m.b.some(x => +x > 0) ? m.b.reduce((a, x) => a + (+x || 0), 0) : null;
+        const u = e ? e.u : off ? m.u : bt, vt = e ? e.vt : m.vt, mt = e ? e.mt : m.mt, split = !out && (vt != null && mt != null);
+        const span = e ? t('manual edit') : off ? nDays(1) : bt != null ? t('15-min data · VT / MT tomorrow') : t('tariff blocks only');
+        const date = `<td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>${m.added ? t('Manual') : 'Moj Elektro'}</td>`;
+        let cells;
+        if (ui.editDay === m.d && edm) {
+          // editing: grid out Sent out, grid in VT and MT (the day total is their sum), or the kWh of a 15-minute day
+          const btns = `<button class="rb" data-act="ed-save" data-d="${m.d}" title="${t('Save')}">${ic('ok')}</button><button class="rb" data-act="ed-cancel" title="${t('Cancel')}">${ic('x')}</button>`;
+          cells = out ? `<td>${inp('ed-o', u)}</td><td class="m">${span}</td><td>${btns}</td>`
+            : split ? `<td class="use" id="ed-sum">+${fk(u)} kWh</td><td class="m">${span}</td><td>${inp('ed-vt', vt)}</td><td>${inp('ed-mt', mt)}</td><td>${btns}</td>`
+              : `<td>${inp('ed-u', u)}</td><td class="m">${span}</td><td>${dash}</td><td>${dash}</td><td>${btns}</td>`;
+        } else {
+          cells = `${u != null ? `<td class="use">+${fk(u)} kWh</td>` : `<td class="m">—</td>`}<td class="m">${span}</td>${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
+        }
+        rows.push([m.d + 'b', `<tr class="me${e ? ' man' : ''}">${date}${cells}</tr>`]);
+      }
       for (let i = E.length - 1; i >= 0; i--) {
         const e = E[i], p = E[i - 1];
         const n = p ? diffD(p.d, e.d) : 0, dt = p ? (e.t - p.t) * s.mult : null;
         const vtu = s.tmode === 'usage' ? e.vt : (p && e.vt != null && p.vt != null ? (e.vt - p.vt) * s.mult : null);
         const mtu = s.tmode === 'usage' ? e.mt : (p && e.mt != null && p.mt != null ? (e.mt - p.mt) * s.mult : null);
-        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${nDays(n)} · ${fk(dt / n)}/${LANG === 'sl' ? 'dan' : 'day'}` : n === 1 ? nDays(1) : ''}</td><td class="vtc">${vtu == null ? '<span class="m">—</span>' : fk(vtu)}</td><td class="mtc">${mtu == null ? '<span class="m">—</span>' : fk(mtu)}</td>${act ? `<td>${del ? '' : `<button class="rb" data-act="edit" data-d="${e.d}" title="${t('Edit')}">${ic('edit')}</button>`}${bin(e.d, 'manual')}</td>` : ''}</tr>`]);
+        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${nDays(n)} · ${fk(dt / n)}/${LANG === 'sl' ? 'dan' : 'day'}` : n === 1 ? nDays(1) : ''}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
       }
       rows.sort((a, b) => a[0] < b[0] ? 1 : -1);
-      const show = (this._ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
+      const show = (ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
       const first = [...E.map(e => e.d), ...ME.map(m => m.d)].sort()[0];
       const sub = [E.length ? count(E.length, 'manual reading', 'manual readings', 'ročni odčitki') : '', ME.length ? (out ? count(ME.length, 'Moj Elektro grid-out day', 'Moj Elektro grid-out days', 'dnevi oddaje Moj Elektro') : count(ME.length, 'Moj Elektro day', 'Moj Elektro days', 'dnevi Moj Elektro')) : ''].filter(Boolean).join(' · ');
-      el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div><div class="row">${del ? `<button class="btn sm warn" data-act="del-done">${t('Done')}</button>` : ''}<button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div></div>
+      el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div>${unlocked ? `<div class="row"><button class="btn sm warn" data-act="del-done">${t('Done')}</button><button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div>` : ''}</div>
 <div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th><th>${t('Span')}</th>${out ? '' : '<th>VT kWh</th><th>MT kWh</th>'}${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
-${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${this._ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
+${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
     }
 
     /* ----- settings drawer ----- */
@@ -1427,13 +1492,17 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       }
       else if (a === 'form-pin-ok') this._openFormPin(t.dataset.v);
       else if (a === 'form-pin-no') { this._ui.formPin = false; this._fd = null; this._pinOk = ''; this._renderForm(); }
-      else if (a === 'del-done') { this._ui.delMode = false; this._pinOk = ''; this._renderForm(); this._renderLog(); }
+      else if (a === 'del-done') { Object.assign(this._ui, { delMode: false, editMode: false, editDay: null, outAdd: false, formOpen: false, formPin: false }); this._pinOk = ''; this._renderForm(); this._renderLog(); }
+      else if (a === 'ed-day') { this._ui.editDay = t.dataset.d; this._renderLog(); setTimeout(() => { const i = this.$('ed-vt') || this.$('ed-u') || this.$('ed-o'); if (i) { i.focus(); i.select(); } }, 50); }
+      else if (a === 'ed-cancel') { this._ui.editDay = null; this._renderLog(); }
+      else if (a === 'ed-save') this._saveEdit(t.dataset.d);
+      else if (a === 'oa-save') this._saveOutAdd();
       else if (a === 'del-day') this._delDay(t.dataset.d, t.dataset.k);
       else if (a === 'save') this._saveForm();
       else if (a === 'new') { this._fd = null; this._renderForm(); }
       else if (a === 'edit') {
         this._fd = t.dataset.d;
-        if (this._me && !this._ui.formOpen && this._hasPin) { this._askFormPin(); this._scrollTo(this.$('form'), 'center'); }
+        if (this._me && !this._ui.formOpen && this._hasPin && !this._pinOk) { this._askFormPin(); this._scrollTo(this.$('form'), 'center'); }
         else { this._ui.formOpen = true; this._renderForm(); this._scrollTo(this.$('form'), 'center'); setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 400); }
       }
       else if (a === 'all') { this._ui.all = !this._ui.all; this._renderLog(); }
@@ -1478,23 +1547,44 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
     // the PIN is asked every time the box is opened: a PIN entered before is forgotten here
     _askFormPin() { this._pinOk = ''; this._ui.formPin = true; this._renderForm(); setTimeout(() => this.$('fpin') && this.$('fpin').focus(), 50); }
     // The PIN lives in the integration options and is checked by Home Assistant, never in this file.
-    // v: 'add' opens the manual reading form, 'del' turns on delete mode (a bin on every day in the Log)
+    // v: 'add' opens the manual reading form (grid out: a day's kWh), 'edit' / 'del' turn on edit / delete mode
+    // (a pencil / bin on every day in the Log)
     async _openFormPin(v) {
-      if (!v) v = this._c.out ? 'del' : 'add';
+      if (!v) v = 'add';
       if (this._hasPin && !this._pinOk) {
         const p = this.$('fpin'), pin = p ? p.value : '';
         let ok = false; try { ok = (await this._ws('verify_pin', { pin })).ok; } catch (e) { }
         if (!ok) { this._toast(t('Wrong PIN')); if (p) { p.value = ''; p.focus(); } return; }
         this._pinOk = pin;
       }
-      this._ui.formPin = false;
-      if (v === 'del') {
-        this._ui.delMode = true; this._ui.formOpen = false; this._renderForm(); this._renderLog();
-        this._scrollTo(this.$('log'));
-        return;
-      }
-      this._ui.delMode = false; this._ui.formOpen = true; this._renderForm(); this._renderLog();
-      setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 100);
+      const out = this._c.out;
+      Object.assign(this._ui, { formPin: false, delMode: v === 'del', editMode: v === 'edit', editDay: null, outAdd: v === 'add' && out, formOpen: v === 'add' && !out });
+      this._renderForm(); this._renderLog();
+      if (v === 'del' || v === 'edit') { this._scrollTo(this.$('log')); return; }
+      setTimeout(() => { const i = this.$(out ? 'oa-o' : 'f-t'); if (i) i.focus(); }, 100);
+    }
+    // Log > Edit: save one day's manual value (it wins over Moj Elektro until the day is deleted)
+    async _saveEdit(d) {
+      const out = this._c.out, label = `${fdate(d)} ${pd(d).getFullYear()}`, val = id => { const i = this.$(id); return i ? num(i.value) : null; };
+      let values;
+      if (out) values = { o: val('ed-o') };
+      else if (this.$('ed-vt')) values = { vt: val('ed-vt'), mt: val('ed-mt') };
+      else values = { u: val('ed-u') };
+      if (Object.values(values).some(x => x == null || x < 0)) { this._toast(t('Enter a number of kWh')); return; }
+      try {
+        await this._ws('save_edit', { day: d, grid: out ? 'out' : 'in', values, pin: this._pinOk || '' });
+        this._ui.editDay = null; this._renderLog(); this._toast(t('Saved: {0}', label));
+      } catch (e) { this._toast(e && e.code === 'wrong_pin' ? t('Wrong PIN') : t('Could not save to Home Assistant — {0}', e && e.message || e)); }
+    }
+    // Grid out > Add: a day's kWh sent to the grid, kept like an edit
+    async _saveOutAdd() {
+      const d = this.$('oa-d') && this.$('oa-d').value, o = this.$('oa-o') ? num(this.$('oa-o').value) : null;
+      if (!d) { this._toast(t('Pick a date')); return; }
+      if (o == null || o < 0) { this._toast(t('Enter a number of kWh')); return; }
+      try {
+        await this._ws('save_edit', { day: d, grid: 'out', values: { o }, pin: this._pinOk || '' });
+        this.$('oa-o').value = ''; this._toast(t('Saved: {0}', `${fdate(d)} ${pd(d).getFullYear()}`));
+      } catch (e) { this._toast(e && e.code === 'wrong_pin' ? t('Wrong PIN') : t('Could not save to Home Assistant — {0}', e && e.message || e)); }
     }
     // Delete one day of the log shown: a Moj Elektro day (grid in or grid out only, from every card) or a
     // manual reading. The integration checks the PIN.
@@ -1537,7 +1627,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
     }
     _export() {
       const s = this._snap || {};
-      const blob = new Blob([JSON.stringify({ app: 'daily_energy_mojelektro', version: s.version, days: s.days || {}, manual: s.manual || {}, settings: s.settings || {} }, null, 1)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ app: 'daily_energy_mojelektro', version: s.version, days: s.days || {}, manual: s.manual || {}, edits: s.edits || {}, settings: s.settings || {} }, null, 1)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `daily-energy-${iso(new Date())}.json`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     }
