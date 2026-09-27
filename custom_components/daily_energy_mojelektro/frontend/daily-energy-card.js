@@ -153,9 +153,11 @@
     // tiles
     'Daily average · this month': 'Dnevno povprečje · ta mesec',
     'Peak {0} kWh on {1}': 'Konica porabe {0} kWh, {1}',
+    'Peak sent out {0} kWh on {1}': 'Konica oddaje {0} kWh, {1}',
     'This week': 'Ta teden',
     'Last week {0} kWh': 'Prejšnji teden {0} kWh',
     'Projected {0} kWh': 'Predvidena poraba {0} kWh',
+    'Projected sent out {0} kWh': 'Predvidena oddaja {0} kWh',
     'Year {0}': 'Leto {0}',
     // charts
     'avg {0}': 'povpr. {0}',
@@ -169,6 +171,8 @@
     'per period': 'Na obdobje',
     'Highest': 'Največja poraba',
     'Lowest': 'Najnižja poraba',
+    'Highest sent out': 'Največja oddaja',
+    'Lowest sent out': 'Najnižja oddaja',
     'W{0}': 'T{0}',
     'Week {0} · {1} – {2}': 'Teden {0} · {1} – {2}',
     'Consumption': 'Poraba',
@@ -570,8 +574,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .wk-t{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
 .wk-b{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:96px}
 .wk-c{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;cursor:pointer}
-.wk-c i{width:100%;max-width:30px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,rgba(161,139,255,.9),rgba(79,141,255,.35));transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*50ms)}
-.wk-c.we i{background:linear-gradient(180deg,rgba(255,200,87,.95),rgba(255,122,61,.35))}
+.wk-c i{width:100%;max-width:30px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#ff7ab8,rgba(192,123,255,.35));transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*50ms)}
+:host([out]) .wk-c i{background:linear-gradient(180deg,#e8ff6a,rgba(62,240,168,.35))}
 .wk-c span{font-size:11px;color:var(--dim)}
 /* tariff */
 .tariff-b{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:30px;align-items:center}
@@ -1118,9 +1122,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const cost = o => { const c = this._cost(o); return c != null ? ` · <b>${this._money(c)}</b>` : ''; };
       const tile = (i, a, b, lab, v, sub, sp, id) => `<section class="card kpi" style="--a:${a};--b:${b};animation-delay:${i * 70}ms"><div class="kpi-t"><span class="kpi-i">${ic(id)}</span>${lab}</div><div class="kpi-v">${v == null ? '—' : fk(v)}<small>kWh</small></div><div class="kpi-s">${sub}</div>${this._spark(sp, a, b, 'sp' + i)}</section>`;
       this.$('kpis').innerHTML =
-        tile(0, '#3ef0a8', '#3ee6ff', t('Daily average · this month'), avg, peak ? t('Peak {0} kWh on {1}', `<b>${fk(peak.v)}</b>`, fshort(peak.k)) : MONL[d.getMonth()], dm, 'avg') +
+        tile(0, '#3ef0a8', '#3ee6ff', t('Daily average · this month'), avg, peak ? t(this._c.out ? 'Peak sent out {0} kWh on {1}' : 'Peak {0} kWh on {1}', `<b>${fk(peak.v)}</b>`, fshort(peak.k)) : MONL[d.getMonth()], dm, 'avg') +
         tile(1, '#3ee6ff', '#5b8cff', t('This week'), wk.n ? wk.t : null, `${t('Last week {0} kWh', `<b>${lw.n ? fk(lw.t) : '—'}</b>`)}${cost(wk)}`, wks, 'week') +
-        tile(2, '#8f7dff', '#c07bff', `${MONL[d.getMonth()]}${mo.me ? ' · Moj Elektro' : ''}`, mo.n ? mo.t : null, `${t('Projected {0} kWh', `<b>${proj == null ? '—' : fk(proj)}</b>`)}${cost(mo)}`, mos, 'month') +
+        tile(2, '#8f7dff', '#c07bff', `${MONL[d.getMonth()]}${mo.me ? ' · Moj Elektro' : ''}`, mo.n ? mo.t : null, `${t(this._c.out ? 'Projected sent out {0} kWh' : 'Projected {0} kWh', `<b>${proj == null ? '—' : fk(proj)}</b>`)}${cost(mo)}`, mos, 'month') +
         tile(3, '#ffc857', '#ff7a3d', t('Year {0}', d.getFullYear()), yr.n ? yr.t : null, `${MON[0]} – ${MON[d.getMonth()]}${cost(yr)}`, mos.slice(-(d.getMonth() + 1)), 'year');
     }
     _spark(vals, a, b, id) {
@@ -1173,7 +1177,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const hi = wd.reduce((a, b) => V(b) > V(a) ? b : a), lo = wd.reduce((a, b) => V(b) < V(a) ? b : a);
       const st = (l, v, sub) => `<div class="st"><div class="st-l">${l}</div><div class="st-v">${fk(v)}<small>kWh</small></div><div class="st-s">${sub}</div></div>`;
       const c = bk.reduce((a, b) => { const x = this._cost(b); return x == null ? a : (a || 0) + x; }, null);
-      return `<div class="stats">${st(t('Total'), tot, c != null ? '≈ ' + this._money(c) : t('{0} periods', wd.length))}${st(t('Average'), av, t('per period'))}${st(t('Highest'), V(hi), hi.title)}${st(t('Lowest'), V(lo), lo.title)}</div>`;
+      return `<div class="stats">${st(t('Total'), tot, c != null ? '≈ ' + this._money(c) : t('{0} periods', wd.length))}${st(t('Average'), av, t('per period'))}${st(t(this._c.out ? 'Highest sent out' : 'Highest'), V(hi), hi.title)}${st(t(this._c.out ? 'Lowest sent out' : 'Lowest'), V(lo), lo.title)}</div>`;
     }
     _tabs(cur, act, opts) { return `<div class="seg-tabs">${opts.map(([k, l]) => `<button class="${k === cur ? 'on' : ''}" data-act="${act}" data-v="${k}">${t(l)}</button>`).join('')}</div>`; }
     _renderChart() {
@@ -1323,7 +1327,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const del = !this._demo && !!this._ui.delMode, act = !this._demo && (E.length > 0 || del);
       const bin = (d, k) => del ? `<button class="rb d" data-act="del-day" data-d="${d}" data-k="${k}" title="${t('Delete')}">${ic('del')}</button>` : '';
       const rows = [];
-      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">${nDays(1)}</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">${t('15-min data · VT / MT tomorrow')}</td>` : `<td class="m">—</td><td class="m">${t('tariff blocks only')}</td>`}<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>${act ? `<td>${bin(m.d, 'me')}</td>` : ''}</tr>`]);
+      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">${nDays(1)}</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">${t('15-min data · VT / MT tomorrow')}</td>` : `<td class="m">—</td><td class="m">${t('tariff blocks only')}</td>`}${out ? '' : `<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>`}${act ? `<td>${bin(m.d, 'me')}</td>` : ''}</tr>`]);
       for (let i = E.length - 1; i >= 0; i--) {
         const e = E[i], p = E[i - 1];
         const n = p ? diffD(p.d, e.d) : 0, dt = p ? (e.t - p.t) * s.mult : null;
@@ -1336,7 +1340,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const first = [...E.map(e => e.d), ...ME.map(m => m.d)].sort()[0];
       const sub = [E.length ? count(E.length, 'manual reading', 'manual readings', 'ročni odčitki') : '', ME.length ? (out ? count(ME.length, 'Moj Elektro grid-out day', 'Moj Elektro grid-out days', 'dnevi oddaje Moj Elektro') : count(ME.length, 'Moj Elektro day', 'Moj Elektro days', 'dnevi Moj Elektro')) : ''].filter(Boolean).join(' · ');
       el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div><div class="row">${del ? `<button class="btn sm warn" data-act="del-done">${t('Done')}</button>` : ''}<button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div></div>
-<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th><th>${t('Span')}</th><th>VT kWh</th><th>MT kWh</th>${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
+<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th><th>${t('Span')}</th>${out ? '' : '<th>VT kWh</th><th>MT kWh</th>'}${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
 ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${this._ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
     }
 
