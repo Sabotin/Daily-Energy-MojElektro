@@ -26,6 +26,7 @@ def async_register(hass: HomeAssistant) -> None:
         ws_save_settings,
         ws_save_manual,
         ws_clear_all,
+        ws_delete_day,
         ws_import_csv,
         ws_import_backup,
         ws_check_updates,
@@ -137,6 +138,28 @@ def ws_clear_all(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
         return
     manager.clear_all()
     connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/delete_day",
+        ENTRY: str,
+        vol.Required("day"): cv.date,
+        vol.Required("grid"): vol.In(["in", "out"]),
+        vol.Optional("pin", default=""): str,
+    }
+)
+@callback
+def ws_delete_day(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Log > delete one day, grid in or grid out only (the PIN when one is set)."""
+    manager = _manager(hass, connection, msg)
+    if manager is None:
+        return
+    if not manager.check_pin(msg["pin"]):
+        connection.send_error(msg["id"], "wrong_pin", "Wrong PIN")
+        return
+    deleted = manager.delete_day(msg["day"].isoformat(), msg["grid"] == "out")
+    connection.send_result(msg["id"], {"deleted": deleted})
 
 
 @websocket_api.websocket_command(

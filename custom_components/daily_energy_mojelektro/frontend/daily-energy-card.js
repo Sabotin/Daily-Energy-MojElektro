@@ -111,6 +111,14 @@
     'Optional — Moj Elektro now logs your usage automatically every day': 'Opcijsko - vaša poraba se samodejno beleži vsak dan.',
     'Open': 'Odpri',
     'Cancel': 'Prekliči',
+    // adding a manual reading or deleting days from the log
+    'Manual meter reading or delete': 'Ročni vnos števca ali izbris',
+    'Add': 'Dodaj',
+    'Remove entry': 'Odstrani vnos',
+    'Delete mode: tap the bin next to a day in the Log.': 'Način brisanja: v dnevniku tapnite koš ob dnevu.',
+    'Done': 'Končano',
+    'Deleted: {0}': 'Izbrisano: {0}',
+    'Nothing to delete for {0}': 'Za {0} ni ničesar za izbris',
     'Close': 'Zapri',
     'Log a reading': 'Vnesi odčitek',
     'Type exactly what your energy counter shows': 'Vpišite točno to, kar kaže vaš števec',
@@ -378,7 +386,7 @@
 font-family:Outfit,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--txt);-webkit-font-smoothing:antialiased}
 *{box-sizing:border-box}
 .ic{width:16px;height:16px;flex:none}
-.root{position:relative;min-height:calc(100vh - var(--header-height,56px));overflow:hidden;
+.root{position:relative;min-height:calc(100vh - var(--header-height,56px));overflow:hidden;overflow:clip;
 background:radial-gradient(1100px 620px at 8% -8%,rgba(62,230,255,.12),transparent 60%),radial-gradient(900px 640px at 100% 0%,rgba(123,107,255,.16),transparent 62%),radial-gradient(1000px 700px at 50% 115%,rgba(255,122,61,.08),transparent 60%),var(--bg);
 padding:26px clamp(14px,2.6vw,40px) 56px}
 .root:before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 25%,transparent 75%);mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 25%,transparent 75%);opacity:.55}
@@ -931,8 +939,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const pr = this.$('prof'), fm = this.$('form'), out = this._c.out;
       this.toggleAttribute('out', out);
       pr.classList.toggle('form', !this._me); pr.classList.toggle('prof', !!this._me);
-      // grid out has no VT / MT split card, tariff blocks or manual readings
-      fm.style.display = this._me && !out ? '' : 'none';
+      // grid out has no VT / MT split card, tariff blocks or manual readings (its box only offers deleting days)
+      fm.style.display = this._me ? '' : 'none';
       this.$('blocks').style.display = this._me && !out ? '' : 'none';
       this.$('tariff').style.display = out ? 'none' : '';
       this._renderHdr(); this._renderBanner(); this._renderHero(); if (!(remote && this._dirty)) this._renderForm(); this._renderKpis();
@@ -1039,10 +1047,16 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const tu = usage ? 'kWh' : u;
       this._dirty = false;
       const host = this.$(this._me ? 'form' : 'prof');
-      if (this._me && !this._ui.formOpen) {
-        host.innerHTML = `<div class="fold"><div><div class="h-t">${t('Manual meter reading')}</div><div class="h-s">${t('Optional — Moj Elektro now logs your usage automatically every day')}</div></div>${this._ui.formPin
-          ? `<div class="row" style="align-items:center"><input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN"><button class="btn sm gh" data-act="form-pin-ok">${ic('edit')}${t('Open')}</button><button class="btn sm gh" data-act="form-pin-no">${t('Cancel')}</button></div>`
-          : `<button class="btn sm gh" data-act="form-toggle">${ic('edit')}${t('Open')}</button>`}</div>`;
+      // Moj Elektro mode: "Open" asks for the PIN (when one is set), then: add a manual reading, or delete days
+      // in the Log. Grid out has no manual readings, so there only deleting is offered.
+      const out = this._c.out;
+      if (this._me && (!this._ui.formOpen || out)) {
+        const acts = this._ui.delMode
+          ? `<div class="row" style="align-items:center"><span class="h-s" style="margin:0">${t('Delete mode: tap the bin next to a day in the Log.')}</span><button class="btn sm gh" data-act="del-done">${t('Done')}</button></div>`
+          : this._ui.formPin
+            ? `<div class="row" style="align-items:center">${this._hasPin && !this._pinOk ? `<input class="in pin" id="fpin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="PIN">` : ''}${out ? '' : `<button class="btn sm gh" data-act="form-pin-ok" data-v="add">${ic('edit')}${t('Add')}</button>`}<button class="btn sm gh" data-act="form-pin-ok" data-v="del">${ic('del')}${t('Remove entry')}</button><button class="btn sm gh" data-act="form-pin-no">${t('Cancel')}</button></div>`
+            : `<button class="btn sm gh" data-act="form-toggle">${ic('edit')}${t('Open')}</button>`;
+        host.innerHTML = `<div class="fold"><div><div class="h-t">${t('Manual meter reading or delete')}</div><div class="h-s">${t('Optional — Moj Elektro now logs your usage automatically every day')}</div></div>${acts}</div>`;
         return;
       }
       host.innerHTML = `<div class="ch-h" style="margin-bottom:4px"><div><div class="h-t">${t(this._me ? 'Manual meter reading' : 'Log a reading')}</div><div class="h-s">${t('Type exactly what your energy counter shows')}</div></div><div class="row" style="align-items:center"><span class="badge ${ex ? 'ed' : ''}" id="f-badge">${t(ex ? (d === today ? 'Logged today ✓' : 'Editing') : 'New entry')}</span>${this._me ? `<button class="btn sm gh" data-act="form-toggle">${t('Close')}</button>` : ''}</div></div>
@@ -1305,20 +1319,23 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const { E, s, out } = this._c;
       const el = this.$('log'), ME = this._demo ? [] : ((out ? this._data.meOut : this._data.me) || []);
       if (!E.length && !ME.length) { el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Reading log')}</div><div class="h-s">${t("Every counter reading you've entered")}</div></div></div><div class="empty" style="min-height:120px">${ic('meter')}<span>${t('No readings yet')}</span></div>`; return; }
-      const rows = [], act = !this._demo && E.length > 0;
-      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">${nDays(1)}</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">${t('15-min data · VT / MT tomorrow')}</td>` : `<td class="m">—</td><td class="m">${t('tariff blocks only')}</td>`}<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>${act ? '<td></td>' : ''}</tr>`]);
+      // delete mode (Manual meter reading or delete > Remove entry): a bin on every day of the log shown
+      const del = !this._demo && !!this._ui.delMode, act = !this._demo && (E.length > 0 || del);
+      const bin = (d, k) => del ? `<button class="rb d" data-act="del-day" data-d="${d}" data-k="${k}" title="${t('Delete')}">${ic('del')}</button>` : '';
+      const rows = [];
+      for (const m of ME) rows.push([m.d + 'b', `<tr class="me"><td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>Moj Elektro</td>${typeof m.u === 'number' ? `<td class="use">+${fk(m.u)} kWh</td><td class="m">${nDays(1)}</td>` : Array.isArray(m.b) && m.b.some(x => +x > 0) ? `<td class="use">+${fk(m.b.reduce((a, x) => a + (+x || 0), 0))} kWh</td><td class="m">${t('15-min data · VT / MT tomorrow')}</td>` : `<td class="m">—</td><td class="m">${t('tariff blocks only')}</td>`}<td class="vtc">${m.vt != null ? fk(+m.vt) : '<span class="m">—</span>'}</td><td class="mtc">${m.mt != null ? fk(+m.mt) : '<span class="m">—</span>'}</td>${act ? `<td>${bin(m.d, 'me')}</td>` : ''}</tr>`]);
       for (let i = E.length - 1; i >= 0; i--) {
         const e = E[i], p = E[i - 1];
         const n = p ? diffD(p.d, e.d) : 0, dt = p ? (e.t - p.t) * s.mult : null;
         const vtu = s.tmode === 'usage' ? e.vt : (p && e.vt != null && p.vt != null ? (e.vt - p.vt) * s.mult : null);
         const mtu = s.tmode === 'usage' ? e.mt : (p && e.mt != null && p.mt != null ? (e.mt - p.mt) * s.mult : null);
-        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${nDays(n)} · ${fk(dt / n)}/${LANG === 'sl' ? 'dan' : 'day'}` : n === 1 ? nDays(1) : ''}</td><td class="vtc">${vtu == null ? '<span class="m">—</span>' : fk(vtu)}</td><td class="mtc">${mtu == null ? '<span class="m">—</span>' : fk(mtu)}</td>${act ? `<td><button class="rb" data-act="edit" data-d="${e.d}" title="${t('Edit')}">${ic('edit')}</button></td>` : ''}</tr>`]);
+        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${nDays(n)} · ${fk(dt / n)}/${LANG === 'sl' ? 'dan' : 'day'}` : n === 1 ? nDays(1) : ''}</td><td class="vtc">${vtu == null ? '<span class="m">—</span>' : fk(vtu)}</td><td class="mtc">${mtu == null ? '<span class="m">—</span>' : fk(mtu)}</td>${act ? `<td>${del ? '' : `<button class="rb" data-act="edit" data-d="${e.d}" title="${t('Edit')}">${ic('edit')}</button>`}${bin(e.d, 'manual')}</td>` : ''}</tr>`]);
       }
       rows.sort((a, b) => a[0] < b[0] ? 1 : -1);
       const show = (this._ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
       const first = [...E.map(e => e.d), ...ME.map(m => m.d)].sort()[0];
       const sub = [E.length ? count(E.length, 'manual reading', 'manual readings', 'ročni odčitki') : '', ME.length ? (out ? count(ME.length, 'Moj Elektro grid-out day', 'Moj Elektro grid-out days', 'dnevi oddaje Moj Elektro') : count(ME.length, 'Moj Elektro day', 'Moj Elektro days', 'dnevi Moj Elektro')) : ''].filter(Boolean).join(' · ');
-      el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div><div class="row"><button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div></div>
+      el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div><div class="row">${del ? `<button class="btn sm warn" data-act="del-done">${t('Done')}</button>` : ''}<button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div></div>
 <div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th><th>${t('Span')}</th><th>VT kWh</th><th>MT kWh</th>${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
 ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${this._ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
     }
@@ -1400,18 +1417,20 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'brange') { this._ui.brange = t.dataset.v; this._renderBlocks(); }
       else if (a === 'form-toggle') {
-        // when a PIN is set (integration options) the manual form asks for it every time it is opened
-        if (this._me && !this._ui.formOpen && this._hasPin) { this._fd = null; this._askFormPin(); }
+        // Moj Elektro mode: "Open" offers Add / Remove entry (behind the PIN when one is set); "Close" closes the form
+        if (this._me && !this._ui.formOpen) { this._fd = null; this._askFormPin(); }
         else { this._ui.formOpen = !this._ui.formOpen; this._fd = null; this._renderForm(); }
       }
-      else if (a === 'form-pin-ok') this._openFormPin();
-      else if (a === 'form-pin-no') { this._ui.formPin = false; this._fd = null; this._renderForm(); }
+      else if (a === 'form-pin-ok') this._openFormPin(t.dataset.v);
+      else if (a === 'form-pin-no') { this._ui.formPin = false; this._fd = null; this._pinOk = ''; this._renderForm(); }
+      else if (a === 'del-done') { this._ui.delMode = false; this._pinOk = ''; this._renderForm(); this._renderLog(); }
+      else if (a === 'del-day') this._delDay(t.dataset.d, t.dataset.k);
       else if (a === 'save') this._saveForm();
       else if (a === 'new') { this._fd = null; this._renderForm(); }
       else if (a === 'edit') {
         this._fd = t.dataset.d;
-        if (this._me && !this._ui.formOpen && this._hasPin) { this._askFormPin(); this.$('form').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        else { this._ui.formOpen = true; this._renderForm(); this.$('form').scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 400); }
+        if (this._me && !this._ui.formOpen && this._hasPin) { this._askFormPin(); this._scrollTo(this.$('form'), 'center'); }
+        else { this._ui.formOpen = true; this._renderForm(); this._scrollTo(this.$('form'), 'center'); setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 400); }
       }
       else if (a === 'all') { this._ui.all = !this._ui.all; this._renderLog(); }
       else if (a === 'update') this._checkUpdates();
@@ -1439,14 +1458,52 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'clear-no') { this._ui.pin = false; this._renderDrawer(); }
       else if (a === 'clear-ok') this._clearAll();
     }
-    _askFormPin() { this._ui.formPin = true; this._renderForm(); setTimeout(() => this.$('fpin') && this.$('fpin').focus(), 50); }
+    // Scroll the page's real scroll area (Home Assistant's view, or the window) to an element. scrollIntoView
+    // would also scroll the dashboard's clipped frame, which cannot be scrolled back by hand.
+    _scrollTo(el, where = 'start') {
+      if (!el) return;
+      let n = this, sc = null;
+      while (n && !sc) {
+        n = n.parentNode instanceof ShadowRoot ? n.parentNode.host : n.parentNode;
+        if (n && n.nodeType === 1) { const o = getComputedStyle(n).overflowY; if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) sc = n; }
+      }
+      const r = el.getBoundingClientRect(), box = sc ? sc.getBoundingClientRect() : { top: 0, height: innerHeight };
+      const top = where === 'center' ? r.top - box.top - (box.height - r.height) / 2 : r.top - box.top - 16;
+      (sc || window).scrollBy({ top, behavior: this._lite ? 'auto' : 'smooth' });
+    }
+    // the PIN is asked every time the box is opened: a PIN entered before is forgotten here
+    _askFormPin() { this._pinOk = ''; this._ui.formPin = true; this._renderForm(); setTimeout(() => this.$('fpin') && this.$('fpin').focus(), 50); }
     // The PIN lives in the integration options and is checked by Home Assistant, never in this file.
-    async _openFormPin() {
-      const p = this.$('fpin'), pin = p ? p.value : '';
-      let ok = false; try { ok = (await this._ws('verify_pin', { pin })).ok; } catch (e) { }
-      if (!ok) { this._toast(t('Wrong PIN')); if (p) { p.value = ''; p.focus(); } return; }
-      this._pinOk = pin; this._ui.formPin = false; this._ui.formOpen = true; this._renderForm();
+    // v: 'add' opens the manual reading form, 'del' turns on delete mode (a bin on every day in the Log)
+    async _openFormPin(v) {
+      if (!v) v = this._c.out ? 'del' : 'add';
+      if (this._hasPin && !this._pinOk) {
+        const p = this.$('fpin'), pin = p ? p.value : '';
+        let ok = false; try { ok = (await this._ws('verify_pin', { pin })).ok; } catch (e) { }
+        if (!ok) { this._toast(t('Wrong PIN')); if (p) { p.value = ''; p.focus(); } return; }
+        this._pinOk = pin;
+      }
+      this._ui.formPin = false;
+      if (v === 'del') {
+        this._ui.delMode = true; this._ui.formOpen = false; this._renderForm(); this._renderLog();
+        this._scrollTo(this.$('log'));
+        return;
+      }
+      this._ui.delMode = false; this._ui.formOpen = true; this._renderForm(); this._renderLog();
       setTimeout(() => this.$('f-t') && this.$('f-t').focus(), 100);
+    }
+    // Delete one day of the log shown: a Moj Elektro day (grid in or grid out only, from every card) or a
+    // manual reading. The integration checks the PIN.
+    async _delDay(d, k) {
+      const out = this._c.out, label = `${fdate(d)} ${pd(d).getFullYear()}`;
+      try {
+        if (k === 'manual') {
+          this._data.entries = this._data.entries.filter(x => x.d !== d); this._renderAll();
+          await this._commit({ del: [d] }); this._toast(t('Deleted: {0}', label)); return;
+        }
+        const r = await this._ws('delete_day', { day: d, grid: out ? 'out' : 'in', pin: this._pinOk || '' });
+        this._toast(r && r.deleted ? t('Deleted: {0}', label) : t('Nothing to delete for {0}', label));
+      } catch (e) { this._toast(e && e.code === 'wrong_pin' ? t('Wrong PIN') : t('Could not delete — {0}', e && e.message || e)); }
     }
     async _clearAll(given) {
       const p = this.$('pin'), pin = given != null ? given : (p ? p.value : '');
