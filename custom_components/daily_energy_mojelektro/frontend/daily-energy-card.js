@@ -266,18 +266,12 @@
     'Language': 'Jezik',
     'Automatic': 'Samodejno',
     'Follows the Home Assistant language.': 'Sledi jeziku Home Assistanta.',
-    'This device': 'Ta naprava',
-    'Light on tablets and on devices that ask for reduced motion.': 'Lahek način na tablicah in napravah, ki zahtevajo manj animacij.',
-    'Light': 'Lahek',
-    'No animations, blur or glow — for slow tablets and wall panels.': 'Brez animacij, zameglitve in sija — za počasne tablice in stenske zaslone.',
-    'Full': 'Poln',
-    'All animations and effects.': 'Vse animacije in učinki.',
-    'Now: {0}': 'Zdaj: {0}',
-    'light': 'lahek',
-    'full': 'poln',
-    ' — automatic': ' — samodejno',
-    ' · signed in as {0}': ' · prijavljeni kot {0}',
-    '. Saved on this device only.': '. Shranjeno samo na tej napravi.',
+    'Display mode': 'Način prikaza',
+    'Detects the device and adapts to it automatically.': 'Zaznaj napravo in se ji samodejno prilagodi.',
+    'Minimal': 'Minimalistično',
+    'No animations, blur or shadows, for slower devices.': 'Brez animacij, zameglitev in senc, za počasnejše naprave.',
+    'Full': 'Popolno',
+    'All animations and visual effects enabled.': 'Omogočene vse animacije in vizualni učinki.',
     'Moj Elektro history': 'Zgodovina Moj Elektro',
     "Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks){0}. Days already in the log are updated with Moj Elektro's numbers.": 'Izbrane dni samodejno uvozi iz Moj Elektro: dnevno porabo, VT/MT, mesečne seštevke, omrežninske bloke in 15-minutne podatke{0}. (Obstoječi podatki se posodobijo.)',
     ', for grid in and grid out': ' za odjem in oddajo',
@@ -1331,10 +1325,12 @@ ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">
 
     /* ----- settings drawer ----- */
     _renderDrawer() {
-      const s = this._c.s, open = this._dwOpen, mode = this._mode(), lang = this._langPref(), user = this._hass && this._hass.user && this._hass.user.name;
+      const s = this._c.s, open = this._dwOpen, mode = this._mode(), lang = this._langPref();
       const opt = (k, v, b, d) => `<div class="opt${s[k] === v ? ' on' : ''}" data-act="set" data-k="${k}" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`;
       this.$('dw').innerHTML = `<div class="${open ? 'dw-open' : ''}"><div class="dw-bg" data-act="close"></div><aside class="dw">
 <div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Settings')}</h3><button class="ibtn" data-act="close">${ic('x')}</button></div>
+<div class="dw-s"><div class="dw-t">${t('Display mode')}</div>
+${[['auto', 'Automatic', 'Detects the device and adapts to it automatically.'], ['light', 'Minimal', 'No animations, blur or shadows, for slower devices.'], ['full', 'Full', 'All animations and visual effects enabled.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}</div>
 <div class="dw-s"><div class="dw-t">${t('Language')}</div>
 ${[['auto', t('Automatic'), t('Follows the Home Assistant language.')], ['en', 'English', ''], ['sl', 'Slovenščina', '']].map(([v, b, d]) => `<div class="opt${lang === v ? ' on' : ''}" data-act="lang" data-v="${v}"><i></i><div><b>${b}</b>${d ? `<span>${d}</span>` : ''}</div></div>`).join('')}</div>
 ${this._me && this._sync === 'shared' && !this._demo ? `<div class="dw-s"><div class="dw-t">${t('Grid')}</div>
@@ -1346,9 +1342,6 @@ ${opt('mult', 1, 'Plain kWh', 'The counter already shows kWh (e.g. 120622 or 12.
 <div class="dw-s"><div class="dw-t">${t('Energija VT / MT input')}</div>
 ${opt('tmode', 'reading', 'Counter readings', 'Type the VT and MT registers from the meter; usage is the difference between readings.')}
 ${opt('tmode', 'usage', 'kWh used', 'Type how many kWh were used on VT and MT for that day.')}</div>`}
-<div class="dw-s"><div class="dw-t">${t('This device')}</div>
-${[['auto', 'Automatic', 'Light on tablets and on devices that ask for reduced motion.'], ['light', 'Light', 'No animations, blur or glow — for slow tablets and wall panels.'], ['full', 'Full', 'All animations and effects.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}
-<div class="dw-note">${t('Now: {0}', `<b>${t(this._lite ? 'light' : 'full')}</b>`)}${mode === 'auto' ? t(' — automatic') : ''}${user ? t(' · signed in as {0}', `<b>${esc(user)}</b>`) : ''}${t('. Saved on this device only.')}</div></div>
 ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">${t('Moj Elektro history')}</div>
 <div class="dw-note">${t("Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks){0}. Days already in the log are updated with Moj Elektro's numbers.", this._gridBoth() ? t(', for grid in and grid out') : '')}</div>
 <div class="two"><label class="fld"><span>${t('From')}</span><input class="in" type="date" id="imp-from" value="${this._ui.impFrom}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label>
