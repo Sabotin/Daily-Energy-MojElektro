@@ -426,6 +426,8 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .hdr h1 span{background:linear-gradient(90deg,#fff,#b9c4ff 60%,var(--c1));-webkit-background-clip:text;background-clip:text;color:transparent}
 .hdr .sub{color:var(--mut);font-size:14px;margin-top:4px;letter-spacing:.01em}
 .hdr .sp{flex:1}
+/* phone: logo, title, update and settings stay on one row; the Grid in / Grid out switch gets its own row below */
+@media (max-width:640px){.hdr{gap:12px}.hdr .logo{width:44px;height:44px;border-radius:14px}.hdr .ttl{flex:1;min-width:0}.hdr .sub{font-size:13px}.hdr .sp{display:none}.hdr .ibtn{width:40px;height:40px;flex:none}.hdr .gsw{order:5;flex:1 1 100%}.hdr .gsw button{flex:1;justify-content:center}.hdr .chips{order:6}}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--mut);white-space:nowrap}
 .chip i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
 .chip.warn i{background:var(--vt1);box-shadow:0 0 12px var(--vt1)}
@@ -1024,7 +1026,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const d = new Date(), c = this._c || {};
       // only warnings get a chip; normal operation keeps the header clean
       const chip = this._demo ? `<span class="chip warn"><i></i>${t('Demo preview')}</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>${t('Daily Energy integration not set up')}</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? `<div class="gsw">${[['in', 'bolt', 'Grid in'], ['out', 'sun', 'Grid out']].map(([v, i, l]) => `<button class="${v}${(this._isOut() ? 'out' : 'in') === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`).join('')}</div>` : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
+      return `<div class="logo">${ic('bolt')}</div><div class="ttl"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? `<div class="gsw">${[['in', 'bolt', 'Grid in'], ['out', 'sun', 'Grid out']].map(([v, i, l]) => `<button class="${v}${(this._isOut() ? 'out' : 'in') === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`).join('')}</div>` : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
     _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); }
     // Update button: asks the Moj Elektro API for new data now (the integration also checks every hour by itself).
