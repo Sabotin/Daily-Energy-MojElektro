@@ -65,7 +65,7 @@ class DailyEnergyManager:
         self.panel_url: str | None = None
         self._store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
         # days: {date: {u, vt, mt, mo, mvt, mmt, b} + grid out {o, ovt, omt, omo, omvt, ommt}},
-        # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {o}} manual values that fetching never
+        # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {b: [5 blocks]}, and/or {o}} manual values that fetching never
         # overwrites, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched}
         self.data: dict = {
@@ -469,10 +469,13 @@ class DailyEnergyManager:
     def save_edit(self, day: str, grid_out: bool, values: dict) -> None:
         """Log > Edit or Add (grid out): a manual value for one day. It is kept apart from Moj Elektro's data, so
         fetching never overwrites it; only deleting the day removes it. Grid in: {vt, mt} (the day total is their
-        sum) or {u} for a day with only 15-minute data; grid out: {o}."""
+        sum), {u} for a day with only 15-minute data, or {b} (the five tariff blocks); grid out: {o}."""
         edit = dict(self.data["edits"].get(day, {}))
         if grid_out:
             edit["o"] = round(float(values["o"]), 3)
+        elif values.get("b") is not None:
+            # Časovni bloki > Edit: the five tariff blocks of the day, next to any edited day total
+            edit["b"] = [round(float(x), 3) for x in values["b"]]
         else:
             for key in ("u", "vt", "mt"):
                 edit.pop(key, None)

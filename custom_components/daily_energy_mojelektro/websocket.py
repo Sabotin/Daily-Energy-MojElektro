@@ -177,6 +177,7 @@ KWH = vol.All(vol.Coerce(float), vol.Range(min=0, max=100000))
             vol.Optional("vt"): KWH,
             vol.Optional("mt"): KWH,
             vol.Optional("o"): KWH,
+            vol.Optional("b"): vol.All([KWH], vol.Length(min=5, max=5)),
         },
         vol.Optional("pin", default=""): str,
     }
@@ -191,9 +192,9 @@ def ws_save_edit(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
         connection.send_error(msg["id"], "wrong_pin", "Wrong PIN")
         return
     values, out = msg["values"], msg["grid"] == "out"
-    complete = "o" in values if out else ("vt" in values and "mt" in values) or "u" in values
+    complete = "o" in values if out else ("vt" in values and "mt" in values) or "u" in values or "b" in values
     if not complete:
-        connection.send_error(msg["id"], "invalid_format", "Grid out needs o; grid in needs vt and mt, or u")
+        connection.send_error(msg["id"], "invalid_format", "Grid out needs o; grid in needs vt and mt, u, or b")
         return
     manager.save_edit(msg["day"].isoformat(), out, values)
     connection.send_result(msg["id"])
