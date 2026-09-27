@@ -431,6 +431,26 @@ class DailyEnergyManager:
         self._changed()
 
     @callback
+    def delete_day(self, day: str, grid_out: bool = False) -> bool:
+        """Log > delete one day: its grid-in data (usage, VT / MT, month totals, tariff blocks and 15-minute data)
+        or its grid-out data; the other direction and manual readings stay. Returns whether anything was removed."""
+        direction = logic.GRID_OUT if grid_out else logic.GRID_IN
+        keys = set(direction["keys"].values()) | (set() if grid_out else {"b"})
+        q_key, miss_key = ("q15o", "q15o_miss") if grid_out else ("q15", "q15_miss")
+        rec = self.data["days"].get(day, {})
+        rest = {k: v for k, v in rec.items() if k not in keys}
+        found = rest != rec or day in self.data[q_key]
+        if rest:
+            self.data["days"][day] = rest
+        else:
+            self.data["days"].pop(day, None)
+        self.data[q_key].pop(day, None)
+        self.data[miss_key].pop(day, None)
+        if found:
+            self._changed()
+        return found
+
+    @callback
     def apply_import(self, parsed: dict, missing: dict[str, int] | None = None) -> int:
         """Merge a parsed CSV (see logic.parse_moj_elektro_csv) or fetched 15-minute days.
 
