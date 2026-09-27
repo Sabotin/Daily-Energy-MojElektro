@@ -263,7 +263,6 @@
     '{0} · since {1}': '{0} · od {1}',
     'Counter / source': 'Števec / vir',
     'Used': 'Porabljeno',
-    'Span': 'Obdobje',
     'baseline': 'izhodišče',
     'tariff blocks only': 'samo časovni bloki',
     'Show less': 'Pokaži manj',
@@ -720,6 +719,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .blegend i{width:9px;height:9px;border-radius:3px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .tbl tr.me td:nth-child(2){color:#4cc9f0;font-size:12px}
+.tbl .lnote{display:block;font-size:11px;margin-top:2px}
 .tbl input.in.ed{width:92px;padding:6px 9px;font-size:14px;text-align:right}
 .tbl tr.man td:nth-child(4){color:var(--vt1)}
 .fold{display:flex;align-items:center;justify-content:space-between;gap:14px}
@@ -1448,33 +1448,34 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       for (const m of ME) {
         const e = edv(m.d), off = typeof m.u === 'number', bt = Array.isArray(m.b) && m.b.some(x => +x > 0) ? m.b.reduce((a, x) => a + (+x || 0), 0) : null;
         const u = e ? e.u : off ? m.u : bt, vt = e ? e.vt : m.vt, mt = e ? e.mt : m.mt, split = !out && (vt != null && mt != null);
-        const span = e ? t('manual edit') : off ? nDays(1) : bt != null ? t('15-min data · VT / MT tomorrow') : t('tariff blocks only');
-        const date = `<td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>${m.added ? t('Manual') : 'Moj Elektro'}</td>`;
+        // what the day is based on, in small print under the source
+        const note = e ? t('manual edit') : off ? '' : bt != null ? t('15-min data · VT / MT tomorrow') : t('tariff blocks only');
+        const date = `<td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>${m.added ? t('Manual') : 'Moj Elektro'}${note ? `<small class="m lnote">${note}</small>` : ''}</td>`;
         let cells;
         if (ui.editDay === m.d && edm) {
           // editing: grid out Sent out, grid in VT and MT (the day total is their sum), or the kWh of a 15-minute day
           const btns = `<button class="rb" data-act="ed-save" data-d="${m.d}" title="${t('Save')}">${ic('ok')}</button><button class="rb" data-act="ed-cancel" title="${t('Cancel')}">${ic('x')}</button>`;
-          cells = out ? `<td>${inp('ed-o', u)}</td><td class="m">${span}</td><td>${btns}</td>`
-            : split ? `<td class="use" id="ed-sum">+${fk(u)} kWh</td><td class="m">${span}</td><td>${inp('ed-vt', vt)}</td><td>${inp('ed-mt', mt)}</td><td>${btns}</td>`
-              : `<td>${inp('ed-u', u)}</td><td class="m">${span}</td><td>${dash}</td><td>${dash}</td><td>${btns}</td>`;
+          cells = out ? `<td>${inp('ed-o', u)}</td><td>${btns}</td>`
+            : split ? `<td class="use" id="ed-sum">+${fk(u)} kWh</td><td>${inp('ed-vt', vt)}</td><td>${inp('ed-mt', mt)}</td><td>${btns}</td>`
+              : `<td>${inp('ed-u', u)}</td><td>${dash}</td><td>${dash}</td><td>${btns}</td>`;
         } else {
-          cells = `${u != null ? `<td class="use">+${fk(u)} kWh</td>` : `<td class="m">—</td>`}<td class="m">${span}</td>${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
+          cells = `${u != null ? `<td class="use">+${fk(u)} kWh</td>` : `<td class="m">—</td>`}${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
         }
         rows.push([m.d + 'b', `<tr class="me${e ? ' man' : ''}">${date}${cells}</tr>`]);
       }
       for (let i = E.length - 1; i >= 0; i--) {
         const e = E[i], p = E[i - 1];
-        const n = p ? diffD(p.d, e.d) : 0, dt = p ? (e.t - p.t) * s.mult : null;
+        const dt = p ? (e.t - p.t) * s.mult : null;
         const vtu = s.tmode === 'usage' ? e.vt : (p && e.vt != null && p.vt != null ? (e.vt - p.vt) * s.mult : null);
         const mtu = s.tmode === 'usage' ? e.mt : (p && e.mt != null && p.mt != null ? (e.mt - p.mt) * s.mult : null);
-        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="m">${n > 1 ? `${nDays(n)} · ${fk(dt / n)}/${LANG === 'sl' ? 'dan' : 'day'}` : n === 1 ? nDays(1) : ''}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
+        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
       }
       rows.sort((a, b) => a[0] < b[0] ? 1 : -1);
       const show = (ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
       const first = [...E.map(e => e.d), ...ME.map(m => m.d)].sort()[0];
       const sub = [E.length ? count(E.length, 'manual reading', 'manual readings', 'ročni odčitki') : '', ME.length ? (out ? count(ME.length, 'Moj Elektro grid-out day', 'Moj Elektro grid-out days', 'dnevi oddaje Moj Elektro') : count(ME.length, 'Moj Elektro day', 'Moj Elektro days', 'dnevi Moj Elektro')) : ''].filter(Boolean).join(' · ');
       el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div>${unlocked ? `<div class="row"><button class="btn sm warn" data-act="del-done">${t('Done')}</button><button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div>` : ''}</div>
-<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th><th>${t('Span')}</th>${out ? '' : '<th>VT kWh</th><th>MT kWh</th>'}${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
+<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th>${out ? '' : '<th>VT kWh</th><th>MT kWh</th>'}${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
 ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
     }
 
