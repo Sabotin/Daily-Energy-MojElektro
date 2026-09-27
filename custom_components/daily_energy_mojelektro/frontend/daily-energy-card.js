@@ -327,7 +327,7 @@
     ' · {0} without a meter total': ' · brez stanja števca: {0}',
     'Moj Elektro has no data for those days': 'Moj Elektro za te dni nima podatkov',
     'Nothing new — those days are already up to date': 'Nič novega — ti dnevi so že posodobljeni',
-    'Grid out is on — fetching the last days from Moj Elektro. For older days use Moj Elektro history below.': 'Oddaja je vklopljena — prenašam zadnje dni iz Moj Elektro. Za starejše dni uporabite Zgodovino Moj Elektro spodaj.',
+    'Grid out is on — fetching the last 3 days from Moj Elektro.': 'Oddaja je vklopljena — prenašam zadnje 3 dni iz Moj Elektro.',
     'Demo data loaded — explore away': 'Demo podatki so naloženi — raziskujte',
     'Wrong PIN': 'Napačen PIN',
     'Only administrators can delete data': 'Podatke lahko brišejo samo skrbniki',
@@ -1589,7 +1589,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
         let v = t.dataset.v; if (t.dataset.k === 'mult') v = Number(v);
         const on = t.dataset.k === 'grid' && v === 'both' && this._data.settings.grid !== 'both';
         this._data.settings[t.dataset.k] = v; if (this._demo) this._demo = this._genDemo(); this._renderAll(); this._drawer(true); await this._commit({ settings: true });
-        if (on) this._toast(tr('Grid out is on — fetching the last days from Moj Elektro. For older days use Moj Elektro history below.'), { ms: 6000 });
+        if (on) this._toast(tr('Grid out is on — fetching the last 3 days from Moj Elektro.'), { ms: 6000 });
       }
       else if (a === 'demo-on') { this._demo = this._genDemo(); this._shown = 0; this._dwOpen = false; this._renderAll(); this._toast(tr('Demo data loaded — explore away')); }
       else if (a === 'demo-off') { this._demo = null; this._shown = 0; this._renderAll(); }
