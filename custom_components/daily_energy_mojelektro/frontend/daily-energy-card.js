@@ -125,6 +125,12 @@
     'Saved: {0}': 'Shranjeno: {0}',
     'Enter a number of kWh': 'Vpišite število kWh',
     'Save': 'Shrani',
+    'Tariff blocks do not match the day total': 'Bloki se ne ujemajo s porabo dneva',
+    'Edit tariff blocks': 'Uredi časovne bloke',
+    'Used {0} kWh': 'Porabljeno {0} kWh',
+    'Blocks total {0} kWh': 'Skupaj bloki {0} kWh',
+    'difference {0} kWh': 'razlika {0} kWh',
+    'matches the day total': 'se ujema s porabo dneva',
     'Add a day sent to the grid': 'Dodaj dan oddaje',
     'Close': 'Zapri',
     'Log a reading': 'Vnesi odčitek',
@@ -380,6 +386,7 @@
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
     del: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
     ok: '<path d="M5 12l5 5L20 7"/>',
+    warn: '<path d="M12 3.5 2.5 20.5h19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
     down: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
     up: '<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
@@ -557,6 +564,24 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .col.part .bar{opacity:.72}
 .xl{position:absolute;bottom:-26px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--dim);white-space:nowrap;text-align:center;line-height:1.1}
 .xl small{display:block;font-size:9px;opacity:.7}
+/* Časovni bloki: a day whose edited total and blocks differ gets a triangle; in edit mode a pencil under its date */
+.btri{position:absolute;left:50%;transform:translateX(-50%);color:var(--vt1);line-height:0;pointer-events:none;z-index:3}
+.btri .ic{width:14px;height:14px;filter:drop-shadow(0 0 6px rgba(255,200,87,.6))}
+.ch.edb{padding-bottom:62px}
+.bed{position:absolute;bottom:-58px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,200,87,.45);background:rgba(255,200,87,.12);color:var(--vt1);cursor:pointer;display:grid;place-items:center;padding:0;z-index:3}
+.bed .ic{width:13px;height:13px}
+.bed:hover,.bed.on{background:rgba(255,200,87,.28)}
+.bedit{margin-top:14px;padding:16px;border-radius:16px;border:1px solid rgba(255,200,87,.3);background:rgba(255,200,87,.05);display:flex;flex-direction:column;gap:12px}
+.bedit-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.bedit-h b{font-size:14px}.bedit-h span{font-size:13px;color:var(--mut)}
+.bedit-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.bedit-g .fld span{display:flex;align-items:center;gap:6px}
+.bedit-g .fld span i{width:9px;height:9px;border-radius:3px;display:inline-block}
+.bedit-g input.in{text-align:right;padding:8px 9px}
+.bedit-f{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bedit-f .btn{flex:none;width:auto}
+.bedit-f .bsum{flex:1;font-size:13px;color:var(--mut)}.bedit-f .bsum.ok{color:var(--ok)}.bedit-f .bsum.bad{color:var(--vt1)}
+@media (max-width:640px){.bedit-g{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .col.now .xl{color:var(--c1);font-weight:600}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
 .st{padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.05)}
@@ -868,19 +893,30 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       }
       // Manual edits (Log > Edit, grid-out Add) win over everything from Moj Elektro and stay until the day is
       // deleted. dl / dvt / dmt: how much they differ from Moj Elektro's day, so month and year totals follow them.
+      // Edited tariff blocks (Časovni bloki > Edit) replace Moj Elektro's blocks of that day.
       if (!this._demo) for (const [d, e] of Object.entries(this._edits || {})) {
+        const eb = !out && Array.isArray(e.b) && e.b.length === 5 ? e.b.map(x => +x || 0) : null;
         let v;
         if (out) { if (typeof e.o !== 'number') continue; v = { t: e.o, vt: 0, mt: 0, has: false }; }
         else if (typeof e.vt === 'number' && typeof e.mt === 'number') v = { t: e.vt + e.mt, vt: e.vt, mt: e.mt, has: true };
         else if (typeof e.u === 'number') v = { t: e.u, vt: 0, mt: 0, has: false };
-        else continue;
-        const cur = days.get(d), o = { ...v, n: 1, me: true, edited: true, b: cur ? cur.b : null };
+        else {
+          if (!eb) continue;
+          const cur = days.get(d), bt = eb.reduce((a, x) => a + x, 0);
+          if (cur) { cur.b = eb; cur.bed = true; }
+          else days.set(d, { t: bt, vt: 0, mt: 0, n: bt > 0 ? 1 : 0, has: false, me: true, b: eb, q15: bt > 0, bed: true });
+          continue;
+        }
+        const cur = days.get(d), o = { ...v, n: 1, me: true, edited: true, b: eb || (cur ? cur.b : null), bed: !!eb };
         if (cur && cur.me && !cur.q15 && !cur.edited) {
           o.dl = o.t - cur.t;
           if (o.has && cur.has) { o.dvt = o.vt - cur.vt; o.dmt = o.mt - cur.mt; }
         } else if (cur && cur.man && cur.dl != null) o.dl = o.t - (cur.t - cur.dl);
         days.set(d, o);
       }
+      // a manually edited day whose tariff blocks do not add up to its day total: a triangle in Časovni bloki until
+      // they match (0.05 kWh, the precision the card shows)
+      if (!out) for (const o of days.values()) if (o.edited || o.bed) o.bwarn = Math.abs((o.b ? o.b.reduce((a, x) => a + x, 0) : 0) - o.t) > 0.05;
       const keys = [...days.keys()].filter(k => days.get(k).n).sort();
       this._c = { s, E, days, keys, months, meLast, bLast, out, today: iso(new Date()) };
       return this._c;
@@ -889,7 +925,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const r = { t: 0, vt: 0, mt: 0, n: 0, has: false, b: [0, 0, 0, 0, 0], bh: false, dl: 0, dvt: 0, dmt: 0 };
       for (const [k, o] of this._c.days) if (k >= from && k <= to) {
         r.t += o.t; r.vt += o.vt; r.mt += o.mt; r.n += o.n; if (o.has) r.has = true; if (o.q15) r.q15 = true;
-        r.dl += o.dl || 0; r.dvt += o.dvt || 0; r.dmt += o.dmt || 0;
+        r.dl += o.dl || 0; r.dvt += o.dvt || 0; r.dmt += o.dmt || 0; if (o.bwarn) r.bwarn = true;
         if (o.b) { o.b.forEach((x, i) => r.b[i] += x); r.bh = true; }
       }
       return r;
@@ -954,10 +990,11 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       R.addEventListener('input', e => {
         if (e.target.id && e.target.id.startsWith('f-')) { this._dirty = true; this._preview(); }
         // editing a day in the Log: its total is VT + MT
+        if (/^bl-\d$/.test(e.target.id || '')) this._blSum();
         if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? '+' + fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Escape') this._drawer(false); });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') this._drawer(false); });
       R.addEventListener('pointermove', e => this._tipMove(e));
       R.addEventListener('pointerleave', () => this.$('tip').classList.remove('on'), true);
       this._renderSkeleton();
@@ -1187,7 +1224,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const mx = nice(Math.max(0, ...vals));
       const wd = bk.filter(hasF), avg = wd.length ? wd.reduce((a, b) => a + V(b), 0) / wd.length : 0;
       const ticks = [1, .75, .5, .25, 0];
-      let h = `<div class="ch${sm ? ' sm' : ''}"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>`;
+      // Časovni bloki in edit mode (Log > Edit): a pencil under each day whose blocks do not match its total
+      const bedit = stack === 'b' && !this._demo && !!this._ui.editMode, pen = b => bedit && b.bwarn && b.from === b.to;
+      let h = `<div class="ch${sm ? ' sm' : ''}${bk.some(pen) ? ' edb' : ''}"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>`;
       if (avg > 0) h += `<div class="ch-avg" style="bottom:${avg / mx * 100}%"><span>${t('avg {0}', fk(avg))}</span></div>`;
       h += `<div class="ch-b${bk.length > 20 ? ' dense' : ''}">`;
       bk.forEach((b, i) => {
@@ -1201,12 +1240,15 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
           if (b.span > 1) tip += `<div class="m">${t('{0} of {1} days logged · {2} kWh/day', b.n, b.span, fk((stack ? v : b.t) / Math.max(1, b.n)))}</div>`;
           if (!stack && b.q15) tip += `<div class="m">${t('incl. 15-min data · meter total tomorrow')}</div>`;
         } else tip += `<div class="m">${t('No data')}</div>`;
+        if (stack === 'b' && b.bwarn) tip += `<div class="r" style="color:var(--vt1)">${ic('warn')}${t('Tariff blocks do not match the day total')}</div>`;
         let bar;
         if (!has) bar = `<div class="bar none"></div>`;
         else if (stack === 'b') bar = `<div class="bar stk" style="height:${v / mx * 100}%;--i:${i}">${[4, 3, 2, 1, 0].map(j => b.b[j] > 0 ? `<div class="seg" style="flex:${b.b[j]};background:${BLK[j]}"></div>` : '').join('')}</div>`;
         else if (stack) bar = `<div class="bar stk" style="height:${v / mx * 100}%;--i:${i}"><div class="seg mt" style="flex:${b.mt}"></div><div class="seg vt" style="flex:${b.vt}"></div></div>`;
         else bar = `<div class="bar tot" style="height:${Math.max(v / mx * 100, .8)}%;--i:${i}"></div>`;
-        h += `<div class="col${b.now ? ' now' : ''}${part ? ' part' : ''}" data-tip="${esc(tip)}">${bar}<span class="xl">${b.label}${b.sub ? `<small>${b.sub}</small>` : ''}</span></div>`;
+        const tri = stack === 'b' && b.bwarn ? `<i class="btri" style="bottom:calc(${has ? v / mx * 100 : 0}% + 5px)">${ic('warn')}</i>` : '';
+        const pbtn = pen(b) ? `<button class="bed${this._ui.blEdit === b.from ? ' on' : ''}" data-act="bl-edit" data-d="${b.from}" title="${t('Edit tariff blocks')}">${ic('edit')}</button>` : '';
+        h += `<div class="col${b.now ? ' now' : ''}${part ? ' part' : ''}" data-tip="${esc(tip)}">${bar}${tri}<span class="xl">${b.label}${b.sub ? `<small>${b.sub}</small>` : ''}</span>${pbtn}</div>`;
       });
       return h + '</div></div></div>';
     }
@@ -1352,11 +1394,36 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const yt = y.b.reduce((a, x) => a + x, 0), mt = ms.b.reduce((a, x) => a + x, 0);
       let mdays = 0; for (const [k, o] of days) if (k.slice(0, 7) === today.slice(0, 7) && o.b) mdays++;
       el.innerHTML = head + `<div class="blk-b"><div>
-<div class="bsub">${meLast === addD(today, -1) ? t('Yesterday') : fdate(meLast)} · ${fk(yt)} kWh</div>${rows(y.b, yt)}
+<div class="bsub">${meLast === addD(today, -1) ? t('Yesterday') : fdate(meLast)} · ${fk(yt)} kWh${y.bwarn ? ` <span class="btri-i" title="${t('Tariff blocks do not match the day total')}" style="color:var(--vt1)">${ic('warn')}</span>` : ''}</div>${rows(y.b, yt)}
 <div class="bgap"></div>
 <div class="bsub">${MONL[d.getMonth()]} · ${count(mdays, 'logged day', 'logged days', 'zabeleženi dnevi')} · ${fk(mt)} kWh</div>${rows(ms.b, mt)}
 <div class="bnote">${t('Blok 1 is the most expensive network block and only applies on working days from November to February. Weekends, holidays and the lower season (March–October) fall into the cheaper blocks 2–5.')}</div>
-</div><div>${this._bars(this._buckets(r), 'b', true)}</div></div>`;
+</div><div>${this._bars(this._buckets(r), 'b', true)}${this._blEditor()}</div></div>`;
+    }
+    // Časovni bloki > Edit (edit mode, pencil under a day): the five blocks of that day, with their total against
+    // the day's Used; saved as a manual edit, so fetching never overwrites it
+    _blEditor() {
+      const d = this._ui.blEdit, o = d && this._c.days.get(d);
+      if (!d || !this._ui.editMode || this._demo) return '';
+      const b = o && o.b ? o.b : [0, 0, 0, 0, 0], u = o ? o.t : null;
+      return `<div class="bedit"><div class="bedit-h"><b>${t('Edit tariff blocks')} · ${fdate(d)} ${pd(d).getFullYear()}</b><span>${t('Used {0} kWh', `<b style="color:var(--txt)">${fk(u)}</b>`)}</span></div>
+<div class="bedit-g">${b.map((x, i) => `<label class="fld"><span><i style="background:${BLK[i]}"></i>Blok ${i + 1}</span><input class="in" id="bl-${i}" inputmode="decimal" autocomplete="off" value="${+(+x).toFixed(3)}"></label>`).join('')}</div>
+<div class="bedit-f"><span class="bsum" id="bl-sum"></span><button class="btn sm pri" data-act="bl-save" data-d="${d}">${ic('ok')}${t('Save')}</button><button class="btn sm gh" data-act="bl-cancel">${t('Cancel')}</button></div></div>`;
+    }
+    _blSum() {
+      const el = this.$('bl-sum'), o = this._c.days.get(this._ui.blEdit); if (!el) return;
+      const vals = [0, 1, 2, 3, 4].map(i => num(this.$('bl-' + i).value)), tot = vals.reduce((a, x) => a + (x || 0), 0), df = o ? tot - o.t : 0;
+      const ok = Math.abs(df) <= 0.05;
+      el.className = 'bsum ' + (ok ? 'ok' : 'bad');
+      el.innerHTML = `${t('Blocks total {0} kWh', `<b>${fk(tot)}</b>`)} · ${ok ? t('matches the day total') : t('difference {0} kWh', (df > 0 ? '+' : '') + fk(df))}`;
+    }
+    async _saveBlocks(d) {
+      const b = [0, 1, 2, 3, 4].map(i => num(this.$('bl-' + i).value));
+      if (b.some(x => x == null || x < 0)) { this._toast(t('Enter a number of kWh')); return; }
+      try {
+        await this._ws('save_edit', { day: d, grid: 'in', values: { b }, pin: this._pinOk || '' });
+        this._ui.blEdit = null; this._toast(t('Saved: {0}', `${fdate(d)} ${pd(d).getFullYear()}`));
+      } catch (e) { this._toast(e && e.code === 'wrong_pin' ? t('Wrong PIN') : t('Could not save to Home Assistant — {0}', e && e.message || e)); }
     }
 
     /* ----- log ----- */
@@ -1492,10 +1559,13 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       }
       else if (a === 'form-pin-ok') this._openFormPin(t.dataset.v);
       else if (a === 'form-pin-no') { this._ui.formPin = false; this._fd = null; this._pinOk = ''; this._renderForm(); }
-      else if (a === 'del-done') { Object.assign(this._ui, { delMode: false, editMode: false, editDay: null, outAdd: false, formOpen: false, formPin: false }); this._pinOk = ''; this._renderForm(); this._renderLog(); }
+      else if (a === 'del-done') { Object.assign(this._ui, { delMode: false, editMode: false, editDay: null, blEdit: null, outAdd: false, formOpen: false, formPin: false }); this._pinOk = ''; this._renderForm(); this._renderLog(); this._renderBlocks(); }
       else if (a === 'ed-day') { this._ui.editDay = t.dataset.d; this._renderLog(); setTimeout(() => { const i = this.$('ed-vt') || this.$('ed-u') || this.$('ed-o'); if (i) { i.focus(); i.select(); } }, 50); }
       else if (a === 'ed-cancel') { this._ui.editDay = null; this._renderLog(); }
       else if (a === 'ed-save') this._saveEdit(t.dataset.d);
+      else if (a === 'bl-edit') { this._ui.blEdit = this._ui.blEdit === t.dataset.d ? null : t.dataset.d; this._renderBlocks(); this._blSum(); setTimeout(() => { const i = this.$('bl-0'); if (i) { i.focus(); i.select(); } }, 50); }
+      else if (a === 'bl-cancel') { this._ui.blEdit = null; this._renderBlocks(); }
+      else if (a === 'bl-save') this._saveBlocks(t.dataset.d);
       else if (a === 'oa-save') this._saveOutAdd();
       else if (a === 'del-day') this._delDay(t.dataset.d, t.dataset.k);
       else if (a === 'save') this._saveForm();
@@ -1558,8 +1628,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
         this._pinOk = pin;
       }
       const out = this._c.out;
-      Object.assign(this._ui, { formPin: false, delMode: v === 'del', editMode: v === 'edit', editDay: null, outAdd: v === 'add' && out, formOpen: v === 'add' && !out });
-      this._renderForm(); this._renderLog();
+      Object.assign(this._ui, { formPin: false, delMode: v === 'del', editMode: v === 'edit', editDay: null, blEdit: null, outAdd: v === 'add' && out, formOpen: v === 'add' && !out });
+      this._renderForm(); this._renderLog(); this._renderBlocks();
       if (v === 'del' || v === 'edit') { this._scrollTo(this.$('log')); return; }
       setTimeout(() => { const i = this.$(out ? 'oa-o' : 'f-t'); if (i) i.focus(); }, 100);
     }
