@@ -1,7 +1,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.7.6"
+VERSION = "0.7.7"
 
 # Moj Elektro API access, entered at setup.
 CONF_TOKEN = "token"

@@ -143,8 +143,9 @@ class DailyEnergyManager:
         return out
 
     def missing(self, today) -> list[str]:
-        """What the API should still deliver: yesterday's full 15-minute curve and the meter totals
-        of the two days before yesterday (Moj Elektro publishes a day's meter total up to two days later)."""
+        """What the API should still deliver: yesterday's full 15-minute curve and the real meter totals of
+        the last three days. Moj Elektro publishes a day's meter total one or two days later; until it is there
+        the day is shown from its 15-minute data, so the check keeps asking for it every hour."""
         d1, d2, d3 = ((today - timedelta(days=n)).isoformat() for n in (1, 2, 3))
         out = []
         for direction, q_key, miss_key in self._directions():
@@ -154,7 +155,7 @@ class DailyEnergyManager:
             if self.data[miss_key].get(d2):
                 out.append(f"15-min{name} {d2}")
             total = direction["keys"]["u"]
-            out += [f"total{name} {d}" for d in (d3, d2) if total not in self.data["days"].get(d, {})]
+            out += [f"total{name} {d}" for d in (d3, d2, d1) if total not in self.data["days"].get(d, {})]
         return out
 
     async def _get_json(self, session, url: str, token: str) -> dict | None:
