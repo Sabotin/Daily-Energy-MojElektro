@@ -497,7 +497,7 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .hdr .sub{color:var(--mut);font-size:14px;margin-top:4px;letter-spacing:.01em}
 .hdr .sp{flex:1}
 /* phone: logo, title, update and settings stay on one row; the Grid in / Grid out switch gets its own row below */
-@media (max-width:640px){.hdr{gap:12px}.hdr .logo{width:44px;height:44px;border-radius:14px}.hdr .ttl{flex:1;min-width:0}.hdr .sub{font-size:13px}.hdr .sp{display:none}.hdr .ibtn{width:40px;height:40px;flex:none}.hdr .gsw{order:5;flex:1 1 100%}.hdr .gsw button{flex:1;justify-content:center}.hdr .chips{order:6}}
+@media (max-width:640px){.hdr{gap:12px}.hdr .logo{width:44px;height:44px;border-radius:14px}.hdr .ttl{flex:1;min-width:0}.hdr .sub{font-size:13px}.hdr .sp{display:none}.hdr .ibtn{width:40px;height:40px;flex:none}.hdr .gsw{order:5;flex:1 1 100%;margin-top:16px}.hdr .chips:empty{display:none}.hdr{margin-bottom:18px}.hdr .gsw button{flex:1;justify-content:center}.hdr .chips{order:6}}
 .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:13px;color:var(--mut);white-space:nowrap}
 .chip i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
 .chip.warn i{background:var(--vt1);box-shadow:0 0 12px var(--vt1)}
