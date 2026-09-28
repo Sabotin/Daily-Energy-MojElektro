@@ -345,7 +345,7 @@
     'Net appears as soon as Moj Elektro has both for the same day.': 'Neto se pokaže, ko Moj Elektro pošlje oboje za isti dan.',
     'Balance': 'Bilanca',
     'yesterday': 'včeraj',
-    'You sent <b>{0} kWh more</b> to the grid than you took from it.': 'V omrežje ste oddali <b>{0} kWh več</b>, kot ste ga iz njega vzeli.',
+    'You sent <b>{0} kWh more</b> to the grid than you took from it.': 'V omrežje ste oddali <b>{0} kWh več</b>, kot ste iz njega vzeli.',
     'You took <b>{0} kWh more</b> from the grid than you sent to it.': 'Iz omrežja ste vzeli <b>{0} kWh več</b>, kot ste ga oddali.',
     '{0} kWh vs the day before': '{0} kWh glede na dan prej',
     'Coverage': 'Pokritost',
