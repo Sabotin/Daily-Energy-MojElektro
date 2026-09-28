@@ -828,15 +828,14 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 .nt-say b{color:#fff;font-weight:600}
 .nt-q{font-size:12px;color:var(--dim)}
 .nt-tug{max-width:560px}
-.nt-tl{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--mut);margin-bottom:8px}
+.nt-tl{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--mut);margin-top:8px}
 .nt-tl span{display:inline-flex;align-items:center;gap:6px}
 .nt-tl b{font-size:17px;font-weight:600;color:var(--txt);margin-left:4px}
 .nt-tl span:first-child .ic{color:#ff7a4d}.nt-tl span:last-child .ic{color:#3ef0a8}
-.nt-tr{position:relative;height:14px;border-radius:999px;background:rgba(0,0,0,.35);box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
-.nt-tr .a{position:absolute;left:0;top:0;bottom:0;border-radius:999px 0 0 999px;background:linear-gradient(90deg,#ff5d5d,#ff8c42)}
-.nt-tr .b{position:absolute;right:0;top:0;bottom:0;border-radius:0 999px 999px 0;background:linear-gradient(90deg,#3ef0a8,#e8ff6a)}
-.nt-tr .z{position:absolute;left:50%;top:-6px;bottom:-6px;width:2px;margin-left:-1px;background:rgba(255,255,255,.35);border-radius:2px}
-.nt-tr .k{position:absolute;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 0 0 4px rgba(5,8,17,.9),0 0 22px rgba(62,230,255,.8);transition:left 1.2s cubic-bezier(.2,.8,.2,1)}
+.nt-split{display:flex;gap:3px;height:28px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.06);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.nt-split .a{flex:none;box-sizing:border-box;display:flex;align-items:center;padding-left:10px;color:#3a0d05;background:linear-gradient(90deg,#ff5d5d,#ff8c42)}
+.nt-split .b{flex:1;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;color:#06301f;background:linear-gradient(90deg,#3ef0a8,#e8ff6a)}
+.nt-split .e{padding:0}
 .pill.nt-b{color:#aee9ff;background:rgba(62,230,255,.08);border-color:rgba(62,230,255,.25)}
 .pill .ic{width:14px;height:14px}
 .nt-ring{position:relative;width:270px;height:270px;align-self:center}
@@ -1506,14 +1505,14 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         st++;
       }
       const share = x.i + x.o > 0 ? x.i / (x.i + x.o) * 100 : 50, M = Math.max(x.i, x.o) || 1, C1 = 2 * Math.PI * 112, C2 = 2 * Math.PI * 92;
-      const cov = x.i > 0 ? Math.round(x.o / x.i * 100) : null;
+      const cov = x.i > 0 ? Math.round(x.o / x.i * 100) : null, pi = Math.round(share);
       const el = this.$('n-hero'); el.classList.toggle('minus', !pos);
       el.innerHTML = `<div class="nt-hl">
 <div class="eyebrow"><span class="pulse"></span>${t('Balance')} · ${yest ? t('yesterday') + ', ' : ''}${fdate(k)}</div>
 <div class="big"><span class="bignum nt-${pos ? 'p' : 'n'}">${nsg(x.n)}</span><span class="unit">kWh</span></div>
 <div class="nt-say">${pos ? t('You sent <b>{0} kWh more</b> to the grid than you took from it.', fk(x.n)) : t('You took <b>{0} kWh more</b> from the grid than you sent to it.', fk(-x.n))}${x.q ? ` <span class="nt-q">${t('15-min data · meter total tomorrow')}</span>` : ''}</div>
-<div class="nt-tug"><div class="nt-tl"><span>${ic('bolt')}${t('Grid in')}<b>${fk(x.i)} kWh</b></span><span>${t('Grid out')}<b>${fk(x.o)} kWh</b>${ic('sun')}</span></div>
-<div class="nt-tr"><div class="a" style="width:${share}%"></div><div class="b" style="width:${100 - share}%"></div><div class="z"></div><div class="k" style="left:${share}%"></div></div></div>
+<div class="nt-tug"><div class="nt-split">${x.i > 0 ? `<div class="a${share < 12 ? ' e' : ''}" style="width:${share.toFixed(1)}%">${share < 12 ? '' : `${pi} %`}</div>` : ''}${x.o > 0 ? `<div class="b${share > 88 ? ' e' : ''}">${share > 88 ? '' : `${100 - pi} %`}</div>` : ''}</div>
+<div class="nt-tl"><span>${ic('bolt')}${t('Grid in')}<b>${fk(x.i)} kWh</b></span><span>${t('Grid out')}<b>${fk(x.o)} kWh</b>${ic('sun')}</span></div></div>
 <div class="pills">${p ? `<span class="pill ${x.n >= p.n ? 'down' : 'up'}">${ic(x.n >= p.n ? 'up' : 'down')}${t('{0} kWh vs the day before', nsg(x.n - p.n))}</span>` : ''}<span class="pill nt-b">${ic('flame')}${t(pos ? '{0} in a row in plus' : '{0} in a row in minus', nDays(st))}</span></div></div>
 <div class="nt-ring" data-tip="${ntip(fdate(k), [[t('Grid out'), fk(x.o) + ' kWh', NP], [t('Grid in'), fk(x.i) + ' kWh', NN], [t('Coverage'), cov == null ? '—' : cov + ' %']])}"><svg viewBox="0 0 270 270"><defs>
 <linearGradient id="nt-gp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3ef0a8"/><stop offset="1" stop-color="#e8ff6a"/></linearGradient>
