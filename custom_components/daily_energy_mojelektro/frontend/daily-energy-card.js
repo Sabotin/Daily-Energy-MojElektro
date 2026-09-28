@@ -1181,7 +1181,10 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       R.addEventListener('change', e => this._change(e));
       R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') this._drawer(false); });
       R.addEventListener('pointermove', e => this._tipMove(e));
-      R.addEventListener('pointerleave', () => this.$('tip').classList.remove('on'), true);
+      // phones: a tap shows the same info as hovering with a mouse; it stays until the next tap or a scroll
+      R.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') this._tipMove(e); });
+      R.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') this.$('tip').classList.remove('on'); }, true);
+      addEventListener('scroll', () => { this.$('tip').classList.remove('on'); this._tipEl = null; }, { passive: true });
       this._renderSkeleton();
     }
     _renderSkeleton() {
@@ -1884,7 +1887,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
             : split ? `<td class="use" id="ed-sum">+${fk(u)} kWh</td><td>${inp('ed-vt', vt)}</td><td>${inp('ed-mt', mt)}</td><td>${btns}</td>`
               : `<td>${inp('ed-u', u)}</td><td>${dash}</td><td>${dash}</td><td>${btns}</td>`;
         } else {
-          cells = `${u != null ? `<td class="use">+${fk(u)} kWh</td>` : `<td class="m">—</td>`}${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
+          cells = `${u != null ? `<td class="use">${out ? '' : '+'}${fk(u)} kWh</td>` : `<td class="m">—</td>`}${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
         }
         rows.push([m.d + 'b', `<tr class="me${e ? ' man' : ''}">${date}${cells}</tr>`]);
       }
