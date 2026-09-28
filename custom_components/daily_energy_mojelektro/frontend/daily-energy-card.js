@@ -1179,8 +1179,13 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       });
       R.addEventListener('change', e => this._change(e));
       R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') this._drawer(false); });
-      R.addEventListener('pointermove', e => this._tipMove(e));
-      R.addEventListener('pointerleave', () => this.$('tip').classList.remove('on'), true);
+      // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
+      // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
+      R.addEventListener('pointermove', e => { if (!this._tipPin) this._tipMove(e); });
+      R.addEventListener('pointerleave', () => { if (!this._tipPin) this.$('tip').classList.remove('on'); }, true);
+      // the page, or Home Assistant's own scrolling container (_tipSc, found when a box is pinned)
+      this._tipOnScroll = () => { if (this._tipPin && Math.abs(this._tipScrollY() - this._tipPinY) >= 40) this._tipUnpin(); };
+      addEventListener('scroll', this._tipOnScroll, { passive: true });
       this._renderSkeleton();
     }
     _renderSkeleton() {
@@ -1974,6 +1979,10 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
 
     /* ----- events ----- */
     async _click(e) {
+      // a click or tap on something with an info box (a bar, a square…) pins that box; anywhere else unpins it
+      const tipEl = e.composedPath().find(n => n.dataset && n.dataset.tip != null);
+      if (tipEl && !e.target.closest('[data-act]')) { this._tipPin = false; this._tipMove(e); this._tipPin = true; this._tipWatch(); this._tipPinY = this._tipScrollY(); return; }
+      if (this._tipPin) this._tipUnpin();
       const t = e.target.closest('[data-act]'); if (!t) return;
       const a = t.dataset.act;
       if (a === 'range') { this._ui.range = t.dataset.v; this._renderChart(); }
@@ -2033,13 +2042,18 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
     }
     // Scroll the page's real scroll area (Home Assistant's view, or the window) to an element. scrollIntoView
     // would also scroll the dashboard's clipped frame, which cannot be scrolled back by hand.
-    _scrollTo(el, where = 'start') {
-      if (!el) return;
+    // the element that really scrolls the card: Home Assistant may scroll its own container instead of the page (null)
+    _scroller() {
       let n = this, sc = null;
       while (n && !sc) {
         n = n.parentNode instanceof ShadowRoot ? n.parentNode.host : n.parentNode;
         if (n && n.nodeType === 1) { const o = getComputedStyle(n).overflowY; if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) sc = n; }
       }
+      return sc;
+    }
+    _scrollTo(el, where = 'start') {
+      if (!el) return;
+      const sc = this._scroller();
       const r = el.getBoundingClientRect(), box = sc ? sc.getBoundingClientRect() : { top: 0, height: innerHeight };
       const top = where === 'center' ? r.top - box.top - (box.height - r.height) / 2 : r.top - box.top - 16;
       (sc || window).scrollBy({ top, behavior: this._lite ? 'auto' : 'smooth' });
@@ -2131,6 +2145,16 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `daily-energy-${iso(new Date())}.json`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     }
+    _tipUnpin() { this._tipPin = false; this.$('tip').classList.remove('on'); this._tipEl = null; }
+    // where the card is scrolled to, and listening to the container that scrolls it when that is not the page
+    _tipScrollY() { return this._tipSc ? this._tipSc.scrollTop : scrollY; }
+    _tipWatch() {
+      const sc = this._scroller();
+      if (sc === this._tipSc) return;
+      if (this._tipSc) this._tipSc.removeEventListener('scroll', this._tipOnScroll);
+      this._tipSc = sc;
+      if (sc) sc.addEventListener('scroll', this._tipOnScroll, { passive: true });
+    }
     _tipMove(e) {
       const tip = this.$('tip'); const t = e.composedPath().find(n => n.dataset && n.dataset.tip != null);
       if (!t) { tip.classList.remove('on'); this._tipEl = null; return; }
@@ -2138,6 +2162,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       const w = tip.offsetWidth, h = tip.offsetHeight;
       let x = e.clientX + 16, y = e.clientY - h - 14;
       if (x + w > innerWidth - 8) x = e.clientX - w - 16;
+      // always fully on the screen (on a phone there is no room beside the finger)
+      x = Math.max(8, Math.min(x, innerWidth - w - 8));
       if (y < 8) y = e.clientY + 18;
       tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('on');
     }
