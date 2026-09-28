@@ -339,7 +339,74 @@
     'backup': 'varnostna kopija',
     'Imported {0}: {1}': 'Uvoženo ({0}): {1}',
     'Could not import — {0}': 'Uvoz ni uspel — {0}',
-    'unknown file': 'neznana datoteka'
+    'unknown file': 'neznana datoteka',
+    // Net (Neto) view
+    'No days with both grid in and grid out yet': 'Še ni dni, ki bi imeli odjem in oddajo',
+    'Net appears as soon as Moj Elektro has both for the same day.': 'Neto se pokaže, ko Moj Elektro pošlje oboje za isti dan.',
+    'Balance': 'Bilanca',
+    'yesterday': 'včeraj',
+    'You sent <b>{0} kWh more</b> to the grid than you took from it.': 'V omrežje ste oddali <b>{0} kWh več</b>, kot ste ga iz njega vzeli.',
+    'You took <b>{0} kWh more</b> from the grid than you sent to it.': 'Iz omrežja ste vzeli <b>{0} kWh več</b>, kot ste ga oddali.',
+    '{0} kWh vs the day before': '{0} kWh glede na dan prej',
+    'Coverage': 'Pokritost',
+    'coverage': 'pokritost',
+    'grid in': 'odjem',
+    'Through the day · net': 'Potek dneva · neto',
+    'No 15-minute data for both yet': 'Še ni 15-minutnih podatkov za odjem in oddajo',
+    'grid out − grid in, every 15 minutes': 'oddaja − odjem, vsakih 15 minut',
+    'GRID OUT': 'ODDAJA',
+    'GRID IN': 'ODJEM',
+    'In plus': 'V plusu',
+    'quarters in plus: {0}': 'četrtur v plusu: {0}',
+    'no quarter in plus': 'nobena četrtura v plusu',
+    'Most sent': 'Največ oddaje',
+    'at {0}': 'ob {0}',
+    'Most taken': 'Največ odjema',
+    'grid in {0} · grid out {1} kWh': 'odjem {0} · oddaja {1} kWh',
+    'Last 7 days': 'Zadnjih 7 dni',
+    'week before': 'teden prej',
+    'This year': 'Letos',
+    'last year': 'lani',
+    'Coverage this year': 'Pokritost letos',
+    'grid out / grid in since 1 January': 'oddaja / odjem od 1. januarja',
+    'This year you sent more than you took.': 'Letos ste oddali več, kot ste vzeli.',
+    '{0} kWh more grid out to reach 100 %.': 'Do 100 % manjka še {0} kWh oddaje.',
+    'days with data: {0}': 'dni s podatki: {0}',
+    'net = grid out − grid in': 'neto = oddaja − odjem',
+    'Grid out (up)': 'Oddaja (zgoraj)',
+    'Grid in (down)': 'Odjem (spodaj)',
+    'Net in plus': 'Neto v plusu',
+    'Net in minus': 'Neto v minusu',
+    'Sun clock': 'Sončna ura',
+    'Average per hour · {0}': 'Povprečje po urah · {0}',
+    'Average net': 'Povprečni neto',
+    'IN PLUS': 'V PLUSU',
+    'outward: grid out': 'navzven: oddaja',
+    'inward: grid in': 'navznoter: odjem',
+    'Year balance': 'Letna bilanca',
+    'Running net total since 1 January': 'Tekoči seštevek neto od 1. januarja',
+    'this year against last year': 'letos proti lani',
+    'last year on this day {0} kWh': 'lani na ta dan {0} kWh',
+    '{0} in plus': '{0} v plusu',
+    '{0} in minus': '{0} v minusu',
+    'Records this year': 'Rekordi letos',
+    'Since 1 January {0}': 'Od 1. januarja {0}',
+    'Best day': 'Najboljši dan',
+    'Biggest minus': 'Največji minus',
+    'Best month': 'Najboljši mesec',
+    'Longest run in plus': 'Najdaljši niz v plusu',
+    'until {0}': 'do {0}',
+    'Days in plus': 'Dni v plusu',
+    '{0} % of days this year': '{0} % dni letos',
+    'Balance calendar': 'Koledar bilance',
+    'more grid in': 'več odjema',
+    'more grid out': 'več oddaje',
+    'Grid in, grid out and net per day · kWh': 'Odjem, oddaja in neto po dnevih · kWh',
+    'Day': 'Dan',
+    '{0} in a row in plus': '{0} zapored v plusu',
+    '{0} in a row in minus': '{0} zapored v minusu',
+    'Every day, last 12 months': 'Vsak dan, zadnjih 12 mesecev',
+    'Every day, last 6 months': 'Vsak dan, zadnjih 6 mesecev',
   };
   const t = (s, ...a) => (LANG === 'sl' && SL[s] || s).replace(/\{(\d)\}/g, (_, i) => a[i]);
   const tr = t; // for methods where t is a local variable
@@ -391,7 +458,11 @@
     up: '<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
     spark: '<path d="M12 3l1.9 5.8L20 10l-5 3.6L16.8 20 12 16.3 7.2 20 9 13.6 4 10l6.1-1.2z"/>',
     meter: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h4"/>',
-    sync: '<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>'
+    sync: '<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>',
+    // Net: two overlapping squares with arrows pointing into the overlap (grid in and grid out merged)
+    merge: '<rect x="2.5" y="2.5" width="11" height="11" rx="3"/><rect x="10.5" y="10.5" width="11" height="11" rx="3"/><path d="M5.5 5.5l4.5 4.5M10 6.6V10H6.6M18.5 18.5 14 14M14 17.4V14h3.4"/>',
+    flame: '<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-9-1 2-2 3-4 4 0-2-1-4-2-6-2 3-4 6-4 11 0 4 3 7 7 7z"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>'
   };
   const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
 
@@ -736,6 +807,94 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .gsw button:hover{color:var(--txt)}
 .gsw button.on.in{color:#fff;background:linear-gradient(135deg,#ff5d5d,#ff8c42);box-shadow:0 6px 20px -6px rgba(255,110,70,.7)}
 .gsw button.on.out{color:#061022;background:linear-gradient(135deg,#3ef0a8,#e8ff6a);box-shadow:0 6px 20px -6px rgba(120,240,140,.7)}
+/* Net (Neto): the round button between Grid in and Grid out, in the logo's blue; 38 px, 5% taller than the others */
+.gsw{align-items:center}
+.gsw button.m{position:relative;width:38px;height:38px;padding:0;margin:-2px 5px;border-radius:50%;justify-content:center;flex:none;color:#6fe9ff;
+background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%),#0a1022;box-shadow:inset 0 0 0 1.5px rgba(62,230,255,.55),0 0 16px -6px rgba(62,230,255,.6)}
+.gsw button.m:after{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(123,107,255,.25);pointer-events:none}
+.gsw button.m .ic{width:22px;height:22px;stroke-width:1.8}
+.gsw button.m:hover{color:#bdf6ff;box-shadow:inset 0 0 0 1.5px rgba(62,230,255,.9),0 0 22px -4px rgba(62,230,255,.8)}
+.gsw button.m.on{color:#061022;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 8px 26px -6px rgba(62,230,255,.75),0 0 0 3px rgba(62,230,255,.14)}
+.gsw button.m.on:after{border-color:rgba(123,107,255,.45)}
+.hdr .gsw button.m{flex:none}
+.np{color:#3ef0a8}.nn{color:#ff7a4d}
+.nt-hero{display:grid;grid-template-columns:1fr auto;gap:24px;overflow:hidden;min-height:330px}
+.nt-hero:after{content:'';position:absolute;width:420px;height:420px;right:-90px;top:-140px;border-radius:50%;background:radial-gradient(circle,rgba(62,240,168,.18),transparent 65%);pointer-events:none}
+.nt-hero.minus:after{background:radial-gradient(circle,rgba(255,122,77,.18),transparent 65%)}
+.nt-hero .empty{grid-column:1/-1}
+.bignum.nt-p{background:linear-gradient(180deg,#fff 10%,#b5ffd9 55%,#3ef0a8);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 6px 30px rgba(62,240,168,.35))}
+.bignum.nt-n{background:linear-gradient(180deg,#fff 10%,#ffc9a8 55%,#ff7a4d);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 6px 30px rgba(255,122,77,.35))}
+.nt-say{font-size:16px;color:#cfd6f5;margin:6px 0 22px;max-width:540px;line-height:1.45}
+.nt-say b{color:#fff;font-weight:600}
+.nt-q{font-size:12px;color:var(--dim)}
+.nt-tug{max-width:560px}
+.nt-tl{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--mut);margin-bottom:8px}
+.nt-tl span{display:inline-flex;align-items:center;gap:6px}
+.nt-tl b{font-size:17px;font-weight:600;color:var(--txt);margin-left:4px}
+.nt-tl span:first-child .ic{color:#ff7a4d}.nt-tl span:last-child .ic{color:#3ef0a8}
+.nt-tr{position:relative;height:14px;border-radius:999px;background:rgba(0,0,0,.35);box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+.nt-tr .a{position:absolute;left:0;top:0;bottom:0;border-radius:999px 0 0 999px;background:linear-gradient(90deg,#ff5d5d,#ff8c42)}
+.nt-tr .b{position:absolute;right:0;top:0;bottom:0;border-radius:0 999px 999px 0;background:linear-gradient(90deg,#3ef0a8,#e8ff6a)}
+.nt-tr .z{position:absolute;left:50%;top:-6px;bottom:-6px;width:2px;margin-left:-1px;background:rgba(255,255,255,.35);border-radius:2px}
+.nt-tr .k{position:absolute;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 0 0 4px rgba(5,8,17,.9),0 0 22px rgba(62,230,255,.8);transition:left 1.2s cubic-bezier(.2,.8,.2,1)}
+.pill.nt-b{color:#aee9ff;background:rgba(62,230,255,.08);border-color:rgba(62,230,255,.25)}
+.pill .ic{width:14px;height:14px}
+.nt-ring{position:relative;width:270px;height:270px;align-self:center}
+.nt-ring svg{width:100%;height:100%;overflow:visible}
+.nt-ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.nt-ring .v{font-size:46px;font-weight:700;letter-spacing:-.03em}.nt-ring .v small{font-size:20px;color:var(--mut);font-weight:500}
+.nt-ring .l{font-size:12px;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+.nt-ring .k{display:flex;gap:10px;margin-top:10px;font-size:12px;color:var(--mut)}
+.nt-ring .k i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.nt-svg{width:100%;display:block;overflow:visible}
+.nt-glow{filter:drop-shadow(0 0 6px rgba(62,240,168,.6))}
+.nt-gp{filter:drop-shadow(0 0 8px rgba(62,240,168,.55))}.nt-gn{filter:drop-shadow(0 0 8px rgba(255,110,70,.5))}
+.nt-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.nt-kpi{padding:18px 20px}
+.nt-kl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.nt-cmp{letter-spacing:0;text-transform:none;font-size:12px;color:var(--mut);white-space:nowrap}
+.nt-kv{font-size:34px;font-weight:700;letter-spacing:-.03em;margin-top:8px;font-variant-numeric:tabular-nums}
+.nt-kv small{font-size:15px;color:var(--mut);font-weight:500;margin-left:4px}
+.nt-ks{font-size:12.5px;color:var(--mut);margin-top:2px}.nt-cs{margin-top:10px}
+.nt-sp{position:relative;display:flex;gap:2px;height:44px;margin-top:10px}
+.nt-sp:before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px solid rgba(255,255,255,.12)}
+.nt-sp i{position:relative;flex:1;min-width:0}
+.nt-sp b{position:absolute;left:12%;right:12%;border-radius:2px;opacity:.9}
+.nt-cov{height:6px;border-radius:999px;background:rgba(255,255,255,.07);margin-top:14px;overflow:hidden}
+.nt-cov i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--c1),var(--c2))}
+.nt-leg{margin-top:12px}.nt-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.nt-clock{width:100%;max-width:330px;display:block;margin:0 auto;overflow:visible}
+.nt-yv{text-align:right}.nt-yv>div:first-child{font-size:30px;font-weight:700;letter-spacing:-.02em}.nt-yv small{font-size:14px;color:var(--mut);font-weight:500}
+.nt-rec{display:grid;gap:10px}
+.nt-rec>div{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.05)}
+.nt-ri{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent)}
+.nt-ri .ic{width:19px;height:19px}
+.nt-rt{flex:1;min-width:0}.nt-rt b{display:block;font-size:13px;font-weight:500;color:var(--mut)}.nt-rt span{font-size:12px;color:var(--dim)}
+.nt-rv{font-size:20px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.nt-cm{display:grid;grid-template-columns:repeat(var(--w),minmax(0,1fr));gap:3px;margin:0 0 6px 34px;max-width:calc(var(--w) * 24px);font-size:11px;color:var(--dim)}
+.nt-cm span{white-space:nowrap;overflow:visible}
+.nt-cal{display:grid;grid-template-columns:28px minmax(0,calc(var(--w) * 24px - 34px));gap:6px}
+.nt-cd{display:grid;grid-template-rows:repeat(7,1fr);gap:3px;font-size:10.5px;color:var(--dim)}.nt-cd span{display:flex;align-items:center}
+.nt-cg{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);grid-template-columns:repeat(var(--w),minmax(0,1fr));gap:3px}
+.nt-cg i{aspect-ratio:1;border-radius:3px;display:block;background:rgba(255,255,255,.04)}.nt-cg i.f{background:none}
+.nt-scale{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mut);margin-top:12px}
+.nt-scale .g{flex:1;max-width:220px;height:8px;border-radius:999px;background:linear-gradient(90deg,#ff5d5d,#ff8c42 30%,#2a3150 50%,#3ef0a8 70%,#e8ff6a)}
+.nt-tw{overflow-x:auto}
+.nt-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.nt-tbl th{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500;text-align:right;padding:0 10px 10px}
+.nt-tbl td{padding:11px 10px;border-top:1px solid rgba(255,255,255,.05);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nt-tbl th:first-child,.nt-tbl td:first-child{text-align:left}
+.nt-tbl .nt-nv{font-weight:600}
+.nt-tbl td.nt-bar{width:34%}
+.nt-dv{position:relative;height:10px}
+.nt-dv:before{content:'';position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:rgba(255,255,255,.2)}
+.nt-dv i{position:absolute;top:0;bottom:0;border-radius:3px}
+.tip .nt-d{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+@media (max-width:1280px){.nt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:860px){.nt-hero{grid-template-columns:1fr}.nt-ring{justify-self:center;width:240px;height:240px}}
+@media (max-width:640px){.nt-kpis{gap:12px}.nt-kpi{padding:16px}.nt-kv{font-size:27px}.nt-tbl .nt-bar{display:none}.nt-tbl td,.nt-tbl th{padding-left:6px;padding-right:6px}}
+:host([lite]) .nt-hero:after{display:none}
+:host([lite]) .bignum.nt-p,:host([lite]) .bignum.nt-n,:host([lite]) .nt-glow,:host([lite]) .nt-gp,:host([lite]) .nt-gn,:host([lite]) .nt-arc{filter:none!important}
 .grid{transition:opacity .22s ease}
 .grid.fade{opacity:0}
 :host([out]){--c1:#3ef0a8}
@@ -759,6 +918,15 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 :host([lite]) .od,:host([lite]) .od-sep,:host([lite]) input.in.mono,:host([lite]) .fld.vt input.in,:host([lite]) .fld.mt input.in,:host([lite]) .tbl .mono{font-family:ui-monospace,'Roboto Mono',monospace}
 `;
 
+  /* ---------- Net view helpers ---------- */
+  const NP = '#3ef0a8', NN = '#ff7a4d'; // plus (more grid out) / minus (more grid in)
+  const NET_IDS = ['n-hero', 'n-day', 'n-kpis', 'n-chart', 'n-clock', 'n-year', 'n-rec', 'n-cal', 'n-log'];
+  const NORM_IDS = ['hero', 'prof', 'kpis', 'chart', 'heat', 'tariff', 'blocks', 'log', 'form'];
+  const nsg = v => { const r = Math.abs(v) < 0.005 ? 0 : v; return (r > 0 ? '+' : '') + fk(r); };
+  const ncl = v => v >= 0 ? 'np' : 'nn';
+  // a tooltip: bold title, then rows [label, value, colour dot]
+  const ntip = (title, rows) => esc(`<b>${title}</b>` + rows.map(([l, v, c]) => `<div class="r">${c ? `<i class="nt-d" style="background:${c}"></i>` : ''}${l}${v !== '' ? `<span class="v">${v}</span>` : ''}</div>`).join(''));
+
   /* ---------- card ---------- */
   class DailyEnergyCard extends HTMLElement {
     constructor() {
@@ -769,7 +937,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       this._ui = { range: 'day', trange: 'day', all: false, impFrom: `${y.getFullYear()}-01-01`, impTo: iso(y) };
       this._demo = null; this._loaded = false; this._shown = 0; this._sync = null;
       this._dirty = false; this._me = false; this._q15 = {}; this._q15o = {}; this._pinOk = '';
-      this._view = LS.get('daily-energy-view') === 'out' ? 'out' : 'in';
+      const view = LS.get('daily-energy-view'); this._view = view === 'out' || view === 'net' ? view : 'in';
     }
     setConfig(c) { this._config = c || {}; }
     getCardSize() { return 24; }
@@ -855,8 +1023,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
     }
 
     /* ----- data ----- */
-    _calc() {
-      const s = { ...DEF, ...this._data.settings }, out = this._isOut();
+    // out: which grid to work out (default: the one on screen)
+    _calc(out = this._isOut()) {
+      const s = { ...DEF, ...this._data.settings };
       // the grid-out view only shows Moj Elektro's grid-out days (manual readings are grid in)
       const E = out ? [] : [...(this._demo || this._data.entries)].sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
       const days = new Map();
@@ -987,6 +1156,15 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
  <section class="card s12" id="blocks"></section>
  <section class="card s12" id="log"></section>
  <section class="card form s12" id="form"></section>
+ <section class="card nt-hero s7" id="n-hero"></section>
+ <section class="card s5" id="n-day"></section>
+ <div class="nt-kpis s12" id="n-kpis"></div>
+ <section class="card s8" id="n-chart"></section>
+ <section class="card s4" id="n-clock"></section>
+ <section class="card s8" id="n-year"></section>
+ <section class="card s4" id="n-rec"></section>
+ <section class="card s12" id="n-cal"></section>
+ <section class="card s12" id="n-log"></section>
 </div></div>
 <div id="dw"></div></div>
 <div class="tip" id="tip"></div><div class="toast" id="toast"></div>
@@ -1017,8 +1195,11 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       this._applyLang();
       this._calc();
       // without Moj Elektro the manual form takes the profile's slot next to the hero
-      const pr = this.$('prof'), fm = this.$('form'), out = this._c.out;
-      this.toggleAttribute('out', out);
+      const pr = this.$('prof'), fm = this.$('form'), out = this._c.out, net = this._isNet();
+      this.toggleAttribute('out', out); this.toggleAttribute('net', net);
+      for (const id of NET_IDS) this.$(id).style.display = net ? '' : 'none';
+      for (const id of NORM_IDS) this.$(id).style.display = net ? 'none' : '';
+      if (net) { this._renderHdr(); this._renderBanner(); this._renderNet(); if (!(remote && this._dwOpen)) this._renderDrawer(); return; }
       pr.classList.toggle('form', !this._me); pr.classList.toggle('prof', !!this._me);
       // grid out has no VT / MT split card, tariff blocks or manual readings (its box only offers deleting days)
       fm.style.display = this._me ? '' : 'none';
@@ -1031,7 +1212,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const d = new Date(), c = this._c || {};
       // only warnings get a chip; normal operation keeps the header clean
       const chip = this._demo ? `<span class="chip warn"><i></i>${t('Demo preview')}</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>${t('Daily Energy integration not set up')}</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div class="ttl"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? `<div class="gsw">${[['in', 'bolt', 'Grid in'], ['out', 'sun', 'Grid out']].map(([v, i, l]) => `<button class="${v}${(this._isOut() ? 'out' : 'in') === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`).join('')}</div>` : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
+      return `<div class="logo">${ic('bolt')}</div><div class="ttl"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
     _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); }
     // Update button: asks the Moj Elektro API for new data now (the integration also checks every hour by itself).
@@ -1277,6 +1458,242 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
       const r = this._ui.range, bk = this._buckets(r);
       const sub = t({ day: 'Last 30 days', week: 'Last 12 weeks', month: 'Last 12 months', year: 'By year' }[r]);
       this.$('chart').innerHTML = `<div class="ch-h"><div><div class="h-t">${t(this._c.out ? 'Sent to the grid' : 'Consumption')}</div><div class="h-s">${sub} · kWh</div></div><div class="row" style="align-items:center;gap:18px">${this._avgChip('use')}${this._tabs(r, 'range', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div></div>${this._bars(bk, false, false, 'use')}${this._stats(bk, false)}`;
+    }
+    /* ----- Net (Neto): grid out − grid in, the round button between Grid in and Grid out ----- */
+    _isNet() { return this._view === 'net' && this._gridBoth(); }
+    // Days that have both grid in and grid out, each worked out by the same rules as its own view (edits, month
+    // totals, 15-minute totals until the meter total arrives). n = grid out − grid in: plus = more sent than taken.
+    _netData() {
+      const ci = this._calc(false), co = this._calc(true);
+      this._calc();
+      const days = new Map();
+      for (const k of ci.keys) {
+        const a = ci.days.get(k), b = co.days.get(k);
+        if (a && a.n && b && b.n) days.set(k, { i: a.t, o: b.t, n: b.t - a.t, q: !!(a.q15 || b.q15) });
+      }
+      const keys = [...days.keys()].sort();
+      return { days, keys, last: keys.length ? keys[keys.length - 1] : null };
+    }
+    _nSum(from, to) {
+      const r = { i: 0, o: 0, n: 0, c: 0 };
+      for (const k of this._N.keys) if (k >= from && k <= to) { const x = this._N.days.get(k); r.i += x.i; r.o += x.o; r.c++; }
+      r.n = r.o - r.i;
+      return r;
+    }
+    // the days of both grids' 15-minute data, as kW per quarter hour: [{t, i, o, n}]
+    _nQuarters(d) {
+      const qi = (this._q15 || {})[d], qo = (this._q15o || {})[d];
+      if (!Array.isArray(qi) || !Array.isArray(qo) || qi.length < 92 || qo.length !== qi.length) return null;
+      const t0 = pd(d).getTime();
+      return qi.map((v, j) => { const i = (+v || 0) * 4, o = (+qo[j] || 0) * 4; return { t: new Date(t0 + j * 9e5), i, o, n: o - i }; });
+    }
+    _renderNet() {
+      this._N = this._netData();
+      if (!this._N.last) {
+        this.$('n-hero').innerHTML = `<div class="empty">${ic('merge')}<b>${t('No days with both grid in and grid out yet')}</b><span>${t('Net appears as soon as Moj Elektro has both for the same day.')}</span></div>`;
+        for (const id of NET_IDS.slice(1)) this.$(id).style.display = 'none';
+        return;
+      }
+      this._nHero(); this._nDay(); this._nKpis(); this._nChart(); this._nClock(); this._nYear(); this._nRec(); this._nCal(); this._nLog();
+    }
+    _nHero() {
+      const N = this._N, k = N.last, x = N.days.get(k), pk = N.keys[N.keys.length - 2], p = pk ? N.days.get(pk) : null;
+      const pos = x.n >= 0, yest = k === addD(iso(new Date()), -1);
+      // days in a row on the same side (plus or minus), without a gap
+      let st = 0;
+      for (let j = N.keys.length - 1; j >= 0; j--) {
+        if ((N.days.get(N.keys[j]).n >= 0) !== pos || (j < N.keys.length - 1 && diffD(N.keys[j], N.keys[j + 1]) !== 1)) break;
+        st++;
+      }
+      const share = x.i + x.o > 0 ? x.i / (x.i + x.o) * 100 : 50, M = Math.max(x.i, x.o) || 1, C1 = 2 * Math.PI * 112, C2 = 2 * Math.PI * 92;
+      const cov = x.i > 0 ? Math.round(x.o / x.i * 100) : null;
+      const el = this.$('n-hero'); el.classList.toggle('minus', !pos);
+      el.innerHTML = `<div class="nt-hl">
+<div class="eyebrow"><span class="pulse"></span>${t('Balance')} · ${yest ? t('yesterday') + ', ' : ''}${fdate(k)}</div>
+<div class="big"><span class="bignum nt-${pos ? 'p' : 'n'}">${nsg(x.n)}</span><span class="unit">kWh</span></div>
+<div class="nt-say">${pos ? t('You sent <b>{0} kWh more</b> to the grid than you took from it.', fk(x.n)) : t('You took <b>{0} kWh more</b> from the grid than you sent to it.', fk(-x.n))}${x.q ? ` <span class="nt-q">${t('15-min data · meter total tomorrow')}</span>` : ''}</div>
+<div class="nt-tug"><div class="nt-tl"><span>${ic('bolt')}${t('Grid in')}<b>${fk(x.i)} kWh</b></span><span>${t('Grid out')}<b>${fk(x.o)} kWh</b>${ic('sun')}</span></div>
+<div class="nt-tr"><div class="a" style="width:${share}%"></div><div class="b" style="width:${100 - share}%"></div><div class="z"></div><div class="k" style="left:${share}%"></div></div></div>
+<div class="pills">${p ? `<span class="pill ${x.n >= p.n ? 'down' : 'up'}">${ic(x.n >= p.n ? 'up' : 'down')}${t('{0} kWh vs the day before', nsg(x.n - p.n))}</span>` : ''}<span class="pill nt-b">${ic('flame')}${t(pos ? '{0} in a row in plus' : '{0} in a row in minus', nDays(st))}</span></div></div>
+<div class="nt-ring" data-tip="${ntip(fdate(k), [[t('Grid out'), fk(x.o) + ' kWh', NP], [t('Grid in'), fk(x.i) + ' kWh', NN], [t('Coverage'), cov == null ? '—' : cov + ' %']])}"><svg viewBox="0 0 270 270"><defs>
+<linearGradient id="nt-gp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3ef0a8"/><stop offset="1" stop-color="#e8ff6a"/></linearGradient>
+<linearGradient id="nt-gn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5d5d"/><stop offset="1" stop-color="#ff8c42"/></linearGradient></defs>
+<circle cx="135" cy="135" r="112" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/><circle cx="135" cy="135" r="92" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+<circle class="nt-arc" cx="135" cy="135" r="112" fill="none" stroke="url(#nt-gp)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(C1 * x.o / M * .96).toFixed(1)} ${C1.toFixed(1)}" transform="rotate(-90 135 135)" style="filter:drop-shadow(0 0 10px rgba(62,240,168,.5))"/>
+<circle class="nt-arc" cx="135" cy="135" r="92" fill="none" stroke="url(#nt-gn)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(C2 * x.i / M * .96).toFixed(1)} ${C2.toFixed(1)}" transform="rotate(-90 135 135)" style="filter:drop-shadow(0 0 10px rgba(255,110,70,.45))"/>
+</svg><div class="c"><div class="v">${cov == null ? '—' : `${cov}<small>%</small>`}</div><div class="l">${t('coverage')}</div><div class="k"><span><i style="background:${NP}"></i>${t('grid out')}</span><span><i style="background:${NN}"></i>${t('grid in')}</span></div></div></div>`;
+    }
+    _nDay() {
+      const el = this.$('n-day'), qi = this._q15 || {};
+      const d = Object.keys(qi).filter(k => this._nQuarters(k)).sort().pop();
+      const head = sub => `<div class="ch-h"><div><div class="h-t">${t('Through the day · net')}</div><div class="h-s">${sub}</div></div><span class="badge">kW</span></div>`;
+      if (!d) { el.innerHTML = head(t('Moj Elektro · 24 h delay')) + `<div class="empty" style="min-height:240px">${ic('merge')}<b>${t('No 15-minute data for both yet')}</b></div>`; return; }
+      const Q = this._nQuarters(d), W = 600, H = 230;
+      const mx = Math.max(0.1, ...Q.map(q => q.n)), mn = Math.min(-0.1, ...Q.map(q => q.n)), sc = (H - 22) / (mx - mn), z = 12 + mx * sc;
+      const X = j => j / (Q.length - 1) * W, Y = v => z - v * sc;
+      const pts = Q.map((q, j) => `${X(j).toFixed(1)},${Y(q.n).toFixed(1)}`), line = 'M' + pts.join('L'), area = `M0,${z.toFixed(1)}L${pts.join('L')}L${W},${z.toFixed(1)}Z`;
+      const pk = Q.reduce((a, q) => q.n > a.n ? q : a), lo = Q.reduce((a, q) => q.n < a.n ? q : a), on = Q.filter(q => q.n > 0.0005);
+      const ticks = [0, 6, 12, 18, 24].map(h => { const x = h / 24 * W; return `<line x1="${x}" x2="${x}" y1="4" y2="${H}" stroke="rgba(255,255,255,.05)"/><text x="${Math.min(W - 16, Math.max(16, x))}" y="${H + 18}" fill="#59618c" font-size="12" text-anchor="middle">${pad(h)}:00</text>`; }).join('');
+      const bw = W / Q.length, hits = Q.map((q, j) => `<rect x="${(j * bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${H}" fill="transparent" data-tip="${ntip(`${fdate(d)} · ${hm(q.t)}`, [[t('Grid out'), fk(q.o) + ' kW', NP], [t('Grid in'), fk(q.i) + ' kW', NN], [t('Net'), nsg(q.n) + ' kW']])}"/>`).join('');
+      const tile = (c, l, v, s) => `<div style="--c:${c}"><b>${l}</b><span>${v}</span><em>${s}</em></div>`;
+      el.innerHTML = head(`${fdate(d)} · ${t('grid out − grid in, every 15 minutes')}`) + `<svg class="nt-svg" viewBox="0 0 ${W} ${H + 24}"><defs>
+<clipPath id="nt-cu"><rect x="0" y="0" width="${W}" height="${z.toFixed(1)}"/></clipPath><clipPath id="nt-cd"><rect x="0" y="${z.toFixed(1)}" width="${W}" height="${H}"/></clipPath>
+<linearGradient id="nt-au" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8ff6a" stop-opacity=".55"/><stop offset="1" stop-color="#3ef0a8" stop-opacity=".05"/></linearGradient>
+<linearGradient id="nt-ad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8c42" stop-opacity=".05"/><stop offset="1" stop-color="#ff5d5d" stop-opacity=".55"/></linearGradient></defs>
+${ticks}<path d="${area}" fill="url(#nt-au)" clip-path="url(#nt-cu)"/><path d="${area}" fill="url(#nt-ad)" clip-path="url(#nt-cd)"/>
+<path d="${line}" fill="none" stroke="${NP}" stroke-width="2.2" clip-path="url(#nt-cu)" class="nt-glow"/><path d="${line}" fill="none" stroke="${NN}" stroke-width="2.2" clip-path="url(#nt-cd)"/>
+<line x1="0" x2="${W}" y1="${z.toFixed(1)}" y2="${z.toFixed(1)}" stroke="rgba(255,255,255,.3)" stroke-dasharray="3 4"/>
+<text x="4" y="16" fill="${NP}" font-size="11.5" font-weight="600">▲ ${t('GRID OUT')}</text><text x="4" y="${H - 6}" fill="${NN}" font-size="11.5" font-weight="600">▼ ${t('GRID IN')}</text>
+${pk.n > 0 ? `<circle cx="${X(Q.indexOf(pk)).toFixed(1)}" cy="${Y(pk.n).toFixed(1)}" r="5" fill="#e8ff6a" stroke="#050811" stroke-width="2"/>` : ''}${lo.n < 0 ? `<circle cx="${X(Q.indexOf(lo)).toFixed(1)}" cy="${Y(lo.n).toFixed(1)}" r="5" fill="#ff5d5d" stroke="#050811" stroke-width="2"/>` : ''}
+${hits}</svg>
+<div class="bpk o3">${tile(NP, t('In plus'), on.length ? `${hm(on[0].t)}–${hm(new Date(+on[on.length - 1].t + 9e5))}` : '—', on.length ? t('quarters in plus: {0}', on.length) : t('no quarter in plus'))}${tile('#e8ff6a', t('Most sent'), pk.n > 0 ? `${fk(pk.n)} kW` : '—', pk.n > 0 ? t('at {0}', hm(pk.t)) : '')}${tile(NN, t('Most taken'), lo.n < 0 ? `${fk(-lo.n)} kW` : '—', lo.n < 0 ? t('at {0}', hm(lo.t)) : '')}</div>`;
+    }
+    _nKpis() {
+      const N = this._N, L = N.last, Ld = pd(L), y = Ld.getFullYear(), m = Ld.getMonth(), dd = Ld.getDate();
+      const spark = vals => { const mx = Math.max(0.1, ...vals.map(x => Math.abs(x.v))); return `<div class="nt-sp">${vals.map(x => `<i data-tip="${x.tip}">${x.c ? `<b style="${x.v >= 0 ? `bottom:50%;height:${Math.max(3, x.v / mx * 50).toFixed(1)}%;background:${NP}` : `top:50%;height:${Math.max(3, -x.v / mx * 50).toFixed(1)}%;background:${NN}`}"></b>` : ''}</i>`).join('')}</div>`; };
+      const dayTip = (k, s) => ntip(fdate(k), s.c ? [[t('Grid out'), fk(s.o) + ' kWh', NP], [t('Grid in'), fk(s.i) + ' kWh', NN], [t('Net'), nsg(s.n) + ' kWh']] : [[t('No data'), '']]);
+      const tile = (label, cmp, s, sp) => `<section class="card nt-kpi"><div class="nt-kl"><span>${label}</span>${cmp}</div><div class="nt-kv ${ncl(s.n)}">${nsg(s.n)}<small>kWh</small></div><div class="nt-ks">${t('grid in {0} · grid out {1} kWh', fk(s.i), fk(s.o))}</div>${sp}</section>`;
+      const cmp = (label, tip, s) => s.c ? `<span class="nt-cmp" data-tip="${tip}">${label} ${nsg(s.n)}</span>` : '';
+      // last 7 days against the 7 before
+      const w = this._nSum(addD(L, -6), L), wp = this._nSum(addD(L, -13), addD(L, -7));
+      const wv = [...Array(7)].map((_, j) => { const k = addD(L, j - 6), s = this._nSum(k, k); return { v: s.n, c: s.c, tip: dayTip(k, s) }; });
+      // this month against the same days of the month before
+      const mf = `${y}-${pad(m + 1)}-01`, ms = this._nSum(mf, L), pm = new Date(y, m - 1, 1), pe = new Date(y, m - 1, Math.min(dd, new Date(y, m, 0).getDate()));
+      const mp = this._nSum(iso(pm), iso(pe)), mv = [...Array(dd)].map((_, j) => { const k = iso(new Date(y, m, j + 1)), s = this._nSum(k, k); return { v: s.n, c: s.c, tip: dayTip(k, s) }; });
+      // this year against last year up to the same day
+      const ys = this._nSum(`${y}-01-01`, L), yp = this._nSum(`${y - 1}-01-01`, `${y - 1}${L.slice(4)}`);
+      const yv = [...Array(m + 1)].map((_, j) => { const s = this._nSum(iso(new Date(y, j, 1)), iso(new Date(y, j + 1, 0))); return { v: s.n, c: s.c, tip: ntip(`${MONL[j]} ${y}`, s.c ? [[t('Grid out'), fk(s.o) + ' kWh', NP], [t('Grid in'), fk(s.i) + ' kWh', NN], [t('Net'), nsg(s.n) + ' kWh']] : [[t('No data'), '']]) }; });
+      const cov = ys.i > 0 ? ys.o / ys.i * 100 : 0;
+      this.$('n-kpis').innerHTML = tile(t('Last 7 days'), cmp(t('week before'), ntip(`${fshort(addD(L, -13))} – ${fshort(addD(L, -7))}`, [[t('Net'), nsg(wp.n) + ' kWh']]), wp), w, spark(wv))
+        + tile(t('This month'), cmp(MON[pm.getMonth()], ntip(`${fshort(iso(pm))} – ${fshort(iso(pe))}`, [[t('Net'), nsg(mp.n) + ' kWh']]), mp), ms, spark(mv))
+        + tile(t('This year'), cmp(t('last year'), ntip(`${fshort(`${y - 1}-01-01`)} ${y - 1} – ${fshort(`${y - 1}${L.slice(4)}`)}`, [[t('Net'), nsg(yp.n) + ' kWh']]), yp), ys, spark(yv))
+        + `<section class="card nt-kpi"><div class="nt-kl"><span>${t('Coverage this year')}</span></div><div class="nt-kv">${ys.i > 0 ? Math.round(cov) : '—'}<small>%</small></div><div class="nt-ks">${t('grid out / grid in since 1 January')}</div><div class="nt-cov"><i style="width:${Math.min(100, cov).toFixed(1)}%"></i></div><div class="nt-ks nt-cs">${cov >= 100 ? t('This year you sent more than you took.') : t('{0} kWh more grid out to reach 100 %.', fk(ys.i - ys.o))}</div></section>`;
+    }
+    _nChart() {
+      const N = this._N, L = N.last, u = this._ui.nrange || 'month', B = [];
+      if (u === 'day') for (let j = 29; j >= 0; j--) { const k = addD(L, -j), d = pd(k); B.push({ l: String(d.getDate()), s: DOW2[d.getDay()], title: fdate(k), from: k, to: k, now: !j }); }
+      if (u === 'week') { const ws = weekStart(L); for (let j = 11; j >= 0; j--) { const k = addD(ws, -7 * j); B.push({ l: t('W{0}', weekNo(k)), s: fshort(k), title: t('Week {0} · {1} – {2}', weekNo(k), fshort(k), fshort(addD(k, 6))), from: k, to: addD(k, 6), now: !j }); } }
+      if (u === 'month') { const d = pd(L); for (let j = 11; j >= 0; j--) { const mo = new Date(d.getFullYear(), d.getMonth() - j, 1); B.push({ l: MON[mo.getMonth()], s: j === 11 || mo.getMonth() === 0 ? String(mo.getFullYear()) : '', title: `${MONL[mo.getMonth()]} ${mo.getFullYear()}`, from: iso(mo), to: iso(new Date(mo.getFullYear(), mo.getMonth() + 1, 0)), now: !j }); } }
+      if (u === 'year') { const ly = pd(L).getFullYear(), fy = pd(N.keys[0]).getFullYear(); for (let yy = Math.min(fy, ly - 2); yy <= ly; yy++) B.push({ l: String(yy), s: '', title: String(yy), from: `${yy}-01-01`, to: `${yy}-12-31`, now: yy === ly }); }
+      B.forEach(b => Object.assign(b, this._nSum(b.from, b.to)));
+      const W = 820, H = 300, z = H / 2, mx = Math.max(0.1, ...B.map(b => Math.max(b.i, b.o))), sc = (z - 20) / mx, bw = W / B.length;
+      const gw = Math.min(bw * .62, 80), nw = Math.max(3, Math.min(bw * .3, 36)), lab = B.length <= 12;
+      let s = '';
+      B.forEach((b, j) => {
+        const c = j * bw + bw / 2, nh = Math.abs(b.n) * sc, show = lab || (B.length - 1 - j) % 5 === 0;
+        if (b.c) {
+          if (b.o > 0) s += `<rect x="${(c - gw / 2).toFixed(1)}" y="${(z - b.o * sc).toFixed(1)}" width="${gw.toFixed(1)}" height="${Math.max(1, b.o * sc - 2).toFixed(1)}" rx="${Math.min(6, gw / 3).toFixed(1)}" fill="url(#nt-go)" opacity=".26"/>`;
+          if (b.i > 0) s += `<rect x="${(c - gw / 2).toFixed(1)}" y="${z + 2}" width="${gw.toFixed(1)}" height="${Math.max(1, b.i * sc - 2).toFixed(1)}" rx="${Math.min(6, gw / 3).toFixed(1)}" fill="url(#nt-gi)" opacity=".26"/>`;
+          s += `<rect x="${(c - nw / 2).toFixed(1)}" y="${(b.n >= 0 ? z - nh : z).toFixed(1)}" width="${nw.toFixed(1)}" height="${Math.max(2, nh).toFixed(1)}" rx="${Math.min(5, nw / 3).toFixed(1)}" fill="url(#nt-${b.n >= 0 ? 'go' : 'gi'})" class="nt-${b.n >= 0 ? 'gp' : 'gn'}"/>`;
+          if (lab) s += `<text x="${c.toFixed(1)}" y="${(b.n >= 0 ? z - nh - 8 : z + nh + 16).toFixed(1)}" fill="${b.n >= 0 ? '#98ffd6' : '#ffc2a8'}" font-size="12" font-weight="600" text-anchor="middle">${nsg(b.n)}</text>`;
+        }
+        if (show) s += `<text x="${c.toFixed(1)}" y="${H + 18}" fill="${b.now ? '#eef1ff' : '#8f98c2'}" font-size="12.5" font-weight="${b.now ? 600 : 400}" text-anchor="middle">${esc(b.l)}</text>${b.s && lab ? `<text x="${c.toFixed(1)}" y="${H + 34}" fill="#59618c" font-size="11" text-anchor="middle">${esc(b.s)}</text>` : ''}`;
+        s += `<rect x="${(j * bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${H}" fill="transparent" data-tip="${ntip(b.title, b.c ? [[t('Grid out'), fk(b.o) + ' kWh', NP], [t('Grid in'), fk(b.i) + ' kWh', NN], [t('Net'), nsg(b.n) + ' kWh'], [t('days with data: {0}', b.c), '']] : [[t('No data'), '']])}"/>`;
+      });
+      const sub = t({ day: 'Last 30 days', week: 'Last 12 weeks', month: 'Last 12 months', year: 'By year' }[u]);
+      this.$('n-chart').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Balance')}</div><div class="h-s">${sub} · ${t('net = grid out − grid in')}</div></div>${this._tabs(u, 'nrange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div>
+<svg class="nt-svg" viewBox="0 0 ${W} ${H + 40}"><defs>
+<linearGradient id="nt-go" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8ff6a"/><stop offset="1" stop-color="#3ef0a8"/></linearGradient>
+<linearGradient id="nt-gi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8c42"/><stop offset="1" stop-color="#ff5d5d"/></linearGradient></defs>
+<line x1="0" x2="${W}" y1="${z}" y2="${z}" stroke="rgba(255,255,255,.28)" stroke-dasharray="3 4"/>${s}</svg>
+<div class="legend nt-leg"><span><i style="background:${NP};opacity:.4"></i>${t('Grid out (up)')}</span><span><i style="background:${NN};opacity:.4"></i>${t('Grid in (down)')}</span><span><i style="background:linear-gradient(#e8ff6a,#3ef0a8)"></i>${t('Net in plus')}</span><span><i style="background:linear-gradient(#ff8c42,#ff5d5d)"></i>${t('Net in minus')}</span></div>`;
+    }
+    _nClock() {
+      const el = this.$('n-clock'), L = this._N.last, from = addD(L, -20), sum = Array(24).fill(0), cnt = Array(24).fill(0);
+      let nd = 0;
+      for (const d of Object.keys(this._q15 || {})) {
+        if (d < from || d > L) continue;
+        const Q = this._nQuarters(d); if (!Q) continue;
+        nd++; for (const q of Q) { const h = q.t.getHours(); sum[h] += q.n; cnt[h]++; }
+      }
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Sun clock')}</div><div class="h-s">${nd ? t('Average per hour · {0}', lastDays(nd)) : t('Moj Elektro · 24 h delay')}</div></div></div>`;
+      if (!nd) { el.innerHTML = head + `<div class="empty" style="min-height:260px">${ic('sun')}<b>${t('No 15-minute data for both yet')}</b></div>`; return; }
+      const av = sum.map((s, h) => cnt[h] ? s / cnt[h] : 0), m = Math.max(0.05, ...av.map(Math.abs)), cx = 150, cy = 150, r0 = 78, ro = 58, ri = 40;
+      const P = (r, a) => `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
+      // noon at the top, the day runs clockwise
+      const ang = h => h / 24 * 2 * Math.PI + Math.PI / 2;
+      const seg = av.map((v, h) => {
+        const a0 = ang(h) + .02, a1 = ang(h + 1) - .02, R = v >= 0 ? r0 + v / m * ro : r0 + v / m * ri, sw = 1;
+        return `<path d="M${P(r0, a0)}L${P(R, a0)}A${R.toFixed(1)},${R.toFixed(1)} 0 0 ${sw} ${P(R, a1)}L${P(r0, a1)}A${r0},${r0} 0 0 ${1 - sw} ${P(r0, a0)}Z" fill="url(#nt-${v >= 0 ? 'sg' : 'sn'})" opacity="${(.45 + .55 * Math.abs(v) / m).toFixed(2)}" data-tip="${ntip(`${pad(h)}:00–${pad((h + 1) % 24)}:00`, [[t('Average net'), nsg(v) + ' kW'], [t(v >= 0 ? 'more grid out' : 'more grid in'), '']])}"/>`;
+      }).join('');
+      const plus = av.map((v, h) => v > 0 ? h : -1).filter(h => h >= 0);
+      const lbl = [0, 6, 12, 18].map(h => { const a = ang(h), R = r0 + ro + 14; return `<text x="${(cx + R * Math.cos(a)).toFixed(1)}" y="${(cy + R * Math.sin(a) + 4).toFixed(1)}" fill="#8f98c2" font-size="12" text-anchor="middle">${pad(h)}</text>`; }).join('');
+      el.innerHTML = head + `<svg class="nt-clock" viewBox="0 0 300 300"><defs>
+<radialGradient id="nt-sg" cx="150" cy="150" r="140" gradientUnits="userSpaceOnUse"><stop offset=".55" stop-color="#3ef0a8"/><stop offset="1" stop-color="#e8ff6a"/></radialGradient>
+<radialGradient id="nt-sn" cx="150" cy="150" r="80" gradientUnits="userSpaceOnUse"><stop offset=".45" stop-color="#ff5d5d"/><stop offset="1" stop-color="#ff8c42"/></radialGradient></defs>
+<circle cx="150" cy="150" r="${r0 + ro}" fill="none" stroke="rgba(255,255,255,.05)"/><circle cx="150" cy="150" r="${r0 - ri}" fill="rgba(0,0,0,.25)" stroke="rgba(255,255,255,.05)"/>
+${seg}<circle cx="150" cy="150" r="${r0}" fill="none" stroke="rgba(255,255,255,.35)" stroke-dasharray="2 4" pointer-events="none"/>${lbl}
+<text x="150" y="146" fill="#eef1ff" font-size="20" font-weight="700" text-anchor="middle">${plus.length ? `${plus[0]}–${plus[plus.length - 1] + 1} h` : '—'}</text>
+<text x="150" y="164" fill="#8f98c2" font-size="11" text-anchor="middle" letter-spacing="1">${t('IN PLUS')}</text></svg>
+<div class="legend nt-leg" style="justify-content:center"><span><i style="background:${NP}"></i>${t('outward: grid out')}</span><span><i style="background:${NN}"></i>${t('inward: grid in')}</span></div>`;
+    }
+    _nYear() {
+      const N = this._N, L = N.last, y = pd(L).getFullYear();
+      const run = (yy, to) => { let c = 0; const a = []; for (const k of N.keys) if (k >= `${yy}-01-01` && k <= to) { c += N.days.get(k).n; a.push({ k, c }); } return a; };
+      const A = run(y, L), B = run(y - 1, `${y - 1}-12-31`), byMd = new Map(B.map(x => [x.k.slice(5), x.c]));
+      const W = 820, H = 260, all = [...A, ...B].map(x => x.c), mx = Math.max(1, ...all), mn = Math.min(-1, ...all), sc = (H - 30) / (mx - mn), z = 15 + mx * sc;
+      const X = k => { const d = pd(k); return (d - new Date(d.getFullYear(), 0, 1)) / 864e5 / 365 * W; }, Yv = v => z - v * sc;
+      const path = a => a.map((x, j) => `${j ? 'L' : 'M'}${X(x.k).toFixed(1)},${Yv(x.c).toFixed(1)}`).join('');
+      const end = A[A.length - 1], same = B.filter(x => x.k.slice(5) <= L.slice(5)).pop();
+      const fill = end ? `${path(A)}L${X(end.k).toFixed(1)},${z.toFixed(1)}L${X(A[0].k).toFixed(1)},${z.toFixed(1)}Z` : '';
+      const hits = A.map(x => `<rect x="${X(x.k).toFixed(1)}" y="0" width="${(W / 365 + .5).toFixed(2)}" height="${H}" fill="transparent" data-tip="${ntip(fdate(x.k), [[String(y), nsg(x.c) + ' kWh', x.c >= 0 ? NP : NN], ...(byMd.has(x.k.slice(5)) ? [[String(y - 1), nsg(byMd.get(x.k.slice(5))) + ' kWh']] : [])])}"/>`).join('');
+      this.$('n-year').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Year balance')}</div><div class="h-s">${t('Running net total since 1 January')}${B.length ? ` · ${t('this year against last year')}` : ''}</div></div>
+<div class="nt-yv"><div class="${ncl(end.c)}">${nsg(end.c)} <small>kWh</small></div>${same ? `<div class="h-s">${t('last year on this day {0} kWh', nsg(same.c))}</div>` : ''}</div></div>
+<svg class="nt-svg" viewBox="0 0 ${W} ${H + 24}"><defs>
+<clipPath id="nt-ru"><rect x="0" y="0" width="${W}" height="${z.toFixed(1)}"/></clipPath><clipPath id="nt-rd"><rect x="0" y="${z.toFixed(1)}" width="${W}" height="${H}"/></clipPath>
+<linearGradient id="nt-ra" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ef0a8" stop-opacity=".35"/><stop offset="1" stop-color="#3ef0a8" stop-opacity="0"/></linearGradient>
+<linearGradient id="nt-rb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a4d" stop-opacity="0"/><stop offset="1" stop-color="#ff7a4d" stop-opacity=".35"/></linearGradient></defs>
+${MON.map((mo, j) => `<line x1="${(j / 12 * W).toFixed(1)}" x2="${(j / 12 * W).toFixed(1)}" y1="0" y2="${H}" stroke="rgba(255,255,255,.04)"/><text x="${((j + .5) / 12 * W).toFixed(1)}" y="${H + 18}" fill="#59618c" font-size="12" text-anchor="middle">${mo}</text>`).join('')}
+<line x1="0" x2="${W}" y1="${z.toFixed(1)}" y2="${z.toFixed(1)}" stroke="rgba(255,255,255,.28)" stroke-dasharray="3 4"/>
+${B.length ? `<path d="${path(B)}" fill="none" stroke="#8f98c2" stroke-width="1.6" stroke-dasharray="5 5" opacity=".6"/>` : ''}
+<path d="${fill}" fill="url(#nt-ra)" clip-path="url(#nt-ru)"/><path d="${fill}" fill="url(#nt-rb)" clip-path="url(#nt-rd)"/>
+<path d="${path(A)}" fill="none" stroke="${NP}" stroke-width="2.6" clip-path="url(#nt-ru)" class="nt-glow"/><path d="${path(A)}" fill="none" stroke="${NN}" stroke-width="2.6" clip-path="url(#nt-rd)"/>
+<circle cx="${X(end.k).toFixed(1)}" cy="${Yv(end.c).toFixed(1)}" r="6" fill="#050811" stroke="${end.c >= 0 ? NP : NN}" stroke-width="3"/>${hits}</svg>
+<div class="legend nt-leg"><span><i style="background:${NP}"></i>${t('{0} in plus', y)}</span><span><i style="background:${NN}"></i>${t('{0} in minus', y)}</span>${B.length ? `<span><i style="background:repeating-linear-gradient(90deg,#8f98c2 0 4px,transparent 4px 7px)"></i>${y - 1}</span>` : ''}</div>`;
+    }
+    _nRec() {
+      const N = this._N, y = N.last.slice(0, 4), D = N.keys.filter(k => k.startsWith(y)).map(k => ({ k, ...N.days.get(k) }));
+      const best = D.reduce((a, x) => x.n > a.n ? x : a), worst = D.reduce((a, x) => x.n < a.n ? x : a), plus = D.filter(x => x.n > 0).length;
+      const mo = new Map(); for (const x of D) mo.set(x.k.slice(0, 7), (mo.get(x.k.slice(0, 7)) || 0) + x.n);
+      const bm = [...mo.entries()].reduce((a, e) => e[1] > a[1] ? e : a);
+      let bs = 0, cur = 0, bsEnd = null, prev = null;
+      for (const x of D) { cur = x.n > 0 ? (prev && diffD(prev, x.k) === 1 && cur ? cur + 1 : 1) : 0; prev = x.k; if (cur > bs) { bs = cur; bsEnd = x.k; } }
+      const row = (icon, c, l, s, v, cl) => `<div><span class="nt-ri" style="--c:${c}">${ic(icon)}</span><span class="nt-rt"><b>${l}</b><span>${s}</span></span><span class="nt-rv ${cl}">${v}</span></div>`;
+      this.$('n-rec').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Records this year')}</div><div class="h-s">${t('Since 1 January {0}', y)}</div></div></div><div class="nt-rec">
+${row('trophy', NP, t('Best day'), fdate(best.k), nsg(best.n), ncl(best.n))}
+${worst.n < 0 ? row('down', NN, t('Biggest minus'), fdate(worst.k), nsg(worst.n), 'nn') : ''}
+${row('sun', '#e8ff6a', t('Best month'), `${MONL[+bm[0].slice(5) - 1]} ${y}`, nsg(bm[1]), ncl(bm[1]))}
+${bs ? row('flame', '#3ee6ff', t('Longest run in plus'), t('until {0}', fdate(bsEnd)), nDays(bs), '') : ''}
+${row('week', '#a18bff', t('Days in plus'), t('{0} % of days this year', Math.round(plus / D.length * 100)), `${plus} / ${D.length}`, '')}</div>`;
+    }
+    _nCal() {
+      const N = this._N, L = N.last, Wk = (this.$('n-cal').clientWidth || innerWidth) < 640 ? 26 : 53, start = addD(weekStart(L), -7 * (Wk - 1));
+      const vals = []; for (let j = 0; j < Wk * 7; j++) { const x = N.days.get(addD(start, j)); if (x) vals.push(Math.abs(x.n)); }
+      vals.sort((a, b) => a - b);
+      const ref = Math.max(0.5, vals.length ? vals[Math.floor(vals.length * .9)] : 1);
+      let cells = '', months = '', lastM = -1;
+      for (let w = 0; w < Wk; w++) {
+        const m = pd(addD(start, w * 7)).getMonth(); months += `<span>${m !== lastM ? MON[m] : ''}</span>`; lastM = m;
+        for (let d = 0; d < 7; d++) {
+          const k = addD(start, w * 7 + d), x = N.days.get(k);
+          if (k > L) { cells += '<i class="f"></i>'; continue; }
+          if (!x) { cells += `<i data-tip="${ntip(fdate(k), [[t('No data'), '']])}"></i>`; continue; }
+          const a = Math.min(1, Math.abs(x.n) / ref), bg = a < .06 ? '#2a3150' : x.n > 0 ? `rgba(62,240,168,${(.18 + .82 * a).toFixed(2)})` : `rgba(255,122,77,${(.18 + .82 * a).toFixed(2)})`;
+          cells += `<i style="background:${bg}" data-tip="${ntip(fdate(k), [[t('Grid out'), fk(x.o) + ' kWh', NP], [t('Grid in'), fk(x.i) + ' kWh', NN], [t('Net'), nsg(x.n) + ' kWh']])}"></i>`;
+        }
+      }
+      this.$('n-cal').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Balance calendar')}</div><div class="h-s">${t(Wk > 26 ? 'Every day, last 12 months' : 'Every day, last 6 months')}</div></div></div>
+<div class="nt-cm" style="--w:${Wk}">${months}</div><div class="nt-cal" style="--w:${Wk}"><div class="nt-cd">${[DOW[1], '', DOW[3], '', DOW[5], '', DOW[0]].map(x => `<span>${x}</span>`).join('')}</div><div class="nt-cg" style="--w:${Wk}">${cells}</div></div>
+<div class="nt-scale">${t('more grid in')}<div class="g"></div>${t('more grid out')}</div>`;
+    }
+    _nLog() {
+      const N = this._N, all = !!this._ui.nlogAll, ks = N.keys.slice().reverse(), shown = all ? ks : ks.slice(0, 14);
+      const m = Math.max(0.1, ...shown.map(k => Math.abs(N.days.get(k).n)));
+      const rows = shown.map(k => { const x = N.days.get(k), w = (Math.abs(x.n) / m * 50).toFixed(1);
+        return `<tr><td>${fdate(k)}${x.q ? ` <span class="nt-q" title="${t('15-min data · meter total tomorrow')}">*</span>` : ''}</td><td>${fk(x.i)}</td><td>${fk(x.o)}</td><td class="${ncl(x.n)} nt-nv">${nsg(x.n)}</td><td class="nt-bar"><div class="nt-dv"><i style="${x.n >= 0 ? `left:50%;width:${w}%;background:linear-gradient(90deg,#3ef0a8,#e8ff6a)` : `right:50%;width:${w}%;background:linear-gradient(90deg,#ff5d5d,#ff8c42)`}"></i></div></td></tr>`; }).join('');
+      this.$('n-log').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('Grid in, grid out and net per day · kWh')}</div></div></div>
+<div class="nt-tw"><table class="nt-tbl"><tr><th>${t('Day')}</th><th>${t('Grid in')}</th><th>${t('Grid out')}</th><th>${t('Net')}</th><th class="nt-bar"></th></tr>${rows}</table></div>
+${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">${all ? t('Show less') : t('Show all {0}', ks.length)}</button></div>` : ''}`;
     }
     _renderHeat() {
       const { today, days } = this._c;
@@ -1590,6 +2007,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'all') { this._ui.all = !this._ui.all; this._renderLog(); }
       else if (a === 'update') this._checkUpdates();
       else if (a === 'view') this._setView(t.dataset.v);
+      else if (a === 'nrange') { this._ui.nrange = t.dataset.v; this._nChart(); }
+      else if (a === 'nlog') { this._ui.nlogAll = !this._ui.nlogAll; this._nLog(); }
       else if (a === 'mode') { LS.set('daily-energy-mode', t.dataset.v); this._applyLite(); this._renderAll(); }
       else if (a === 'lang') { LS.set('daily-energy-lang', t.dataset.v); this._renderAll(); this._drawer(true); }
       else if (a === 'settings') { this._renderDrawer(); requestAnimationFrame(() => this._drawer(true)); }
