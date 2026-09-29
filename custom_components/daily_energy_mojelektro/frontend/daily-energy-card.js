@@ -795,6 +795,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .cal-d:hover{border-color:var(--c1)}
 .cal-d.on{background:var(--c1);color:#06101f;font-weight:700;box-shadow:0 6px 18px -6px var(--c1)}
 .cal-x{color:var(--dim);opacity:.4}
+@media (min-width:641px){.ch-h:has(.pnav){flex-wrap:nowrap}.ch-h:has(.pnav)>div:first-child{flex:1 1 0;min-width:0}}
 @media (max-width:640px){.pnav{order:3;width:100%;margin-left:0}.pn-d{flex:1;justify-content:center}.pcal{left:0;right:0;width:auto}}
 .bchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--c);background:rgba(255,255,255,.06);border:1px solid var(--c)}
 .bchip:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--c)}
@@ -1223,7 +1224,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') { if (this._pcal) { this._pcal = false; this._pcalM = null; this._renderProf(); } this._drawer(false); } });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') { this._closeCals(); this._drawer(false); } });
       // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
       // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
       R.addEventListener('pointermove', e => { if (!this._tipPin) this._tipMove(e); });
@@ -1572,10 +1573,12 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 <circle class="nt-arc" cx="135" cy="135" r="92" fill="none" stroke="url(#nt-gn)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(C2 * x.i / M * .96).toFixed(1)} ${C2.toFixed(1)}" transform="rotate(-90 135 135)" style="filter:drop-shadow(0 0 10px rgba(255,110,70,.45))"/>
 </svg><div class="c"><div class="v">${cov == null ? '—' : `${cov}<small>%</small>`}</div><div class="l">${t('coverage')}</div><div class="k"><span><i style="background:${NP}"></i>${t('grid out')}</span><span><i style="background:${NN}"></i>${t('grid in')}</span></div></div></div>`;
     }
+    // the days with 15-minute data for both grids, and the one the Neto day chart shows (picked, else the newest)
+    _nKeys() { return Object.keys(this._q15 || {}).filter(k => this._nQuarters(k)).sort(); }
+    _nDayKey() { const K = this._nKeys(); return this._nday && K.includes(this._nday) ? this._nday : K[K.length - 1]; }
     _nDay() {
-      const el = this.$('n-day'), qi = this._q15 || {};
-      const d = Object.keys(qi).filter(k => this._nQuarters(k)).sort().pop();
-      const head = sub => `<div class="ch-h"><div><div class="h-t">${t('Through the day · net')}</div><div class="h-s">${sub}</div></div><span class="badge">kW</span></div>`;
+      const el = this.$('n-day'), d = this._nDayKey();
+      const head = sub => `<div class="ch-h"><div><div class="h-t">${t('Through the day · net')}</div><div class="h-s">${sub}</div></div>${d ? this._pNav(d, 'n') : ''}<span class="badge">kW</span></div>`;
       if (!d) { el.innerHTML = head(t('Moj Elektro · 24 h delay')) + `<div class="empty" style="min-height:240px">${ic('merge')}<b>${t('No 15-minute data for both yet')}</b></div>`; return; }
       const Q = this._nQuarters(d), W = 600, H = 230;
       const mx = Math.max(0.1, ...Q.map(q => q.n)), mn = Math.min(-0.1, ...Q.map(q => q.n)), sc = (H - 22) / (mx - mn), z = 12 + mx * sc;
@@ -1822,36 +1825,43 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       const P = this._prof; if (!P) return null;
       return this._pday && P.byDay.has(this._pday) ? this._pday : P.keys[P.keys.length - 1];
     }
-    // [<] [date] [>]: the arrows step to the day before / after that has data; the date opens the calendar
-    _pNav(day) {
-      const K = this._prof.keys, i = K.indexOf(day), yest = day === addD(iso(new Date()), -1);
-      const arrow = (v, off, label, cls) => `<button class="pn-a${cls}" data-act="pday" data-v="${v}"${off ? ' disabled' : ''} title="${t(label)}" aria-label="${t(label)}">${ic('back')}</button>`;
-      return `<div class="pnav">${arrow('prev', i <= 0, 'Previous day', '')}<button class="pn-d${this._pcal ? ' open' : ''}" data-act="pday" data-v="cal" title="${t('Choose a day')}">${ic('month')}<span>${yest ? t('Yesterday') : fdate(day)}</span>${ic('chev', 'cv')}</button>${arrow('next', i >= K.length - 1, 'Next day', ' nx')}${this._pcal ? this._pCal(day) : ''}</div>`;
+    // [<] [date] [>]: the arrows step to the day before / after that has data; the date opens the calendar.
+    // sc: 'p' = the 15-minute chart (grid in / grid out), 'n' = the Neto day chart; each keeps its own day
+    _dayKeys(sc) { return sc === 'n' ? this._nKeys() : this._prof ? this._prof.keys : []; }
+    _pNav(day, sc = 'p') {
+      const K = this._dayKeys(sc), i = K.indexOf(day), yest = day === addD(iso(new Date()), -1), open = this['_' + sc + 'cal'];
+      const arrow = (v, off, label, cls) => `<button class="pn-a${cls}" data-act="pday" data-s="${sc}" data-v="${v}"${off ? ' disabled' : ''} title="${t(label)}" aria-label="${t(label)}">${ic('back')}</button>`;
+      return `<div class="pnav">${arrow('prev', i <= 0, 'Previous day', '')}<button class="pn-d${open ? ' open' : ''}" data-act="pday" data-s="${sc}" data-v="cal" title="${t('Choose a day')}">${ic('month')}<span>${yest ? t('Yesterday') : fdate(day)}</span>${ic('chev', 'cv')}</button>${arrow('next', i >= K.length - 1, 'Next day', ' nx')}${open ? this._pCal(day, sc) : ''}</div>`;
     }
     // the calendar: one month, Monday first; only days with 15-minute data can be picked
-    _pCal(day) {
-      const K = this._prof.keys, has = new Set(K), m = this._pcalM || day.slice(0, 7), [yy, mm] = m.split('-').map(Number);
+    _pCal(day, sc = 'p') {
+      const K = this._dayKeys(sc), has = new Set(K), m = this['_' + sc + 'calM'] || day.slice(0, 7), [yy, mm] = m.split('-').map(Number);
       const lead = (new Date(yy, mm - 1, 1).getDay() + 6) % 7, n = new Date(yy, mm, 0).getDate();
       const earlier = K[0].slice(0, 7) < m, later = K[K.length - 1].slice(0, 7) > m;
       let g = [1, 2, 3, 4, 5, 6, 0].map(i => `<i>${DOW2[i]}</i>`).join('') + '<span></span>'.repeat(lead);
       for (let d = 1; d <= n; d++) {
         const k = `${m}-${pad(d)}`;
-        g += has.has(k) ? `<button class="cal-d${k === day ? ' on' : ''}" data-act="pday" data-v="${k}">${d}</button>` : `<span class="cal-x">${d}</span>`;
+        g += has.has(k) ? `<button class="cal-d${k === day ? ' on' : ''}" data-act="pday" data-s="${sc}" data-v="${k}">${d}</button>` : `<span class="cal-x">${d}</span>`;
       }
-      return `<div class="pcal"><div class="cal-h"><button class="pn-a" data-act="pday" data-v="m-"${earlier ? '' : ' disabled'} aria-label="${t('Previous month')}">${ic('back')}</button><span>${MONL[mm - 1]} ${yy}</span><button class="pn-a nx" data-act="pday" data-v="m+"${later ? '' : ' disabled'} aria-label="${t('Next month')}">${ic('back')}</button></div><div class="cal-g">${g}</div></div>`;
+      return `<div class="pcal"><div class="cal-h"><button class="pn-a" data-act="pday" data-s="${sc}" data-v="m-"${earlier ? '' : ' disabled'} aria-label="${t('Previous month')}">${ic('back')}</button><span>${MONL[mm - 1]} ${yy}</span><button class="pn-a nx" data-act="pday" data-s="${sc}" data-v="m+"${later ? '' : ' disabled'} aria-label="${t('Next month')}">${ic('back')}</button></div><div class="cal-g">${g}</div></div>`;
     }
-    _pdayAct(v) {
-      const K = this._prof ? this._prof.keys : [], cur = this._pDay(), i = K.indexOf(cur);
+    _pdayAct(v, sc = 'p') {
+      const K = this._dayKeys(sc), cur = sc === 'n' ? this._nDayKey() : this._pDay(), i = K.indexOf(cur), P = '_' + sc;
       if (!cur) return;
-      if (v === 'cal') { this._pcal = !this._pcal; this._pcalM = null; }
-      else if (v === 'm-' || v === 'm+') { const d = pd(`${this._pcalM || cur.slice(0, 7)}-01`); d.setMonth(d.getMonth() + (v === 'm+' ? 1 : -1)); this._pcalM = iso(d).slice(0, 7); }
+      if (v === 'cal') { this[P + 'cal'] = !this[P + 'cal']; this[P + 'calM'] = null; }
+      else if (v === 'm-' || v === 'm+') { const d = pd(`${this[P + 'calM'] || cur.slice(0, 7)}-01`); d.setMonth(d.getMonth() + (v === 'm+' ? 1 : -1)); this[P + 'calM'] = iso(d).slice(0, 7); }
       else {
         const k = v === 'prev' ? K[i - 1] : v === 'next' ? K[i + 1] : v;
         if (!k || !K.includes(k)) return;
         // the newest day is kept as "the newest", so the next morning's day replaces it by itself
-        this._pday = k === K[K.length - 1] ? null : k; this._pcal = false; this._pcalM = null;
+        this[P + 'day'] = k === K[K.length - 1] ? null : k; this[P + 'cal'] = false; this[P + 'calM'] = null;
       }
-      this._renderProf();
+      if (sc === 'n') this._nDay(); else this._renderProf();
+    }
+    // a click outside a date navigation, or Esc, closes its calendar
+    _closeCals() {
+      if (this._pcal) { this._pcal = false; this._pcalM = null; this._renderProf(); }
+      if (this._ncal) { this._ncal = false; this._ncalM = null; if (this._isNet()) this._nDay(); }
     }
     _renderProf() {
       const el = this.$('prof'); if (!this._me || !el || !this._built) return;
@@ -2068,7 +2078,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
     async _click(e) {
       // a click or tap on something with an info box (a bar, a square…) pins that box; anywhere else unpins it
       // the 15-minute calendar closes with a click anywhere outside the date navigation
-      if (this._pcal && !e.composedPath().some(n => n.classList && n.classList.contains('pnav'))) { this._pcal = false; this._pcalM = null; this._renderProf(); }
+      if ((this._pcal || this._ncal) && !e.composedPath().some(n => n.classList && n.classList.contains('pnav'))) this._closeCals();
       const tipEl = e.composedPath().find(n => n.dataset && n.dataset.tip != null);
       if (tipEl && !e.target.closest('[data-act]')) { this._tipPin = false; this._tipMove(e); this._tipPin = true; this._tipWatch(); this._tipPinY = this._tipScrollY(); return; }
       if (this._tipPin) this._tipUnpin();
@@ -2078,7 +2088,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'brange') { this._ui.brange = t.dataset.v; this._renderBlocks(); }
-      else if (a === 'pday') this._pdayAct(t.dataset.v);
+      else if (a === 'pday') this._pdayAct(t.dataset.v, t.dataset.s);
       else if (a === 'form-toggle') {
         // Moj Elektro mode: "Open" offers Add / Remove entry (behind the PIN when one is set); "Close" closes the form
         if (this._me && !this._ui.formOpen) { this._fd = null; this._askFormPin(); }
