@@ -1235,7 +1235,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') { this._closeCals(); this._drawer(false); } });
       // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
       // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
-      R.addEventListener('pointermove', e => { if (!this._tipPin) this._tipMove(e); });
+      // Only a mouse (or a tablet's trackpad) hovers: a finger sliding over the bars while scrolling (tablets) shows nothing.
+      R.addEventListener('pointermove', e => { if (!this._tipPin && e.pointerType === 'mouse') this._tipMove(e); });
       R.addEventListener('pointerleave', () => { if (!this._tipPin) this.$('tip').classList.remove('on'); }, true);
       // the page, or Home Assistant's own scrolling container (_tipSc, found when a box is pinned)
       this._tipOnScroll = () => { if (this._tipPin && Math.abs(this._tipScrollY() - this._tipPinY) >= 40) this._tipUnpin(); };
