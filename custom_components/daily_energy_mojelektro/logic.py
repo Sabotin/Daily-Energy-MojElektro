@@ -50,6 +50,24 @@ def quarters_range_url(meter_id: str, start: date, end: date, reading_type: str 
     )
 
 
+def backfill_spans(
+    oldest: str | None, today: date, tried: str | None, keep: int, span: int = 28
+) -> list[tuple[date, date]]:
+    """The older 15-minute days still missing: from today - keep up to (not including) the oldest stored day,
+    in requests of at most span days. Nothing when no day is stored yet, nothing is missing, or it was
+    already tried today."""
+    if not oldest or tried == today.isoformat():
+        return []
+    start, end = today - timedelta(days=keep), date.fromisoformat(oldest)
+    if end <= start + timedelta(days=1):
+        return []
+    out = []
+    while start < end:
+        out.append((start, min(start + timedelta(days=span), end)))
+        start = out[-1][1]
+    return out
+
+
 def month_spans(start: date, end: date) -> list[tuple[date, date]]:
     """[start, end] cut into pieces within one calendar month each (Moj Elektro answers about a month per request)."""
     out: list[tuple[date, date]] = []

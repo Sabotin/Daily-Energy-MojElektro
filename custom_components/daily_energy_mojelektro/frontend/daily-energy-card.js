@@ -256,6 +256,11 @@
     'No block data yet': 'Še ni podatkov po blokih',
     'The daily automation adds it every morning.': 'Dnevna samodejna posodobitev jih doda vsako jutro.',
     'Yesterday': 'Včeraj',
+    'Previous day': 'Prejšnji dan',
+    'Next day': 'Naslednji dan',
+    'Previous month': 'Prejšnji mesec',
+    'Next month': 'Naslednji mesec',
+    'Choose a day': 'Izberite dan',
     'Blok 1 is the most expensive network block and only applies on working days from November to February. Weekends, holidays and the lower season (March–October) fall into the cheaper blocks 2–5.': 'Blok 1 je najdražji omrežninski blok in velja le ob delovnih dneh od novembra do februarja.',
     // log
     'Reading log': 'Dnevnik odčitkov',
@@ -445,6 +450,8 @@
     bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
     week: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/>',
     month: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/>',
+    back: '<path d="M15 18l-6-6 6-6"/>',
+    chev: '<path d="M6 9l6 6 6-6"/>',
     year: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
     avg: '<path d="M3 17l5-5 4 4 8-8"/><path d="M14 8h6v6"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -767,6 +774,28 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .pk-v{font-size:48px;font-weight:700;letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums}
 .pk-v small{font-size:16px;color:var(--mut);margin-left:5px;font-weight:500;letter-spacing:0}
 .pk-s{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* 15-minute chart: [<] [date] [>] between the title and the kW badge, and the small calendar under the date */
+.pnav{position:relative;display:flex;align-items:center;gap:8px;margin-left:auto}
+.pn-a{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;padding:0;cursor:pointer;color:var(--txt);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);transition:.2s;flex:none}
+.pn-a:hover:not(:disabled){border-color:var(--c1);color:var(--c1)}
+.pn-a:disabled{opacity:.28;cursor:default}
+.pn-a .ic{width:16px;height:16px}.pn-a.nx .ic{transform:scaleX(-1)}
+.pn-d{height:38px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;font:inherit;font-size:13.5px;font-weight:600;color:var(--txt);cursor:pointer;white-space:nowrap;background:linear-gradient(135deg,rgba(62,230,255,.10),rgba(123,107,255,.10));border:1px solid rgba(62,230,255,.35);transition:.2s}
+.pn-d:hover,.pn-d.open{border-color:rgba(62,230,255,.7)}
+.pn-d .ic{width:16px;height:16px;color:var(--c1)}.pn-d .ic.cv{width:13px;height:13px;color:var(--mut);transition:transform .2s}.pn-d.open .ic.cv{transform:rotate(180deg)}
+:host([out]) .pn-d{background:linear-gradient(135deg,rgba(62,240,168,.10),rgba(232,255,106,.08));border-color:rgba(62,240,168,.35)}
+:host([out]) .pn-d:hover,:host([out]) .pn-d.open{border-color:rgba(62,240,168,.7)}
+.pcal{position:absolute;top:calc(100% + 12px);right:0;z-index:40;width:300px;padding:14px;border-radius:18px;background:linear-gradient(180deg,#0e152c,#0a0f22);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 60px -20px rgba(0,0,0,.85),0 0 0 1px rgba(62,230,255,.06);animation:rise .25s ease-out both}
+.cal-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;font-size:14px;font-weight:600}
+.cal-h .pn-a{width:32px;height:32px;border-radius:10px}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal-g i{font-style:normal;font-size:11px;color:var(--dim);padding:2px 0 4px;letter-spacing:.04em}
+.cal-d,.cal-x{height:34px;border-radius:10px;font:inherit;font-size:13px;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.cal-d{cursor:pointer;color:var(--txt);background:rgba(255,255,255,.05);border:1px solid transparent;padding:0;transition:.15s}
+.cal-d:hover{border-color:var(--c1)}
+.cal-d.on{background:var(--c1);color:#06101f;font-weight:700;box-shadow:0 6px 18px -6px var(--c1)}
+.cal-x{color:var(--dim);opacity:.4}
+@media (max-width:640px){.pnav{order:3;width:100%;margin-left:0}.pn-d{flex:1;justify-content:center}.pcal{left:0;right:0;width:auto}}
 .bchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--c);background:rgba(255,255,255,.06);border:1px solid var(--c)}
 .bchip:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--c)}
 .pch{position:relative;display:flex;align-items:flex-end;gap:1px;height:170px;margin-top:18px;border-bottom:1px solid rgba(255,255,255,.14)}
@@ -1194,7 +1223,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') this._drawer(false); });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') { if (this._pcal) { this._pcal = false; this._pcalM = null; this._renderProf(); } this._drawer(false); } });
       // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
       // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
       R.addEventListener('pointermove', e => { if (!this._tipPin) this._tipMove(e); });
@@ -1770,47 +1799,83 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
     }
 
     /* ----- Moj Elektro: 15-minute load profile -----
-       Only whole days are shown, all fetched from Moj Elektro (or imported from a CSV export). The chart keeps
-       showing the newest complete day until the next one has arrived, then switches all at once. */
+       Only whole days are shown, all fetched from Moj Elektro (or imported from a CSV export). One day at a time:
+       the newest one, or the day picked with [<] [date] [>] (not saved, so a reload shows the newest again). */
     _buildProf(render) {
-      const out = this._isOut(), Q = 9e5, from = Date.now() - 11 * 864e5, q15 = (out ? this._q15o : this._q15) || {}, byDay = new Map();
+      const out = this._isOut(), Q = 9e5, q15 = (out ? this._q15o : this._q15) || {}, byDay = new Map();
       for (const d in q15) {
         const t0 = pd(d).getTime(), a = [];
-        q15[d].forEach((v, i) => { const st = new Date(t0 + i * Q); if (+st >= from && isFinite(v)) a.push({ t: st, kwh: v, kw: v * 4, b: blockOf(st) }); });
+        q15[d].forEach((v, i) => { const st = new Date(t0 + i * Q); if (isFinite(v)) a.push({ t: st, kwh: v, kw: v * 4, b: blockOf(st) }); });
         if (a.length) byDay.set(d, a);
       }
-      const keys = [...byDay.keys()].sort(), slots = keys.flatMap(d => byDay.get(d)).sort((a, b) => a.t - b.t);
-      if (!slots.length) this._prof = null;
+      const keys = [...byDay.keys()].sort();
+      if (!keys.length) this._prof = null;
       else {
-        const peaks = [null, null, null, null, null];
-        for (const s of slots) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
-        const best = slots.reduce((a, s) => s.kw > a.kw ? s : a);
-        this._prof = { last: byDay.get(keys[keys.length - 1]).slice().sort((a, b) => a.t - b.t), peaks, best, days: keys.length, out };
+        let best = null;
+        for (const d of keys) for (const x of byDay.get(d)) if (!best || x.kw > best.kw) best = x;
+        this._prof = { byDay, keys, best, days: keys.length, out };
       }
       if (render) this._renderProf();
+    }
+    // the day the chart shows: the picked one while it has data, else the newest
+    _pDay() {
+      const P = this._prof; if (!P) return null;
+      return this._pday && P.byDay.has(this._pday) ? this._pday : P.keys[P.keys.length - 1];
+    }
+    // [<] [date] [>]: the arrows step to the day before / after that has data; the date opens the calendar
+    _pNav(day) {
+      const K = this._prof.keys, i = K.indexOf(day), yest = day === addD(iso(new Date()), -1);
+      const arrow = (v, off, label, cls) => `<button class="pn-a${cls}" data-act="pday" data-v="${v}"${off ? ' disabled' : ''} title="${t(label)}" aria-label="${t(label)}">${ic('back')}</button>`;
+      return `<div class="pnav">${arrow('prev', i <= 0, 'Previous day', '')}<button class="pn-d${this._pcal ? ' open' : ''}" data-act="pday" data-v="cal" title="${t('Choose a day')}">${ic('month')}<span>${yest ? t('Yesterday') : fdate(day)}</span>${ic('chev', 'cv')}</button>${arrow('next', i >= K.length - 1, 'Next day', ' nx')}${this._pcal ? this._pCal(day) : ''}</div>`;
+    }
+    // the calendar: one month, Monday first; only days with 15-minute data can be picked
+    _pCal(day) {
+      const K = this._prof.keys, has = new Set(K), m = this._pcalM || day.slice(0, 7), [yy, mm] = m.split('-').map(Number);
+      const lead = (new Date(yy, mm - 1, 1).getDay() + 6) % 7, n = new Date(yy, mm, 0).getDate();
+      const earlier = K[0].slice(0, 7) < m, later = K[K.length - 1].slice(0, 7) > m;
+      let g = [1, 2, 3, 4, 5, 6, 0].map(i => `<i>${DOW2[i]}</i>`).join('') + '<span></span>'.repeat(lead);
+      for (let d = 1; d <= n; d++) {
+        const k = `${m}-${pad(d)}`;
+        g += has.has(k) ? `<button class="cal-d${k === day ? ' on' : ''}" data-act="pday" data-v="${k}">${d}</button>` : `<span class="cal-x">${d}</span>`;
+      }
+      return `<div class="pcal"><div class="cal-h"><button class="pn-a" data-act="pday" data-v="m-"${earlier ? '' : ' disabled'} aria-label="${t('Previous month')}">${ic('back')}</button><span>${MONL[mm - 1]} ${yy}</span><button class="pn-a nx" data-act="pday" data-v="m+"${later ? '' : ' disabled'} aria-label="${t('Next month')}">${ic('back')}</button></div><div class="cal-g">${g}</div></div>`;
+    }
+    _pdayAct(v) {
+      const K = this._prof ? this._prof.keys : [], cur = this._pDay(), i = K.indexOf(cur);
+      if (!cur) return;
+      if (v === 'cal') { this._pcal = !this._pcal; this._pcalM = null; }
+      else if (v === 'm-' || v === 'm+') { const d = pd(`${this._pcalM || cur.slice(0, 7)}-01`); d.setMonth(d.getMonth() + (v === 'm+' ? 1 : -1)); this._pcalM = iso(d).slice(0, 7); }
+      else {
+        const k = v === 'prev' ? K[i - 1] : v === 'next' ? K[i + 1] : v;
+        if (!k || !K.includes(k)) return;
+        // the newest day is kept as "the newest", so the next morning's day replaces it by itself
+        this._pday = k === K[K.length - 1] ? null : k; this._pcal = false; this._pcalM = null;
+      }
+      this._renderProf();
     }
     _renderProf() {
       const el = this.$('prof'); if (!this._me || !el || !this._built) return;
       if (this._prof && !!this._prof.out !== this._isOut()) this._buildProf(false);
       if (this._isOut()) { this._renderProfOut(el); return; }
-      const P = this._prof, L = P && P.last;
-      let h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')}</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${fdate(iso(L[L.length - 1].t))} ${hm(L[L.length - 1].t)}` : t('Moj Elektro · 24 h delay')}</div></div><span class="badge">kW</span></div>`;
+      const P = this._prof, day = this._pDay(), L = day && P.byDay.get(day);
+      let h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')}</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${hm(L[L.length - 1].t)}` : t('Moj Elektro · 24 h delay')}</div></div>${L ? this._pNav(day) : ''}<span class="badge">kW</span></div>`;
       if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${t(P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…')}</b><span>${P && P.err ? esc(P.err) : t('Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.')}</span></div>`; return; }
-      const pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw);
+      const pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw), peaks = [null, null, null, null, null];
+      for (const s of L) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
       const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i></div>`).join('');
       const xl = L.map((s, i) => s.t.getMinutes() === 0 && s.t.getHours() % 6 === 0 ? `<span style="left:${(i + .5) / L.length * 100}%">${pad(s.t.getHours())}:00</span>` : '').join('');
-      const bp = P.peaks.map((s, i) => `<div style="--c:${BLK[i]}"><b>Blok ${i + 1}</b><span>${s ? fk(s.kw) : '—'}${s ? '<small style="font-size:11px;color:var(--mut);font-weight:500"> kW</small>' : ''}</span><em>${s ? `${fshort(iso(s.t))} ${hm(s.t)}` : t('no data')}</em></div>`).join('');
+      const bp = peaks.map((s, i) => `<div style="--c:${BLK[i]}"><b>Blok ${i + 1}</b><span>${s ? fk(s.kw) : '—'}${s ? '<small style="font-size:11px;color:var(--mut);font-weight:500"> kW</small>' : ''}</span><em>${s ? `${fshort(iso(s.t))} ${hm(s.t)}` : t('no data')}</em></div>`).join('');
       el.innerHTML = h + `<div class="pkrow"><div class="pk-v">${fk(pk.kw)}<small>${t('kW peak')}</small></div><div class="pk-s">${fdate(iso(pk.t))} · ${hm(pk.t)} <span class="bchip" style="--c:${BLK[pk.b - 1]}">Blok ${pk.b}</span></div></div>
 <div class="pch">${bars}</div><div class="pxl">${xl}</div>
-<div class="bsub" style="margin-top:14px">${t('Highest 15-min power per block · {0}', lastDays(P.days))}</div>
+<div class="bsub" style="margin-top:14px">${t('Highest 15-min power per block · {0}', fdate(day))}</div>
 <div class="bpk">${bp}</div>
 <div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}</div>`;
     }
     // Grid out: the newest complete day of energy sent to the grid, what that day sent out, the net against
     // grid in and the hours it was exporting.
     _renderProfOut(el) {
-      const P = this._prof, L = P && P.last;
-      const h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')} · <span class="go">${t('grid out')}</span></div><div class="h-s">${L && L.length ? t('{0} · energy sent to the grid', fdate(iso(L[0].t))) : t('Moj Elektro · 24 h delay')}</div></div><span class="badge" style="color:var(--c1);border-color:rgba(62,240,168,.3);background:rgba(62,240,168,.1)">kW</span></div>`;
+      const P = this._prof, pday = this._pDay(), L = pday && P.byDay.get(pday);
+      const h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')} · <span class="go">${t('grid out')}</span></div><div class="h-s">${L && L.length ? t('{0} · energy sent to the grid', fdate(iso(L[0].t))) : t('Moj Elektro · 24 h delay')}</div></div>${L ? this._pNav(pday) : ''}<span class="badge" style="color:var(--c1);border-color:rgba(62,240,168,.3);background:rgba(62,240,168,.1)">kW</span></div>`;
       if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('sun')}<b>${t('No grid-out 15-minute data yet')}</b><span>${t('Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.')}</span></div>`; return; }
       const day = iso(L[0].t), pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw || .1);
       const bars = L.map((s, i) => `<div class="pc${s === pk && s.kw > 0 ? ' top' : ''}" style="--c:#3ef0a8" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power out')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy out')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:linear-gradient(180deg,#e8ff6a,#3ef0a8);--i:${i}"></i></div>`).join('');
@@ -2002,6 +2067,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
     /* ----- events ----- */
     async _click(e) {
       // a click or tap on something with an info box (a bar, a square…) pins that box; anywhere else unpins it
+      // the 15-minute calendar closes with a click anywhere outside the date navigation
+      if (this._pcal && !e.composedPath().some(n => n.classList && n.classList.contains('pnav'))) { this._pcal = false; this._pcalM = null; this._renderProf(); }
       const tipEl = e.composedPath().find(n => n.dataset && n.dataset.tip != null);
       if (tipEl && !e.target.closest('[data-act]')) { this._tipPin = false; this._tipMove(e); this._tipPin = true; this._tipWatch(); this._tipPinY = this._tipScrollY(); return; }
       if (this._tipPin) this._tipUnpin();
@@ -2011,6 +2078,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'brange') { this._ui.brange = t.dataset.v; this._renderBlocks(); }
+      else if (a === 'pday') this._pdayAct(t.dataset.v);
       else if (a === 'form-toggle') {
         // Moj Elektro mode: "Open" offers Add / Remove entry (behind the PIN when one is set); "Close" closes the form
         if (this._me && !this._ui.formOpen) { this._fd = null; this._askFormPin(); }
