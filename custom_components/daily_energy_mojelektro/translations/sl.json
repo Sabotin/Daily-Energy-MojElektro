@@ -21,12 +21,14 @@
         "data": {
           "meter_id": "Merilno mesto (EIMM)",
           "use_existing": "Uporabi obstoječi žeton",
-          "token_from": "Žeton od"
+          "token_from": "Žeton od",
+          "pin": "PIN (neobvezno)"
         },
         "data_description": {
           "meter_id": "Na primer 4-123456.",
           "use_existing": "Odkljukajte za nov API žeton (vpišete ga v naslednjem koraku).",
-          "token_from": "Izberite merilno mesto, čigar žeton uporabim."
+          "token_from": "Izberite merilno mesto, čigar žeton uporabim.",
+          "pin": "Če je nastavljen, ga zahtevata ročni vnos stanja števca in brisanje podatkov. Pustite prazno za brez PIN-a."
         }
       },
       "token": {

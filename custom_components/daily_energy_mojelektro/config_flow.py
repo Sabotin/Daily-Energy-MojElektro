@@ -45,6 +45,7 @@ class DailyEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._meter = ""
+        self._pin = ""
 
     def _with_token(self) -> list[ConfigEntry]:
         """The meters already set up that have a token (in the order they were added)."""
@@ -90,6 +91,7 @@ class DailyEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
             meter = str(user_input[CONF_METER]).strip()
             await self.async_set_unique_id(meter)
             self._abort_if_unique_id_configured()
+            self._pin = str(user_input.get(CONF_PIN, "") or "").strip()
             if not user_input.get(USE_EXISTING, True):
                 self._meter = meter
                 return await self.async_step_token()
@@ -110,6 +112,7 @@ class DailyEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
             fields[vol.Required(TOKEN_FROM, default=(user_input or {}).get(TOKEN_FROM, entries[0].entry_id))] = (
                 SelectSelector(SelectSelectorConfig(options=choices, mode=SelectSelectorMode.DROPDOWN))
             )
+        fields[vol.Optional(CONF_PIN, default=(user_input or {}).get(CONF_PIN, ""))] = str
         return self.async_show_form(step_id="add", data_schema=vol.Schema(fields), errors=errors)
 
     async def async_step_token(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -132,7 +135,9 @@ class DailyEnergyConfigFlow(ConfigFlow, domain=DOMAIN):
     def _create(self, meter: str, token: str) -> ConfigFlowResult:
         # the entry title is the EIMM until the meter gets a name (the dashboard's meter button renames it)
         return self.async_create_entry(
-            title=meter, data={CONF_METER: meter, CONF_TOKEN: token}, options={CONF_PIN: "", CONF_SIDEBAR: True}
+            title=meter,
+            data={CONF_METER: meter, CONF_TOKEN: token},
+            options={CONF_PIN: self._pin, CONF_SIDEBAR: True},
         )
 
     @staticmethod

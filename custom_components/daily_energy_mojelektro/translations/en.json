@@ -21,12 +21,14 @@
         "data": {
           "meter_id": "Meter ID (EIMM)",
           "use_existing": "Use the existing token",
-          "token_from": "Token of"
+          "token_from": "Token of",
+          "pin": "PIN (optional)"
         },
         "data_description": {
           "meter_id": "For example 4-123456.",
-          "use_existing": "Untick for a new API token (you enter it in the next step).",
-          "token_from": "Pick the meter whose token to use."
+          "use_existing": "Untick for a new API token (you'll enter it in the next step).",
+          "token_from": "Pick the meter whose token to use.",
+          "pin": "If set, opening the manual meter reading and deleting data ask for it. Leave empty for no PIN."
         }
       },
       "token": {
