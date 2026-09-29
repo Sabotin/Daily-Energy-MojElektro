@@ -1191,7 +1191,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         if (e.target.id && e.target.id.startsWith('f-')) { this._dirty = true; this._preview(); }
         // editing a day in the Log: its total is VT + MT
         if (/^bl-\d$/.test(e.target.id || '')) this._blSum();
-        if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? '+' + fk(v + m) + ' kWh' : '—'; }
+        if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
       R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') this._drawer(false); });
@@ -1901,10 +1901,10 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
           // editing: grid out Sent out, grid in VT and MT (the day total is their sum), or the kWh of a 15-minute day
           const btns = `<button class="rb" data-act="ed-save" data-d="${m.d}" title="${t('Save')}">${ic('ok')}</button><button class="rb" data-act="ed-cancel" title="${t('Cancel')}">${ic('x')}</button>`;
           cells = out ? `<td>${inp('ed-o', u)}</td><td>${btns}</td>`
-            : split ? `<td class="use" id="ed-sum">+${fk(u)} kWh</td><td>${inp('ed-vt', vt)}</td><td>${inp('ed-mt', mt)}</td><td>${btns}</td>`
+            : split ? `<td class="use" id="ed-sum">${fk(u)} kWh</td><td>${inp('ed-vt', vt)}</td><td>${inp('ed-mt', mt)}</td><td>${btns}</td>`
               : `<td>${inp('ed-u', u)}</td><td>${dash}</td><td>${dash}</td><td>${btns}</td>`;
         } else {
-          cells = `${u != null ? `<td class="use">${out ? '' : '+'}${fk(u)} kWh</td>` : `<td class="m">—</td>`}${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
+          cells = `${u != null ? `<td class="use">${fk(u)} kWh</td>` : `<td class="m">—</td>`}${out ? '' : `<td class="vtc">${vt != null ? fk(+vt) : dash}</td><td class="mtc">${mt != null ? fk(+mt) : dash}</td>`}${act ? `<td>${tool(m.d, 'me')}</td>` : ''}`;
         }
         rows.push([m.d + 'b', `<tr class="me${e ? ' man' : ''}">${date}${cells}</tr>`]);
       }
@@ -1913,7 +1913,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
         const dt = p ? (e.t - p.t) * s.mult : null;
         const vtu = s.tmode === 'usage' ? e.vt : (p && e.vt != null && p.vt != null ? (e.vt - p.vt) * s.mult : null);
         const mtu = s.tmode === 'usage' ? e.mt : (p && e.mt != null && p.mt != null ? (e.mt - p.mt) * s.mult : null);
-        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : (dt >= 0 ? '+' : '') + fk(dt) + ' kWh'}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
+        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : fk(dt) + ' kWh'}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
       }
       rows.sort((a, b) => a[0] < b[0] ? 1 : -1);
       const show = (ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
