@@ -1928,7 +1928,7 @@ ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">
     _renderDrawer() {
       const s = this._c.s, open = this._dwOpen, mode = this._mode(), lang = this._langPref();
       const opt = (k, v, b, d) => `<div class="opt${s[k] === v ? ' on' : ''}" data-act="set" data-k="${k}" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`;
-      this.$('dw').innerHTML = `<div class="${open ? 'dw-open' : ''}"><div class="dw-bg" data-act="close"></div><aside class="dw">
+      this.$('dw').innerHTML = `<div class="${open ? 'dw-open' : ''}"${open ? '' : ' hidden'}><div class="dw-bg" data-act="close"></div><aside class="dw">
 <div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Settings')}</h3><button class="ibtn" data-act="close">${ic('x')}</button></div>
 <div class="dw-s"><div class="dw-t">${t('Display mode')}</div>
 ${[['auto', 'Automatic', 'Detects the device and adapts to it automatically.'], ['light', 'Minimal', 'No animations, blur or shadows, for slower devices.'], ['full', 'Full', 'All animations and visual effects enabled.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}</div>
@@ -1991,7 +1991,13 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (days) this._toast(t('Imported from Moj Elektro: {0}', `${done}${noTotal ? t(' · {0} without a meter total', noTotal) : ''}`), { ms: 5000 });
       else this._toast(t(noTotal > (pd(b) - pd(a)) / 864e5 ? 'Moj Elektro has no data for those days' : 'Nothing new — those days are already up to date'), { ms: 5000 });
     }
-    _drawer(o) { this._dwOpen = o; if (!o && this._ui.pin) { this._ui.pin = false; this._renderDrawer(); } const w = this.$('dw').firstElementChild; if (w) w.classList.toggle('dw-open', o); }
+    _drawer(o) { this._dwOpen = o; if (!o && this._ui.pin) { this._ui.pin = false; this._renderDrawer(); } const w = this.$('dw').firstElementChild; if (!w) return;
+      // closed, the panel leaves the page completely (display:none): iPhone Safari colours the area behind its bottom bar
+      // from elements pinned to the screen's edge, and kept the dark panel's colour after closing
+      clearTimeout(this._dwT);
+      if (o) { w.hidden = false; void w.offsetWidth; w.classList.add('dw-open'); }
+      else { w.classList.remove('dw-open'); this._dwT = setTimeout(() => { if (!this._dwOpen) w.hidden = true; }, 460); }
+    }
 
     /* ----- events ----- */
     async _click(e) {
