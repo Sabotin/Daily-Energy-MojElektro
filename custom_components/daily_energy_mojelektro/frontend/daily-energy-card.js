@@ -957,7 +957,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 :host([lite]) .od,:host([lite]) .od-sep,:host([lite]) input.in.mono,:host([lite]) .fld.vt input.in,:host([lite]) .fld.mt input.in,:host([lite]) .tbl .mono{font-family:ui-monospace,'Roboto Mono',monospace}
 /* Popolno Test: the full look without what makes phones hot and slow. The glow blobs stay where they are but as soft
    gradients instead of a live blur, and they do not drift; the cards keep their glass tint without blurring what is
-   behind them live; cards below the screen are drawn when they come near. */
+   behind them live. */
 :host([phone]) .blob{filter:none;animation:none;opacity:.62;transform:scale(1.5)}
 :host([phone]) .b1{background:radial-gradient(closest-side,rgba(31,182,255,.7),rgba(31,182,255,.28) 45%,rgba(31,182,255,0))}
 :host([phone]) .b2{background:radial-gradient(closest-side,rgba(106,75,255,.7),rgba(106,75,255,.28) 45%,rgba(106,75,255,0))}
@@ -965,7 +965,6 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 :host([phone][out]) .b1{background:radial-gradient(closest-side,rgba(18,201,122,.7),rgba(18,201,122,.28) 45%,rgba(18,201,122,0))}
 :host([phone][out]) .b2{background:radial-gradient(closest-side,rgba(169,182,28,.7),rgba(169,182,28,.28) 45%,rgba(169,182,28,0))}
 :host([phone]) .card{backdrop-filter:none;-webkit-backdrop-filter:none;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.02)),rgba(11,16,33,.3)}
-:host([phone]) .grid>.card,:host([phone]) .grid>.kpis,:host([phone]) .grid>.nt-kpis{content-visibility:auto;contain-intrinsic-size:auto 460px}
 :host([phone]) .tip.on,:host([phone]) .dw-open .dw-bg{backdrop-filter:none;-webkit-backdrop-filter:none}
 `;
 
