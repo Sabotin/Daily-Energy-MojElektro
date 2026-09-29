@@ -74,6 +74,10 @@ class DailyEnergyManager:
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
             "q15_try": {},
         }
+        # 15-minute days older than KEEP_Q15_DAYS, kept for good in a file of their own:
+        # {"q15"|"q15o": {"YYYY-MM": {date: [kWh]}}}; the card gets only their dates and loads a month when needed
+        self._arch_store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.q15")
+        self.archive: dict = {"q15": {}, "q15o": {}}
         self._listeners: set[Callable[[dict], None]] = set()
         self._fetching = False
 
@@ -85,17 +89,51 @@ class DailyEnergyManager:
             for key in self.data:
                 if isinstance(stored.get(key), dict):
                     self.data[key] = stored[key]
+        stored = await self._arch_store.async_load()
+        if isinstance(stored, dict):
+            for key in self.archive:
+                if isinstance(stored.get(key), dict):
+                    self.archive[key] = stored[key]
 
     @callback
     def _save(self) -> None:
         self._store.async_delay_save(lambda: self.data, 2)
 
+    @callback
+    def _save_archive(self) -> None:
+        self._arch_store.async_delay_save(lambda: self.archive, 10)
+
     async def async_flush(self) -> None:
         await self._store.async_save(self.data)
+        await self._arch_store.async_save(self.archive)
 
     @staticmethod
     async def async_remove_store(hass: HomeAssistant, entry: ConfigEntry) -> None:
         await Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}").async_remove()
+        await Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.q15").async_remove()
+
+    def _archive_days(self, q_key: str, days: dict) -> set[str]:
+        """Put 15-minute days into the archive (per month). Returns the days that changed."""
+        changed = set()
+        for d, values in days.items():
+            month = self.archive[q_key].setdefault(d[:7], {})
+            if month.get(d) != values:
+                month[d] = values
+                changed.add(d)
+        if changed:
+            self._save_archive()
+        return changed
+
+    def _trim_quarters(self, q_key: str, miss_key: str, cutoff: str) -> set[str]:
+        """Days older than cutoff leave the last-days data and go to the archive. Returns the archived days."""
+        old = {d: v for d, v in self.data[q_key].items() if d < cutoff}
+        self.data[q_key] = {d: v for d, v in self.data[q_key].items() if d >= cutoff}
+        self.data[miss_key] = {d: n for d, n in self.data[miss_key].items() if d in self.data[q_key]}
+        return self._archive_days(q_key, old)
+
+    def archive_month(self, month: str) -> dict:
+        """One archived month of both grids, for the card: {"q15": {date: [kWh]}, "q15o": {...}}."""
+        return {key: dict(self.archive[key].get(month, {})) for key in ("q15", "q15o")}
 
     # ------------------------------------------------------------ options
 
@@ -195,7 +233,8 @@ class DailyEnergyManager:
 
     def _store_quarters(self, q_key: str, miss_key: str, days: dict, missing: dict, cutoff: str) -> set[str]:
         """Keep the 15-minute days of the last KEEP_Q15_DAYS days; a day is only replaced by data that is at
-        least as complete. Returns the days that changed."""
+        least as complete. Older days go to the archive (only complete ones when they arrive). Returns the days
+        that changed."""
         changed = set()
         for d, values in days.items():
             flagged = missing.get(d, 0)
@@ -204,9 +243,8 @@ class DailyEnergyManager:
                     changed.add(d)
                 self.data[q_key][d] = values
                 self.data[miss_key][d] = flagged
-        self.data[q_key] = {d: v for d, v in self.data[q_key].items() if d >= cutoff}
-        self.data[miss_key] = {d: n for d, n in self.data[miss_key].items() if d in self.data[q_key]}
-        return changed
+        changed |= self._archive_days(q_key, {d: v for d, v in days.items() if d < cutoff and not missing.get(d, 0)})
+        return changed | self._trim_quarters(q_key, miss_key, cutoff)
 
     async def async_check_updates(self, force: bool = True) -> dict:
         """Fetch everything the dashboard shows straight from the Moj Elektro API and save what is new.
@@ -318,7 +356,7 @@ class DailyEnergyManager:
         """Fetch past days from the Moj Elektro API and fill them in (Settings > Moj Elektro history).
 
         Month by month: daily meter readings (usage, VT, MT, month totals) and 15-minute data (tariff
-        blocks of every complete day; the 15-minute chart for the last KEEP_Q15_DAYS days), and with
+        blocks of every complete day; the 15-minute chart, older days in the archive), and with
         Settings > Grid "Grid in & Grid out" the same for the energy sent to the grid. Moj Elektro's
         numbers replace what is stored for those days. Returns {"days": days changed, ...} or {"error": ...}.
         """
@@ -432,6 +470,12 @@ class DailyEnergyManager:
             "settings": self.data["settings"],
             "q15": self.data["q15"],
             "q15o": self.data["q15o"],
+            # the archived 15-minute days, dates only: {"q15"|"q15o": {"YYYY-MM": [day numbers]}}
+            "q15_days": {
+                key: {m: sorted(int(d[8:]) for d in days) for m, days in sorted(self.archive[key].items()) if days}
+                for key in ("q15", "q15o")
+            },
+            "meter": self.entry.entry_id,
             "api": all(self.credentials()),
             "has_pin": bool(self.pin),
         }
@@ -460,6 +504,8 @@ class DailyEnergyManager:
         """Settings > Delete all data: every Moj Elektro day, 15-minute day and manual reading. Settings stay."""
         for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss", "q15_try"):
             self.data[key] = {}
+        self.archive = {"q15": {}, "q15o": {}}
+        self._save_archive()
         self._changed()
 
     @callback
@@ -473,7 +519,13 @@ class DailyEnergyManager:
         rec = self.data["days"].get(day, {})
         rest = {k: v for k, v in rec.items() if k not in keys}
         dropped = self._drop_edit(day, grid_out)
-        found = dropped or rest != rec or day in self.data[q_key]
+        month = self.archive[q_key].get(day[:7], {})
+        archived = month.pop(day, None) is not None
+        if archived:
+            if not month:
+                self.archive[q_key].pop(day[:7], None)
+            self._save_archive()
+        found = dropped or archived or rest != rec or day in self.data[q_key]
         if rest:
             self.data["days"][day] = rest
         else:
@@ -532,8 +584,11 @@ class DailyEnergyManager:
             if day >= cutoff:
                 self.data["q15"][day] = values
                 self.data["q15_miss"][day] = (missing or {}).get(day, 0)
-        self.data["q15"] = {d: v for d, v in self.data["q15"].items() if d >= cutoff}
-        self.data["q15_miss"] = {d: n for d, n in self.data["q15_miss"].items() if d in self.data["q15"]}
+        # older complete days go to the archive, as do days that just left the last KEEP_Q15_DAYS
+        self._archive_days(
+            "q15", {d: v for d, v in parsed.get("q15", {}).items() if d < cutoff and not (missing or {}).get(d, 0)}
+        )
+        self._trim_quarters("q15", "q15_miss", cutoff)
         self._changed()
         return count
 

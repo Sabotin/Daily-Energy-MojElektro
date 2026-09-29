@@ -227,6 +227,7 @@
     '15-minute power': '15-minutna moč',
     'grid out': 'oddaja',
     'Moj Elektro · 24 h delay': 'Moj Elektro · 24 h zamika',
+    'Loading…': 'Nalagam…',
     'Could not read the 15-minute history': '15-minutne zgodovine ni bilo mogoče prebrati',
     'Collecting 15-minute data…': 'Zbiram 15-minutne podatke…',
     'Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.': 'Moj Elektro objavi včerajšnje 15-minutne podatke okoli 6:00. Prikažejo se samodejno, lahko pa tapnete gumb za posodobitev.',
@@ -1060,6 +1061,12 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       const meOut = Object.entries(s.days || {}).filter(([d, r]) => ok(d) && r && typeof r.o === 'number')
         .map(([d, r]) => ({ d, me: true, u: r.o, vt: r.ovt, mt: r.omt, mo: r.omo, mvt: r.omvt, mmt: r.ommt }));
       this._q15 = s.q15 || {}; this._q15o = s.q15o || {}; this._edits = s.edits || {}; this._hasPin = !!s.has_pin;
+      // older 15-minute days: the months kept in Home Assistant, and those already loaded (for this meter)
+      if (!this._archData || this._archFor !== s.meter) { this._archFor = s.meter; this._archData = { q15: {}, q15o: {} }; this._archLoaded = new Set(); }
+      // every archived day (dates only): the calendar and the arrows offer them, their data loads when picked
+      const ad = s.q15_days || {}, dates = o => Object.entries(o || {}).flatMap(([m, ds]) => (Array.isArray(ds) ? ds : []).map(d => `${m}-${pad(d)}`)).sort();
+      this._archDays = { q15: dates(ad.q15), q15o: dates(ad.q15o) };
+      this._q15 = { ...this._archData.q15, ...this._q15 }; this._q15o = { ...this._archData.q15o, ...this._q15o };
       // the integration always fetches from Moj Elektro, so the dashboard is always in Moj Elektro mode
       this._api = !!s.api; this._me = true;
       this._applyLite();
@@ -1843,11 +1850,18 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
     }
     // [<] [date] [>]: the arrows step to the day before / after that has data; the date opens the calendar.
     // sc: 'p' = the 15-minute chart (grid in / grid out), 'n' = the Neto day chart; each keeps its own day
-    _dayKeys(sc) { return sc === 'n' ? this._nKeys() : this._prof ? this._prof.keys : []; }
+    // the days the navigation offers: the loaded ones and the archived ones (whose data loads when picked)
+    _dayKeys(sc) {
+      const A = !this._demo && this._archDays || { q15: [], q15o: [] };
+      if (sc === 'n') { const o = new Set(A.q15o); return [...new Set([...this._nKeys(), ...A.q15.filter(d => o.has(d))])].sort(); }
+      return [...new Set([...(this._prof ? this._prof.keys : []), ...(this._isOut() ? A.q15o : A.q15)])].sort();
+    }
+    // this day's 15-minute data is in the browser
+    _hasDay(k, sc) { return sc === 'n' ? !!this._nQuarters(k) : !!(this._prof && this._prof.byDay.has(k)); }
     _pNav(day, sc = 'p') {
-      const K = this._dayKeys(sc), i = K.indexOf(day), yest = day === addD(iso(new Date()), -1), open = this['_' + sc + 'cal'];
+      const K = this._dayKeys(sc), i = K.indexOf(day), yest = day === addD(iso(new Date()), -1), open = this['_' + sc + 'cal'], busy = this._archBusy;
       const arrow = (v, off, label, cls) => `<button class="pn-a${cls}" data-act="pday" data-s="${sc}" data-v="${v}"${off ? ' disabled' : ''} title="${t(label)}" aria-label="${t(label)}">${ic('back')}</button>`;
-      return `<div class="pnav">${arrow('prev', i <= 0, 'Previous day', '')}<button class="pn-d${open ? ' open' : ''}" data-act="pday" data-s="${sc}" data-v="cal" title="${t('Choose a day')}">${ic('month')}<span>${yest ? t('Yesterday') : fdate(day)}</span>${ic('chev', 'cv')}</button>${arrow('next', i >= K.length - 1, 'Next day', ' nx')}${open ? this._pCal(day, sc) : ''}</div>`;
+      return `<div class="pnav">${arrow('prev', i <= 0, 'Previous day', '')}<button class="pn-d${open ? ' open' : ''}" data-act="pday" data-s="${sc}" data-v="cal" title="${t('Choose a day')}">${ic('month')}<span>${busy ? t('Loading…') : yest ? t('Yesterday') : fdate(day)}</span>${ic('chev', 'cv')}</button>${arrow('next', i >= K.length - 1, 'Next day', ' nx')}${open ? this._pCal(day, sc) : ''}</div>`;
     }
     // the calendar: one month, Monday first; only days with 15-minute data can be picked
     _pCal(day, sc = 'p') {
@@ -1861,7 +1875,23 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       }
       return `<div class="pcal"><div class="cal-h"><button class="pn-a" data-act="pday" data-s="${sc}" data-v="m-"${earlier ? '' : ' disabled'} aria-label="${t('Previous month')}">${ic('back')}</button><span>${MONL[mm - 1]} ${yy}</span><button class="pn-a nx" data-act="pday" data-s="${sc}" data-v="m+"${later ? '' : ' disabled'} aria-label="${t('Next month')}">${ic('back')}</button></div><div class="cal-g">${g}</div></div>`;
     }
-    _pdayAct(v, sc = 'p') {
+    // loads one archived month (both grids) into the 15-minute data; true when loaded
+    async _loadArch(m) {
+      if (this._archBusy || this._demo || this._archLoaded.has(m)) return false;
+      this._archBusy = true; this._renderProf(); if (this._isNet()) this._nDay();
+      try {
+        const r = await this._ws('q15_month', { month: m });
+        for (const [q, key] of [['q15', '_q15'], ['q15o', '_q15o']]) {
+          Object.assign(this._archData[q], r[q] || {});
+          this[key] = { ...(r[q] || {}), ...this[key] };
+        }
+        this._archLoaded.add(m);
+        return true;
+      } catch (e) { this._toast(t('Could not read the 15-minute history')); return false; }
+      finally { this._archBusy = false; this._buildProf(false); }
+    }
+    async _pdayAct(v, sc = 'p') {
+      if (this._archBusy) return;
       const K = this._dayKeys(sc), cur = sc === 'n' ? this._nDayKey() : this._pDay(), i = K.indexOf(cur), P = '_' + sc;
       if (!cur) return;
       if (v === 'cal') { this[P + 'cal'] = !this[P + 'cal']; this[P + 'calM'] = null; }
@@ -1869,6 +1899,9 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       else {
         const k = v === 'prev' ? K[i - 1] : v === 'next' ? K[i + 1] : v;
         if (!k || !K.includes(k)) return;
+        // an archived day: its month is loaded first ("Nalagam…" on the date button), once
+        if (!this._hasDay(k, sc)) await this._loadArch(k.slice(0, 7));
+        if (!this._hasDay(k, sc)) { if (sc === 'n') this._nDay(); else this._renderProf(); return; }
         // the newest day is kept as "the newest", so the next morning's day replaces it by itself
         this[P + 'day'] = k === K[K.length - 1] ? null : k; this[P + 'cal'] = false; this[P + 'calM'] = null;
       }

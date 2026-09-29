@@ -32,6 +32,7 @@ def async_register(hass: HomeAssistant) -> None:
         ws_import_backup,
         ws_check_updates,
         ws_import_api,
+        ws_q15_month,
     ):
         websocket_api.async_register_command(hass, command)
 
@@ -231,6 +232,17 @@ def ws_import_backup(hass: HomeAssistant, connection, msg: dict[str, Any]) -> No
     manager = _manager(hass, connection, msg)
     if manager is not None:
         connection.send_result(msg["id"], {"kind": "backup", "days": manager.apply_backup(msg["data"])})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/q15_month", ENTRY: str, vol.Required("month"): vol.Match(r"^\d{4}-\d{2}$")}
+)
+@callback
+def ws_q15_month(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """15-minute chart: one archived month (older than the last days) of both grids, {q15, q15o}."""
+    manager = _manager(hass, connection, msg)
+    if manager is not None:
+        connection.send_result(msg["id"], manager.archive_month(msg["month"]))
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/check_updates", ENTRY: str})
