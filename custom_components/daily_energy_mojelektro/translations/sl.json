@@ -14,6 +14,30 @@
           "token": "Shranjen je samo v Home Assistantu in nikoli ne pride do brskalnika.",
           "pin": "Če je nastavljen, ga zahtevata ročni vnos stanja števca in brisanje podatkov. Pustite prazno za brez PIN-a."
         }
+      },
+      "add": {
+        "title": "Dodaj merilno mesto",
+        "description": "Novo merilno mesto dobi svoje podatke in se prikaže pod gumbom merilnih mest na nadzorni plošči.",
+        "data": {
+          "meter_id": "Merilno mesto (EIMM)",
+          "use_existing": "Uporabi obstoječi žeton",
+          "token_from": "Žeton od"
+        },
+        "data_description": {
+          "meter_id": "Na primer 4-123456.",
+          "use_existing": "Odkljukajte za nov API žeton (vpišete ga v naslednjem koraku).",
+          "token_from": "Izberite merilno mesto, čigar žeton uporabim."
+        }
+      },
+      "token": {
+        "title": "API žeton",
+        "description": "Za merilno mesto {meter}.",
+        "data": {
+          "token": "API žeton"
+        },
+        "data_description": {
+          "token": "Ustvarite ga na mojelektro.si pod API storitve › Kreiraj žeton (obkljukajte Neomejeno)."
+        }
       }
     },
     "error": {
@@ -22,7 +46,7 @@
       "cannot_connect": "API Moj Elektro ni dosegljiv. Poskusite znova pozneje."
     },
     "abort": {
-      "already_configured": "To merilno mesto že ima nadzorno ploščo Daily Energy."
+      "already_configured": "To merilno mesto je že dodano."
     }
   },
   "options": {

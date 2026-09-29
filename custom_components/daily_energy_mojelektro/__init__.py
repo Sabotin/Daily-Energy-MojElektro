@@ -7,7 +7,7 @@ from pathlib import Path
 
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_IGNORE, ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
@@ -25,11 +25,12 @@ from .const import (
     URL_BASE,
     VERSION,
 )
-from .manager import DailyEnergyManager
+from .manager import DailyEnergyManager, entry_state
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 MODULE_URL = f"{URL_BASE}/{CARD_FILE}?v={VERSION}"
+PANEL_URL = "daily-energy"
 
 _LOGGER = logging.getLogger(__name__)
 # Version 1 entries could borrow the meter and token of the Moj Elektro integration instead.
@@ -51,11 +52,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one meter: storage, the hourly Moj Elektro check and the sidebar panel."""
     manager = DailyEnergyManager(hass, entry)
     await manager.async_load()
+    manager.entry_state = entry_state(entry)
     hass.data[DOMAIN][entry.entry_id] = manager
     entry.async_on_unload(manager.async_start())
 
-    if entry.options.get(CONF_SIDEBAR, True):
-        manager.panel_url = _panel_url(hass, entry)
+    # one sidebar panel, from the first meter: the dashboard's meter button switches between the meters
+    if entry.options.get(CONF_SIDEBAR, True) and _first_entry(hass) is entry:
+        manager.panel_url = PANEL_URL
         await panel_custom.async_register_panel(
             hass,
             frontend_url_path=manager.panel_url,
@@ -81,19 +84,34 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Deleting the integration entry also deletes its stored log."""
+    """Deleting the integration entry also deletes its stored log (and its 15-minute archive). When it was the
+    meter with the sidebar panel, the next meter takes the panel over."""
     await DailyEnergyManager.async_remove_store(hass, entry)
+    first = _first_entry(hass, without=entry.entry_id)
+    manager = hass.data.get(DOMAIN, {}).get(first.entry_id) if first else None
+    if manager is not None and not manager.panel_url and first.options.get(CONF_SIDEBAR, True):
+        hass.async_create_task(hass.config_entries.async_reload(first.entry_id))
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Options or meter / token changed. A new name only (the entry title follows it) needs no restart, nor does a
+    token the dashboard already handed to the running meter."""
+    manager = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if manager is not None and manager.entry_state == entry_state(entry):
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-def _panel_url(hass: HomeAssistant, entry: ConfigEntry) -> str:
-    """"daily-energy" for the first meter, "daily-energy-2" and so on for more."""
-    entries = hass.config_entries.async_entries(DOMAIN)
-    index = next((i for i, e in enumerate(entries) if e.entry_id == entry.entry_id), 0)
-    return "daily-energy" if index == 0 else f"daily-energy-{index + 1}"
+def _first_entry(hass: HomeAssistant, without: str | None = None) -> ConfigEntry | None:
+    """The first meter that was added (and is not ignored or disabled)."""
+    return next(
+        (
+            e
+            for e in hass.config_entries.async_entries(DOMAIN)
+            if e.entry_id != without and e.source != SOURCE_IGNORE and e.disabled_by is None
+        ),
+        None,
+    )
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

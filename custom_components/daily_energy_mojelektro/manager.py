@@ -24,6 +24,7 @@ from .const import (
     BACKFILL_SPAN,
     CHECK_MINUTE,
     CONF_METER,
+    CONF_NAME,
     CONF_PIN,
     CONF_TOKEN,
     DOMAIN,
@@ -35,6 +36,11 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def entry_state(entry: ConfigEntry) -> tuple[dict, dict]:
+    """What a running meter depends on: its data (meter, token) and options other than the name."""
+    return dict(entry.data), {k: v for k, v in entry.options.items() if k != CONF_NAME}
 
 
 async def async_test_access(hass: HomeAssistant, meter: str, token: str) -> str | None:
@@ -64,6 +70,8 @@ class DailyEnergyManager:
         self.hass = hass
         self.entry = entry
         self.panel_url: str | None = None
+        # entry_state() when set up; a change of anything else (the name) needs no reload
+        self.entry_state: tuple[dict, dict] | None = None
         self._store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
         # days: {date: {u, vt, mt, mo, mvt, mmt, b} + grid out {o, ovt, omt, omo, omvt, ommt}},
         # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {b: [5 blocks]}, and/or {o}} manual values that fetching never
@@ -446,6 +454,11 @@ class DailyEnergyManager:
     @callback
     def _changed(self) -> None:
         self._save()
+        self.push()
+
+    @callback
+    def push(self) -> None:
+        """Send the current state to open dashboards."""
         snapshot = self.snapshot()
         for listener in list(self._listeners):
             listener(snapshot)
@@ -464,6 +477,7 @@ class DailyEnergyManager:
         return {
             "version": VERSION,
             "title": self.entry.title,
+            "name": self.entry.options.get(CONF_NAME, ""),
             "days": self.data["days"],
             "manual": self.data["manual"],
             "edits": self.data["edits"],

@@ -339,6 +339,27 @@
     'Wrong PIN': 'Napačen PIN',
     'Only administrators can delete data': 'Podatke lahko brišejo samo skrbniki',
     'Could not delete — {0}': 'Brisanje ni uspelo — {0}',
+    'Meters': 'Merilna mesta',
+    'Rename': 'Preimenuj',
+    'Any name': 'Poljubno ime',
+    'Remove': 'Odstrani',
+    'Remove {0}?': 'Odstranim {0}?',
+    'All data of this meter is deleted.': 'Izbrišejo se vsi podatki tega merilnega mesta.',
+    'Meter removed': 'Merilno mesto je odstranjeno',
+    'Add a meter': 'Dodaj merilno mesto',
+    'Change the API token': 'Spremeni API žeton',
+    'New API token for {0}': 'Nov API žeton za {0}',
+    'New API token': 'Nov API žeton',
+    'Create it at mojelektro.si under API storitve › Kreiraj žeton (tick Neomejeno).': 'Ustvarite ga na mojelektro.si pod API storitve › Kreiraj žeton (obkljukajte Neomejeno).',
+    'Enter the new API token.': 'Vpišite nov API žeton.',
+    'Check the API token.': 'Preverite API žeton.',
+    'Token changed': 'Žeton spremenjen',
+    'Token changed (also for the meters with the same token)': 'Žeton spremenjen (tudi za merilna mesta z istim žetonom)',
+    'This is the token already saved.': 'To je že shranjeni žeton.',
+    'Moj Elektro did not accept this API token.': 'Moj Elektro ni sprejel tega API žetona.',
+    'Moj Elektro refused the request. Check the meter ID (EIMM) and that the token belongs to it.': 'Moj Elektro je zavrnil zahtevo. Preverite merilno mesto (EIMM) in da žeton pripada njemu.',
+    'Could not reach the Moj Elektro API. Try again later.': 'API Moj Elektro ni dosegljiv. Poskusite znova pozneje.',
+    'Could not save — {0}': 'Shranjevanje ni uspelo — {0}',
     'All data deleted': 'Vsi podatki so izbrisani',
     'daily meter readings': 'dnevna stanja števca',
     'daily tariff blocks': 'dnevni časovni bloki',
@@ -459,6 +480,9 @@
     month: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/>',
     back: '<path d="M15 18l-6-6 6-6"/>',
     chev: '<path d="M6 9l6 6 6-6"/>',
+    pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M15.5 7.5l3 3M18 5l2 2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
     year: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
     avg: '<path d="M3 17l5-5 4 4 8-8"/><path d="M14 8h6v6"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -743,6 +767,45 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .rb .ic{width:15px;height:15px}
 .rb:hover{color:var(--txt);background:rgba(255,255,255,.1)}
 .rb.d:hover{color:var(--bad);border-color:rgba(255,93,122,.4)}
+/* meters: the meter button (pill) in the header and its menu */
+.mpill{height:42px;border-radius:14px;display:inline-flex;align-items:center;gap:8px;padding:0 11px;font:inherit;font-size:14px;font-weight:600;color:var(--txt);cursor:pointer;max-width:200px;background:linear-gradient(135deg,rgba(62,230,255,.10),rgba(123,107,255,.10));border:1px solid rgba(62,230,255,.35);transition:.2s;flex:none}
+.mpill:hover{border-color:rgba(62,230,255,.7)}
+.mpill.open{border-color:rgba(62,230,255,.75);box-shadow:0 0 0 3px rgba(62,230,255,.12)}
+.mpill .ic{width:17px;height:17px;color:var(--c1)}.mpill .ic.cv{width:14px;height:14px;color:var(--mut)}
+.mpill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mdd{position:absolute;z-index:40;width:320px;padding:14px;border-radius:18px;background:linear-gradient(180deg,#0e152c,#0a0f22);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 60px -20px rgba(0,0,0,.85),0 0 0 1px rgba(62,230,255,.06);animation:rise .25s ease-out both}
+.mdd[hidden]{display:none}
+.mdd:before{content:'';position:absolute;top:-7px;left:var(--ax,50%);width:12px;height:12px;transform:rotate(45deg);background:#0e152c;border-left:1px solid rgba(255,255,255,.1);border-top:1px solid rgba(255,255,255,.1)}
+.mlist{max-height:60vh;overflow-y:auto;overscroll-behavior:contain}
+.mdd input.in{padding:10px 12px;font-size:15px;border-radius:12px}
+.mdd .btn.pri .ic{fill:none;stroke:currentColor;stroke-width:2.4}
+.merr{font-size:12.5px;color:#ffb3c0;background:rgba(255,93,122,.08);border:1px solid rgba(255,93,122,.3);border-radius:10px;padding:8px 10px;margin:10px 0 0;line-height:1.4}
+.mrow{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:12px;cursor:pointer;text-align:left}
+.mrow+.mrow,.mrow+.mren,.mren+.mrow{margin-top:2px}
+.mrow:hover{background:rgba(255,255,255,.04)}
+.mrow.cur{background:rgba(62,230,255,.08);box-shadow:inset 0 0 0 1px rgba(62,230,255,.22)}
+.mrow .dt{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);flex:none}
+.mrow.cur .dt{background:var(--c1);box-shadow:0 0 10px var(--c1)}
+.mnm{flex:1;min-width:0}
+.mnm b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mnm small{display:block;font-size:12px;color:var(--dim);margin-top:1px;font-variant-numeric:tabular-nums}
+.mren{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 1px rgba(62,230,255,.35)}
+.mren.del{box-shadow:inset 0 0 0 1px rgba(255,93,122,.4)}
+.mren.key{flex-wrap:wrap}.mren.key .mnm{flex:1 1 100%}.mren.key .mnm b{white-space:normal}
+.mdd .mren.key .btn.pri{flex:1;width:auto;padding:9px 12px}
+.mren input.in{padding:7px 10px;font-size:14px}
+.mren small{display:block;font-size:12px;color:var(--dim);margin:4px 0 0 2px;line-height:1.4}
+.mren .btn.sm{padding:8px 10px;flex:none}
+.mren .btn.dz{color:#fff;background:linear-gradient(135deg,#ff5d7a,#ff7a3d)}
+.rb.ok{color:#061022;background:linear-gradient(135deg,var(--c1),var(--c2));border-color:transparent}
+.rb.dz{color:#ff9d8a}
+.msep{height:1px;background:rgba(255,255,255,.07);margin:8px 2px}
+.maddrow{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:12px;font:inherit;font-size:14px;font-weight:600;color:#9ff3ff;background:none;border:0;cursor:pointer}
+.maddrow:hover{background:rgba(62,230,255,.06)}
+.maddrow i{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;border:1px dashed rgba(62,230,255,.5)}
+.maddrow i .ic{width:14px;height:14px;stroke-width:2.4}
+.mpill.msm{display:none}
+@media (max-width:640px){.hdr > .mpill{display:none}.hdr .ttl.hasm .sub{display:none}.hdr .mpill.msm{display:inline-flex;height:28px;margin-top:5px;padding:0 9px;gap:6px;font-size:13px;border-radius:10px;max-width:100%}.hdr .mpill.msm .ic{width:14px;height:14px}.hdr .mpill.msm .ic.cv{width:12px;height:12px}.mdd{width:auto}.hdr .mpill{height:40px;max-width:120px;padding:0 9px}}
 .tscroll{overflow-x:auto;margin:0 -6px;padding:0 6px}
 .more{display:flex;justify-content:center;margin-top:10px}
 /* tooltip, toast, drawer */
@@ -987,6 +1050,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       this._ui = { range: 'day', trange: 'day', all: false, impFrom: `${y.getFullYear()}-01-01`, impTo: iso(y) };
       this._demo = null; this._loaded = false; this._shown = 0; this._sync = null;
       this._dirty = false; this._me = false; this._q15 = {}; this._q15o = {}; this._pinOk = '';
+      this._meters = []; this._mm = null;
       const view = LS.get('daily-energy-view'); this._view = view === 'out' || view === 'net' ? view : 'in';
     }
     setConfig(c) { this._config = c || {}; }
@@ -1029,25 +1093,66 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       setTimeout(() => { swap(); requestAnimationFrame(() => requestAnimationFrame(() => g.classList.remove('fade'))); }, 230);
     }
     connectedCallback() { this._shell(); if (this._hass && this._sync === 'shared' && !this._unsub) this._load(); }
-    disconnectedCallback() { if (this._unsub) { this._unsub(); this._unsub = null; } }
+    disconnectedCallback() { if (this._unsub) { this._unsub(); this._unsub = null; } if (this._unsubEntries) { this._unsubEntries(); this._unsubEntries = null; } }
 
     /* ----- data: the daily_energy_mojelektro integration (websocket) ----- */
     _ws(cmd, data = {}) { return this._hass.callWS({ type: `${WS}/${cmd}`, entry_id: this._entry, ...data }); }
     async _load() {
       try {
-        let id = (this._config || {}).entry_id;
-        if (!id) {
-          const list = await this._hass.callWS({ type: `${WS}/entries` });
-          if (!list.length) throw new Error('not set up');
-          id = list[0].entry_id;
-        }
-        this._entry = id;
-        this._unsub = await this._hass.connection.subscribeMessage(m => this._onData(m), { type: `${WS}/subscribe`, entry_id: id });
+        await this._loadMeters();
+        if (!this._meters.length) throw new Error('not set up');
+        // the meter picked on this device, else the panel's / card's own, else the first
+        const has = id => id && this._meters.some(m => m.id === id), saved = LS.get('daily-energy-meter'), cfg = (this._config || {}).entry_id;
+        await this._subscribe(has(saved) ? saved : has(cfg) ? cfg : this._meters[0].id);
         this._sync = 'shared';
+        this._watchEntries();
       } catch (e) {
         this._sync = 'none'; this._applyLite();
         this._data = { entries: [], me: [], meOut: [], settings: { ...DEF } }; this._loaded = true; this._renderAll();
       }
+    }
+    // the meters (one integration entry each), in the order they were added: [{id, eimm, name}]; users who are not
+    // administrators get them from the entries command (they can switch, not rename, change the token or remove)
+    async _loadMeters() {
+      let L;
+      try { L = await this._hass.callWS({ type: `${WS}/meters/list` }); }
+      catch (e) { L = (await this._hass.callWS({ type: `${WS}/entries` })).map(x => ({ id: x.entry_id, eimm: x.eimm || '', name: x.name || '' })); }
+      this._meters = Array.isArray(L) ? L : [];
+    }
+    async _subscribe(id) {
+      if (this._unsub) { try { this._unsub(); } catch (e) { } this._unsub = null; }
+      this._entry = id;
+      this._unsub = await this._hass.connection.subscribeMessage(m => this._onData(m), { type: `${WS}/subscribe`, entry_id: id });
+    }
+    // a meter added, removed or renamed in Devices & services: load the list again (administrators only)
+    async _watchEntries() {
+      if (this._unsubEntries) return;
+      try {
+        this._unsubEntries = await this._hass.connection.subscribeMessage(msgs => {
+          if (Array.isArray(msgs) && msgs.some(m => m && m.type && m.entry && m.entry.domain === WS)) this._refreshMeters();
+        }, { type: 'config_entries/subscribe' });
+      } catch (e) { }
+    }
+    async _refreshMeters() {
+      try { await this._loadMeters(); } catch (e) { return; }
+      if (this._meters.length && !this._meters.some(m => m.id === this._entry)) { await this._switchMeter(this._meters[0].id, true); return; }
+      this._renderHdr(); this._renderMM();
+    }
+    // another meter: menu, edit forms and Settings close, the grid fades out and back in with that meter's data
+    async _switchMeter(id, keepMenu = false) {
+      if (!id) return;
+      if (!keepMenu) this._mm = null;
+      if (id === this._entry) { this._renderMM(); this._renderHdr(); return; }
+      LS.set('daily-energy-meter', id);
+      this._ui.editDay = null; this._ui.blEdit = null; this._ui.pin = false; this._dirty = false; this._pinOk = '';
+      this._pday = this._nday = this._pcalM = this._ncalM = this._nrecY = null; this._pcal = this._ncal = false;
+      if (this._dwOpen) this._drawer(false);
+      this._renderMM();
+      const g = this.shadowRoot.querySelector('.grid');
+      if (g && !this._lite) { g.classList.add('fade'); this._fadeIn = g; }
+      try { await this._subscribe(id); }
+      catch (e) { if (g) g.classList.remove('fade'); this._fadeIn = null; this._toast(t('Could not save — {0}', e && e.message || e)); }
+      this._renderHdr();
     }
     _onData(s) {
       this._snap = s;
@@ -1073,6 +1178,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       const first = !this._loaded; this._loaded = true;
       if (this._me) this._buildProf(false);
       this._renderAll(!first);
+      // a meter was just switched to: its data is drawn, the grid fades back in on the second frame
+      if (this._fadeIn) { const g = this._fadeIn; this._fadeIn = null; requestAnimationFrame(() => requestAnimationFrame(() => g.classList.remove('fade'))); }
     }
     async _commit({ put = [], del = [], settings = false } = {}) {
       try {
@@ -1204,7 +1311,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       if (this._built) return; this._built = true;
       this.shadowRoot.innerHTML = `<style>${CSS}</style>
 <div class="root" id="root"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
-<div class="wrap"><header class="hdr" id="hdr"></header><div id="banner"></div>
+<div class="wrap"><header class="hdr" id="hdr"></header><div class="mdd" id="mdd" hidden></div><div id="banner"></div>
 <div class="grid">
  <section class="card hero s7" id="hero"></section>
  <section class="card s5" id="prof"></section>
@@ -1238,7 +1345,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Escape') { this._closeCals(); this._drawer(false); } });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Enter' && e.target.id === 'mm-name') this._mmRename(this._mm && this._mm.edit); if (e.key === 'Enter' && e.target.id === 'mm-newtok') this._mmToken(this._mm && this._mm.key); if (e.key === 'Escape') { this._closeMM(); this._closeCals(); this._drawer(false); } });
       // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
       // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
       // Only a mouse (or a tablet's trackpad) hovers: a finger sliding over the bars while scrolling (tablets) shows nothing.
@@ -1247,6 +1354,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       // the page, or Home Assistant's own scrolling container (_tipSc, found when a box is pinned)
       this._tipOnScroll = () => { if (this._tipPin && Math.abs(this._tipScrollY() - this._tipPinY) >= 40) this._tipUnpin(); };
       addEventListener('scroll', this._tipOnScroll, { passive: true });
+      addEventListener('resize', () => this._placeMM());
       this._renderSkeleton();
     }
     _renderSkeleton() {
@@ -1274,12 +1382,12 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       this._renderChart(); this._renderHeat(); this._renderTariff(); this._renderBlocks(); this._renderLog(); this._renderProf(); if (!(remote && this._dwOpen)) this._renderDrawer();
     }
     _hdrHtml() {
-      const d = new Date(), c = this._c || {};
+      const d = new Date(), c = this._c || {}, msm = this._meterBtn(true);
       // only warnings get a chip; normal operation keeps the header clean
       const chip = this._demo ? `<span class="chip warn"><i></i>${t('Demo preview')}</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>${t('Daily Energy integration not set up')}</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div class="ttl"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div></div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
+      return `<div class="logo">${ic('bolt')}</div><div class="ttl${msm ? ' hasm' : ''}"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div>${msm}</div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._meterBtn()}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
-    _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); }
+    _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); this._placeMM(); }
     // Update button: asks the Moj Elektro API for new data now (the integration also checks every hour by itself).
     async _checkUpdates() {
       if (this._checking || !this._entry) return;
@@ -2122,8 +2230,103 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else { w.classList.remove('dw-open'); this._dwT = setTimeout(() => { if (!this._dwOpen) w.hidden = true; }, 460); }
     }
 
+    /* ----- meters: the meter button and its menu ----- */
+    _meterLabel(m) { return m ? (m.name || m.eimm || '—') : '—'; }
+    _meterBtn(small) {
+      if (!this._meters || !this._meters.length) return '';
+      const open = this._mm && this._mm.view;
+      const cur = this._meters.find(m => m.id === this._entry) || this._meters[0];
+      return `<button class="mpill${small ? ' msm' : ''}${open ? ' open' : ''}" data-act="mm" data-v="list" title="${t('Meters')}">${ic('pin')}<span>${esc(this._meterLabel(cur))}</span>${ic('chev', 'cv')}</button>`;
+    }
+    _renderMM() {
+      const el = this.$('mdd'); if (!el) return;
+      const M = this._mm;
+      if (!M || !this._meters || !this._meters.length) { el.hidden = true; el.innerHTML = ''; return; }
+      const typed = {}; el.querySelectorAll('input').forEach(i => { typed[i.id] = i.value; });
+      const err = M.err ? `<div class="merr">${esc(M.err)}</div>` : '';
+      const rows = this._meters.map(m => {
+        const cur = m.id === this._entry || (!this._entry && m === this._meters[0]);
+        if (M.del === m.id) return `<div class="mren del"><div class="mnm"><b>${t('Remove {0}?', esc(this._meterLabel(m)))}</b><small>${t('All data of this meter is deleted.')}</small></div><button class="btn sm dz" data-act="mm-del-ok" data-v="${esc(m.id)}"${M.busy ? ' disabled' : ''}>${t('Remove')}</button><button class="rb" data-act="mm-del-no" title="${t('Cancel')}">${ic('x')}</button></div>`;
+        if (M.key === m.id) return `<div class="mren key"><div class="mnm"><b>${t('New API token for {0}', esc(this._meterLabel(m)))}</b><input class="in" id="mm-newtok" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="${t('New API token')}" style="margin-top:6px"><small>${t('Create it at mojelektro.si under API storitve › Kreiraj žeton (tick Neomejeno).')}</small></div><button class="btn sm pri" data-act="mm-key-ok" data-v="${esc(m.id)}"${M.busy ? ' disabled' : ''}>${M.busy ? ic('sync', 'spin') : t('Save')}</button><button class="rb" data-act="mm-key-no" title="${t('Cancel')}">${ic('x')}</button></div>`;
+        if (M.edit === m.id) return `<div class="mren"><div class="mnm"><input class="in" id="mm-name" maxlength="30" autocomplete="off" value="${esc(m.name || '')}" placeholder="${t('Any name')}"><small>${esc(m.eimm)}</small></div><button class="rb ok" data-act="mm-save" data-v="${esc(m.id)}" title="${t('Save')}">${ic('ok')}</button><button class="rb" data-act="mm-key" data-v="${esc(m.id)}" title="${t('Change the API token')}" aria-label="${t('Change the API token')}">${ic('key')}</button>${this._meters.length > 1 ? `<button class="rb dz" data-act="mm-del" data-v="${esc(m.id)}" title="${t('Remove')}">${ic('del')}</button>` : ''}</div>`;
+        return `<div class="mrow${cur ? ' cur' : ''}" data-act="mm-pick" data-v="${esc(m.id)}"><i class="dt"></i><div class="mnm"><b>${esc(this._meterLabel(m))}</b>${m.name ? `<small>${esc(m.eimm)}</small>` : ''}</div><button class="rb" data-act="mm-edit" data-v="${esc(m.id)}" title="${t('Rename')}">${ic('edit')}</button></div>`;
+      }).join('');
+      el.innerHTML = `<div class="mlist">${rows}</div>${err}<div class="msep"></div><button class="maddrow" data-act="mm-addha"><i>${ic('plus')}</i>${t('Add a meter')}</button>`;
+      el.hidden = false;
+      for (const [id, v] of Object.entries(typed)) { const i = this.$(id); if (i && id !== 'mm-name') i.value = v; }
+      el.querySelectorAll('input').forEach(i => { i.disabled = !!M.busy; });
+      this._placeMM();
+    }
+    // under its button, arrow pointing at it; full width on phones
+    _placeMM() {
+      const d = this.$('mdd'), b = [...this.$('hdr').querySelectorAll('[data-act="mm"]')].find(x => x.offsetParent !== null);
+      if (!d || d.hidden || !b) return;
+      const w = this.shadowRoot.querySelector('.wrap').getBoundingClientRect(), r = b.getBoundingClientRect();
+      d.style.top = (r.bottom - w.top + 12) + 'px';
+      if (w.width < 640) { d.style.left = '0px'; d.style.right = '0px'; }
+      else { d.style.right = 'auto'; d.style.left = Math.max(0, Math.min(w.width - 320, r.left + r.width / 2 - w.left - 160)) + 'px'; }
+      const dr = d.getBoundingClientRect();
+      d.style.setProperty('--ax', (r.left + r.width / 2 - dr.left - 6) + 'px');
+    }
+    _closeMM() { if (!this._mm) return; this._mm = null; this._renderMM(); this._renderHdr(); }
+    _mmErr(e) {
+      const c = e && e.code;
+      return c === 'invalid_auth' ? t('Moj Elektro did not accept this API token.')
+        : c === 'invalid_meter' ? t('Moj Elektro refused the request. Check the meter ID (EIMM) and that the token belongs to it.')
+        : c === 'cannot_connect' ? t('Could not reach the Moj Elektro API. Try again later.')
+        : c === 'invalid_format' ? t('Check the API token.') : '';
+    }
+    async _mmRename(id) {
+      const M = this._mm, i = this.$('mm-name'); if (!M || !id || !i || M.busy) return;
+      const name = i.value.trim().slice(0, 30);
+      M.busy = true; M.err = ''; this._renderMM();
+      try { await this._hass.callWS({ type: `${WS}/meters/rename`, meter: id, name }); M.edit = null; await this._loadMeters(); }
+      catch (e) { M.err = t('Could not save — {0}', e && e.message || e); }
+      M.busy = false; this._renderMM(); this._renderHdr();
+    }
+    async _mmToken(id) {
+      const M = this._mm, i = this.$('mm-newtok'); if (!M || !id || !i || M.busy) return;
+      const token = i.value.trim();
+      if (!token) { M.err = t('Enter the new API token.'); this._renderMM(); return; }
+      M.busy = true; M.err = ''; this._renderMM();
+      try {
+        const r = await this._hass.callWS({ type: `${WS}/meters/token`, meter: id, token });
+        if (r && r.same) { M.busy = false; M.err = t('This is the token already saved.'); this._renderMM(); return; }
+        this._closeMM();
+        this._toast(r && r.shared > 0 ? t('Token changed (also for the meters with the same token)') : t('Token changed'));
+      } catch (e) { M.busy = false; M.err = this._mmErr(e) || t('Could not save — {0}', e && e.message || e); this._renderMM(); }
+    }
+    async _mmRemove(id) {
+      const M = this._mm; if (!M || !id || M.busy) return;
+      M.busy = true; M.err = ''; this._renderMM();
+      try {
+        await this._hass.callWS({ type: `${WS}/meters/remove`, meter: id });
+        await this._loadMeters();
+        this._mm = this._meters.length > 1 ? { view: 'list' } : null;
+        if (id === this._entry && this._meters.length) await this._switchMeter(this._meters[0].id, true);
+        this._renderMM(); this._renderHdr(); this._toast(t('Meter removed'));
+      } catch (e) { M.busy = false; M.err = t('Could not delete — {0}', e && e.message || e); this._renderMM(); }
+    }
+    _mmAct(a, v) {
+      const M = this._mm;
+      if (a === 'mm') { if (M) { this._closeMM(); return; } this._mm = { view: 'list' }; this._renderMM(); this._renderHdr(); this._refreshMeters(); }
+      else if (!M) return;
+      else if (a === 'mm-pick') this._switchMeter(v);
+      else if (a === 'mm-edit') { M.edit = M.edit === v ? null : v; M.del = M.key = null; M.err = ''; this._renderMM(); const i = this.$('mm-name'); if (i) i.focus(); }
+      else if (a === 'mm-save') this._mmRename(v);
+      else if (a === 'mm-key') { M.key = v; M.edit = M.del = null; M.err = ''; this._renderMM(); const i = this.$('mm-newtok'); if (i) i.focus(); }
+      else if (a === 'mm-key-no') { M.key = null; M.err = ''; this._renderMM(); }
+      else if (a === 'mm-key-ok') this._mmToken(v);
+      else if (a === 'mm-del') { M.del = v; M.edit = M.key = null; M.err = ''; this._renderMM(); }
+      else if (a === 'mm-del-no') { M.del = null; M.err = ''; this._renderMM(); }
+      else if (a === 'mm-del-ok') this._mmRemove(v);
+      else if (a === 'mm-addha') { this._closeMM(); history.pushState(null, '', `/config/integrations/integration/${WS}`); window.dispatchEvent(new CustomEvent('location-changed')); }
+    }
+
     /* ----- events ----- */
     async _click(e) {
+      // the meter menu closes with a click anywhere outside it and its button
+      if (this._mm && !e.composedPath().some(n => n.id === 'mdd' || (n.dataset && n.dataset.act === 'mm'))) this._closeMM();
       // a click or tap on something with an info box (a bar, a square…) pins that box; anywhere else unpins it
       // the 15-minute calendar closes with a click anywhere outside the date navigation
       if ((this._pcal || this._ncal) && !e.composedPath().some(n => n.classList && n.classList.contains('pnav'))) this._closeCals();
@@ -2132,6 +2335,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       if (this._tipPin) this._tipUnpin();
       const t = e.target.closest('[data-act]'); if (!t) return;
       const a = t.dataset.act;
+      if (a === 'mm' || a.startsWith('mm-')) { this._mmAct(a, t.dataset.v); return; }
       if (a === 'range') { this._ui.range = t.dataset.v; this._renderChart(); }
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }

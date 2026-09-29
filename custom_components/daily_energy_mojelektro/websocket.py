@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -12,7 +13,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 
 from . import logic
-from .const import DOMAIN
+from .const import CONF_METER, CONF_NAME, CONF_TOKEN, DOMAIN
+from .manager import async_test_access, entry_state
 
 ENTRY = vol.Required("entry_id")
 
@@ -33,6 +35,10 @@ def async_register(hass: HomeAssistant) -> None:
         ws_check_updates,
         ws_import_api,
         ws_q15_month,
+        ws_meters_list,
+        ws_meters_rename,
+        ws_meters_token,
+        ws_meters_remove,
     ):
         websocket_api.async_register_command(hass, command)
 
@@ -44,16 +50,118 @@ def _manager(hass: HomeAssistant, connection, msg):
     return manager
 
 
+def _loaded(hass: HomeAssistant) -> list:
+    """The running meters, in the order they were added."""
+    managers = hass.data.get(DOMAIN, {})
+    return [managers[e.entry_id] for e in hass.config_entries.async_entries(DOMAIN) if e.entry_id in managers]
+
+
+def _meter(m) -> dict:
+    return {"id": m.entry.entry_id, "eimm": m.entry.data.get(CONF_METER, ""), "name": m.entry.options.get(CONF_NAME, "")}
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/entries"})
 @callback
 def ws_entries(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Every meter, for users who are not administrators (the card's meter button then only switches)."""
     connection.send_result(
         msg["id"],
         [
-            {"entry_id": entry_id, "title": m.entry.title, "panel": m.panel_url}
-            for entry_id, m in hass.data.get(DOMAIN, {}).items()
+            {"entry_id": m.entry.entry_id, "title": m.entry.title, "panel": m.panel_url, **_meter(m)}
+            for m in _loaded(hass)
         ],
     )
+
+
+# ---------------------------------------------------------------- the dashboard's meter button (administrators)
+
+
+def _entry(hass: HomeAssistant, connection, msg):
+    entry = hass.config_entries.async_get_entry(msg["meter"])
+    if entry is None or entry.domain != DOMAIN:
+        connection.send_error(msg["id"], "not_found", "Daily Energy entry not found")
+        return None
+    return entry
+
+
+def _update(hass: HomeAssistant, entry, **changes) -> None:
+    """Change an entry without restarting its meter: the running meter reads its token from the entry."""
+    manager = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    hass.config_entries.async_update_entry(entry, **changes)
+    if manager is not None:
+        manager.entry_state = entry_state(entry)
+        manager.push()
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/meters/list"})
+@websocket_api.require_admin
+@callback
+def ws_meters_list(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    connection.send_result(msg["id"], [_meter(m) for m in _loaded(hass)])
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/meters/rename", vol.Required("meter"): str, vol.Required("name"): str}
+)
+@websocket_api.require_admin
+@callback
+def ws_meters_rename(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """A name of at most 30 characters (empty clears it); the entry title follows it, else the EIMM."""
+    entry = _entry(hass, connection, msg)
+    if entry is None:
+        return
+    name = " ".join(msg["name"].split())[:30]
+    options = {k: v for k, v in entry.options.items() if k != CONF_NAME}
+    if name:
+        options[CONF_NAME] = name
+    _update(hass, entry, options=options, title=name or entry.data.get(CONF_METER, entry.title))
+    connection.send_result(msg["id"], {"name": name})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/meters/token", vol.Required("meter"): str, vol.Required("token"): str}
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_meters_token(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """A new API token, checked with Moj Elektro first; it replaces the old one of every meter that shared it."""
+    entry = _entry(hass, connection, msg)
+    if entry is None:
+        return
+    token, old = msg["token"].strip(), entry.data.get(CONF_TOKEN)
+    if not re.fullmatch(r"\S{8,4096}", token):
+        connection.send_error(msg["id"], "invalid_format", "Check the API token")
+        return
+    if token == old:
+        connection.send_result(msg["id"], {"same": True})
+        return
+    error = await async_test_access(hass, entry.data.get(CONF_METER, ""), token)
+    if error:
+        connection.send_error(msg["id"], error, error)
+        return
+    shared = [
+        e
+        for e in hass.config_entries.async_entries(DOMAIN)
+        if e.entry_id != entry.entry_id and old and e.data.get(CONF_TOKEN) == old
+    ]
+    for e in [entry, *shared]:
+        _update(hass, e, data={**e.data, CONF_TOKEN: token})
+    connection.send_result(msg["id"], {"ok": True, "shared": len(shared)})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/meters/remove", vol.Required("meter"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_meters_remove(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Remove a meter and all its data for good (not the only one)."""
+    entry = _entry(hass, connection, msg)
+    if entry is None:
+        return
+    if len(hass.config_entries.async_entries(DOMAIN)) < 2:
+        connection.send_error(msg["id"], "last_meter", "The only meter cannot be removed")
+        return
+    await hass.config_entries.async_remove(entry.entry_id)
+    connection.send_result(msg["id"], {"ok": True})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe", ENTRY: str})

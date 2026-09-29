@@ -14,6 +14,30 @@
           "token": "Stored in Home Assistant only; it never reaches the browser.",
           "pin": "If set, opening the manual meter reading and deleting data ask for it. Leave empty for no PIN."
         }
+      },
+      "add": {
+        "title": "Add a meter",
+        "description": "The new meter gets its own data and appears under the meter button on the dashboard.",
+        "data": {
+          "meter_id": "Meter ID (EIMM)",
+          "use_existing": "Use the existing token",
+          "token_from": "Token of"
+        },
+        "data_description": {
+          "meter_id": "For example 4-123456.",
+          "use_existing": "Untick for a new API token (you enter it in the next step).",
+          "token_from": "Pick the meter whose token to use."
+        }
+      },
+      "token": {
+        "title": "API token",
+        "description": "For meter {meter}.",
+        "data": {
+          "token": "API token"
+        },
+        "data_description": {
+          "token": "Create it at mojelektro.si under API storitve › Kreiraj žeton (tick Neomejeno)."
+        }
       }
     },
     "error": {
@@ -22,7 +46,7 @@
       "cannot_connect": "Could not reach the Moj Elektro API. Try again later."
     },
     "abort": {
-      "already_configured": "This meter already has a Daily Energy dashboard."
+      "already_configured": "This meter is already added."
     }
   },
   "options": {
