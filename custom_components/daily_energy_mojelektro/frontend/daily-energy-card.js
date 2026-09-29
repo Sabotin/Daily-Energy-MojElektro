@@ -324,6 +324,8 @@
     'Could not reach Moj Elektro — try again later': 'Moj Elektro ni dosegljiv — poskusite pozneje',
     'Updated the cards!': 'Kartice so posodobljene!',
     'Nothing has been updated yet': 'Še ni novih podatkov',
+    'Manual refresh is used up': 'Ročno osveževanje je porabljeno',
+    'The data will be filled in automatically at the next morning check.': 'Podatki se bodo samodejno vnesli ob naslednjem jutranjem preverjanju.',
     'Could not check for updates — {0}': 'Preverjanje posodobitev ni uspelo — {0}',
     'Pick both dates': 'Izberite oba datuma',
     'Pick days before today': 'Izberite dneve pred današnjim',
@@ -819,6 +821,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .toast .ic{width:18px;height:18px;color:var(--c1);fill:var(--c1);stroke:none}
 .toast .ic.st{fill:none;stroke:var(--c1)}.toast.wait .ic{animation:spin 1s linear infinite}
+.toast div{font-weight:600}
+.toast small{display:block;font-size:12.5px;font-weight:400;color:var(--mut);margin-top:3px}
 .btn .ic.spin{animation:spin 1s linear infinite}
 .dw-bg{position:fixed;inset:0;z-index:70;background:rgba(2,4,10,.55);opacity:0;pointer-events:none;transition:.3s}
 .dw{position:fixed;top:0;right:0;bottom:0;z-index:71;width:min(420px,100vw);background:linear-gradient(180deg,#0c1228,#070a16);border-left:1px solid rgba(255,255,255,.08);box-shadow:-30px 0 80px -20px rgba(0,0,0,.8);transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);padding:26px;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
@@ -1388,17 +1392,18 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       return `<div class="logo">${ic('bolt')}</div><div class="ttl${msm ? ' hasm' : ''}"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div>${msm}</div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._meterBtn()}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
     _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); this._placeMM(); }
-    // Update button: asks the Moj Elektro API for new data now (the integration also checks every hour by itself).
+    // Update button: asks the Moj Elektro API for new data now (the integration also checks every morning by itself). At most 5 a day per meter.
     async _checkUpdates() {
       if (this._checking || !this._entry) return;
       this._checking = true; this._renderHdr(); this._toast(t('Checking for updates…'), { hold: true, icon: 'sync' });
-      const t0 = Date.now(); let msg;
+      const t0 = Date.now(); let msg, sub = '';
       try {
         const res = await this._ws('check_updates');
-        msg = t(res && res.error ? 'Could not reach Moj Elektro — try again later' : res && res.changed ? 'Updated the cards!' : 'Nothing has been updated yet');
+        if (res && res.limited) { msg = t('Manual refresh is used up'); sub = t('The data will be filled in automatically at the next morning check.'); }
+        else msg = t(res && res.error ? 'Could not reach Moj Elektro — try again later' : res && res.changed ? 'Updated the cards!' : 'Nothing has been updated yet');
       } catch (e) { msg = t('Could not check for updates — {0}', e && e.message || e); }
       await new Promise(r => setTimeout(r, Math.max(0, 1200 - (Date.now() - t0))));
-      this._checking = false; this._renderHdr(); this._toast(msg, { ms: 3500 });
+      this._checking = false; this._renderHdr(); this._toast(msg, { ms: sub ? 5000 : 3500, sub });
     }
     _renderBanner() {
       const b = this.$('banner');
@@ -2521,7 +2526,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('on');
     }
     _toast(msg, o = {}) {
-      const t = this.$('toast'); t.innerHTML = ic(o.icon || 'bolt', o.icon === 'sync' ? 'st' : '') + esc(msg); t.classList.toggle('wait', !!o.hold); t.classList.add('on');
+      const t = this.$('toast'); t.innerHTML = ic(o.icon || 'bolt', o.icon === 'sync' ? 'st' : '') + (o.sub ? `<div>${esc(msg)}<small>${esc(o.sub)}</small></div>` : esc(msg)); t.classList.toggle('wait', !!o.hold); t.classList.add('on');
       clearTimeout(this._tt); if (!o.hold) this._tt = setTimeout(() => t.classList.remove('on'), o.ms || 2800);
     }
 

@@ -22,6 +22,7 @@ from . import logic
 from .const import (
     API_PAUSE,
     BACKFILL_SPAN,
+    CHECK_HOURS,
     CHECK_MINUTE,
     CONF_METER,
     CONF_NAME,
@@ -30,6 +31,7 @@ from .const import (
     DOMAIN,
     KEEP_Q15_DAYS,
     MAX_IMPORT_DAYS,
+    REFRESHES_PER_DAY,
     SETTINGS_KEYS,
     STORAGE_VERSION,
     VERSION,
@@ -77,10 +79,11 @@ class DailyEnergyManager:
         # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {b: [5 blocks]}, and/or {o}} manual values that fetching never
         # overwrites, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched},
-        # q15_try: {"q15"|"q15o": the day older missing 15-minute days were last requested}
+        # q15_try: {"q15"|"q15o": the day older missing 15-minute days were last requested},
+        # refresh: {"day": date, "count": fetches a person started that day}
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
-            "q15_try": {},
+            "q15_try": {}, "refresh": {},
         }
         # 15-minute days older than KEEP_Q15_DAYS, kept for good in a file of their own:
         # {"q15"|"q15o": {"YYYY-MM": {date: [kWh]}}}; the card gets only their dates and loads a month when needed
@@ -160,10 +163,12 @@ class DailyEnergyManager:
 
     @callback
     def async_start(self) -> CALLBACK_TYPE:
-        """Every hour (and once Home Assistant has started): fetch whatever is still missing from the
-        Moj Elektro API. Returns a callable that stops it."""
+        """Mornings every hour from 06:05 to 11:05 (and once Home Assistant has started, or the meter was added):
+        fetch whatever is still missing from the Moj Elektro API. Returns a callable that stops it."""
         unsubs: list[CALLBACK_TYPE] = [
-            async_track_time_change(self.hass, self._on_check_time, minute=CHECK_MINUTE, second=0),
+            async_track_time_change(
+                self.hass, self._on_check_time, hour=list(CHECK_HOURS), minute=CHECK_MINUTE, second=0
+            ),
             async_at_started(self.hass, lambda _hass: self._on_check_time(None)),
         ]
 
@@ -195,7 +200,7 @@ class DailyEnergyManager:
     def missing(self, today) -> list[str]:
         """What the API should still deliver: yesterday's full 15-minute curve and the real meter totals of
         the last three days. Moj Elektro publishes a day's meter total one or two days later; until it is there
-        the day is shown from its 15-minute data, so the check keeps asking for it every hour."""
+        the day is shown from its 15-minute data, so the morning checks keep asking for it."""
         d1, d2, d3 = ((today - timedelta(days=n)).isoformat() for n in (1, 2, 3))
         out = []
         for direction, q_key, miss_key in self._directions():
@@ -263,7 +268,7 @@ class DailyEnergyManager:
         * older 15-minute days still missing (up to KEEP_Q15_DAYS back), requested once a day
         * with Settings > Grid "Grid in & Grid out": the same for the energy sent to the grid
         Uses the meter ID and API token entered at setup.
-        force = False (the hourly run) does not contact Moj Elektro when nothing is missing.
+        force = False (the morning checks) does not contact Moj Elektro when nothing is missing.
         Returns {"changed": bool, ...}.
         """
         today = dt_util.now().date()
@@ -500,9 +505,21 @@ class DailyEnergyManager:
         was_out = self.grid_out
         self.data["settings"] = {**self.data["settings"], **clean}
         self._changed()
-        if self.grid_out and not was_out:
-            # grid out was just switched on: fetch the last days of it right away
+        if self.grid_out and not was_out and self.refresh_allowed():
+            # grid out was just switched on: fetch the last days of it right away (counts as a refresh)
             self.hass.async_create_task(self.async_check_updates(force=True))
+
+    def refresh_allowed(self) -> bool:
+        """A fetch a person starts (the Update button, switching grid out on): at most REFRESHES_PER_DAY a day for
+        this meter; the count starts again at midnight. The morning checks are not counted."""
+        today = dt_util.now().date().isoformat()
+        if self.data["refresh"].get("day") != today:
+            self.data["refresh"] = {"day": today, "count": 0}
+        if self.data["refresh"]["count"] >= REFRESHES_PER_DAY:
+            return False
+        self.data["refresh"]["count"] += 1
+        self._save()
+        return True
 
     @callback
     def save_manual(self, put: list[dict], delete: list[str]) -> None:

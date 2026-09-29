@@ -356,10 +356,15 @@ def ws_q15_month(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/check_updates", ENTRY: str})
 @websocket_api.async_response
 async def ws_check_updates(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
-    """Update button: ask the Moj Elektro API for new data now and report whether anything changed."""
+    """Update button: ask the Moj Elektro API for new data now and report whether anything changed; at most
+    REFRESHES_PER_DAY a day per meter ({"limited": true} after that)."""
     manager = _manager(hass, connection, msg)
-    if manager is not None:
-        connection.send_result(msg["id"], await manager.async_check_updates(force=True))
+    if manager is None:
+        return
+    if not manager.refresh_allowed():
+        connection.send_result(msg["id"], {"changed": False, "limited": True})
+        return
+    connection.send_result(msg["id"], await manager.async_check_updates(force=True))
 
 
 @websocket_api.websocket_command(

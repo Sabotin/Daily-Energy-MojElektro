@@ -49,7 +49,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up one meter: storage, the hourly Moj Elektro check and the sidebar panel."""
+    """Set up one meter: storage, the morning Moj Elektro checks and the sidebar panel."""
     manager = DailyEnergyManager(hass, entry)
     await manager.async_load()
     manager.entry_state = entry_state(entry)
@@ -75,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Remove the panel and stop the hourly check; the stored data stays."""
+    """Remove the panel and stop the morning checks; the stored data stays."""
     manager: DailyEnergyManager = hass.data[DOMAIN].pop(entry.entry_id)
     if manager.panel_url:
         frontend.async_remove_panel(hass, manager.panel_url)
