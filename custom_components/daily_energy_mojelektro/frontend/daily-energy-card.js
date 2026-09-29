@@ -296,6 +296,8 @@
     'No animations, blur or shadows, for slower devices.': 'Brez animacij, zameglitev in senc, za počasnejše naprave.',
     'Full': 'Popolno',
     'All animations and visual effects enabled.': 'Omogočene vse animacije in vizualni učinki.',
+    'Full test': 'Popolno Test',
+    'The full look, drawn lighter for phones: no moving glow or live blur behind the cards.': 'Popoln videz, lažji za telefone: brez premikajočega sija in sprotnega zamegljevanja za karticami.',
     'Moj Elektro history': 'Zgodovina Moj Elektro',
     "Fetches the chosen days straight from Moj Elektro and fills them in: daily usage, VT / MT, month totals and tariff blocks (and the 15-minute chart for the last three weeks){0}. Days already in the log are updated with Moj Elektro's numbers.": 'Izbrane dni samodejno uvozi iz Moj Elektro: dnevno porabo, VT/MT, mesečne seštevke, omrežninske bloke in 15-minutne podatke{0}. (Obstoječi podatki se posodobijo.)',
     ', for grid in and grid out': ' za odjem in oddajo',
@@ -731,8 +733,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .tscroll{overflow-x:auto;margin:0 -6px;padding:0 6px}
 .more{display:flex;justify-content:center;margin-top:10px}
 /* tooltip, toast, drawer */
-.tip{position:fixed;z-index:50;pointer-events:none;padding:10px 13px;border-radius:13px;background:rgba(10,14,30,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 40px -10px rgba(0,0,0,.8);backdrop-filter:blur(10px);font-size:12.5px;line-height:1.55;color:var(--txt);opacity:0;transform:translateY(6px);transition:opacity .15s,transform .15s;max-width:260px}
-.tip.on{opacity:1;transform:none}
+.tip{position:fixed;z-index:50;pointer-events:none;padding:10px 13px;border-radius:13px;background:rgba(10,14,30,.92);border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 40px -10px rgba(0,0,0,.8);font-size:12.5px;line-height:1.55;color:var(--txt);opacity:0;transform:translateY(6px);transition:opacity .15s,transform .15s;max-width:260px}
+.tip.on{opacity:1;transform:none;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .tip b{font-weight:600;font-size:13px}
 .tip .m{color:var(--mut)}
 .tip .r{display:flex;align-items:center;gap:7px}
@@ -742,9 +744,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .toast .ic{width:18px;height:18px;color:var(--c1);fill:var(--c1);stroke:none}
 .toast .ic.st{fill:none;stroke:var(--c1)}.toast.wait .ic{animation:spin 1s linear infinite}
 .btn .ic.spin{animation:spin 1s linear infinite}
-.dw-bg{position:fixed;inset:0;z-index:70;background:rgba(2,4,10,.55);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:.3s}
+.dw-bg{position:fixed;inset:0;z-index:70;background:rgba(2,4,10,.55);opacity:0;pointer-events:none;transition:.3s}
 .dw{position:fixed;top:0;right:0;bottom:0;z-index:71;width:min(420px,100vw);background:linear-gradient(180deg,#0c1228,#070a16);border-left:1px solid rgba(255,255,255,.08);box-shadow:-30px 0 80px -20px rgba(0,0,0,.8);transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);padding:26px;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
-.dw-open .dw-bg{opacity:1;pointer-events:auto}.dw-open .dw{transform:none}
+.dw-open .dw-bg{opacity:1;pointer-events:auto;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}.dw-open .dw{transform:none}
 .dw h3{margin:0;font-size:20px;font-weight:600}
 .dw-s{padding:18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:12px}
 .dw-t{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600}
@@ -915,6 +917,18 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 :host([lite]) .bignum,:host([lite]) .g-val,:host([lite]) .dn circle{filter:none!important}
 :host([lite]) .pc.top i,:host([lite]) .logo,:host([lite]) .chip i,:host([lite]) .dot,:host([lite]) .btn.pri,:host([lite]) .kpi-i,:host([lite]) .bar.tot,:host([lite]) .seg.vt,:host([lite]) .cell.l4,:host([lite]) .seg-tabs button.on,:host([lite]) .toast,:host([lite]) .odo,:host([lite]) .dw{box-shadow:none!important}
 :host([lite]) .od,:host([lite]) .od-sep,:host([lite]) input.in.mono,:host([lite]) .fld.vt input.in,:host([lite]) .fld.mt input.in,:host([lite]) .tbl .mono{font-family:ui-monospace,'Roboto Mono',monospace}
+/* Popolno Test: the full look without what makes phones hot and slow. The glow blobs stay where they are but as soft
+   gradients instead of a live blur, and they do not drift; the cards keep their glass tint without blurring what is
+   behind them live; cards below the screen are drawn when they come near. */
+:host([phone]) .blob{filter:none;animation:none;opacity:.62;transform:scale(1.5)}
+:host([phone]) .b1{background:radial-gradient(closest-side,rgba(31,182,255,.7),rgba(31,182,255,.28) 45%,rgba(31,182,255,0))}
+:host([phone]) .b2{background:radial-gradient(closest-side,rgba(106,75,255,.7),rgba(106,75,255,.28) 45%,rgba(106,75,255,0))}
+:host([phone]) .b3{opacity:.26;background:radial-gradient(closest-side,rgba(255,106,61,.7),rgba(255,106,61,.28) 45%,rgba(255,106,61,0))}
+:host([phone][out]) .b1{background:radial-gradient(closest-side,rgba(18,201,122,.7),rgba(18,201,122,.28) 45%,rgba(18,201,122,0))}
+:host([phone][out]) .b2{background:radial-gradient(closest-side,rgba(169,182,28,.7),rgba(169,182,28,.28) 45%,rgba(169,182,28,0))}
+:host([phone]) .card{backdrop-filter:none;-webkit-backdrop-filter:none;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.02)),rgba(11,16,33,.3)}
+:host([phone]) .grid>.card,:host([phone]) .grid>.kpis,:host([phone]) .grid>.nt-kpis{content-visibility:auto;contain-intrinsic-size:auto 460px}
+:host([phone]) .tip.on,:host([phone]) .dw-open .dw-bg{backdrop-filter:none;-webkit-backdrop-filter:none}
 `;
 
   /* ---------- Net view helpers ---------- */
@@ -956,10 +970,13 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       const changed = l !== this._lang; this._lang = l; return changed;
     }
     // Settings > This device: Light, Full or Automatic (light on tablets and on devices that ask for reduced motion)
-    _mode() { const v = LS.get('daily-energy-mode'); return v === 'light' || v === 'full' ? v : 'auto'; }
+    _mode() { const v = LS.get('daily-energy-mode'); return v === 'light' || v === 'full' || v === 'phone' ? v : 'auto'; }
     _applyLite() {
       const m = this._mode(), lite = m === 'light' || (m === 'auto' && (isTablet() || reducedMotion()));
       if (lite !== this._lite) { this._lite = lite; this.toggleAttribute('lite', lite); }
+      // Popolno Test: the full look, drawn the way phones can keep up with
+      const phone = !lite && m === 'phone';
+      if (phone !== this._phone) { this._phone = phone; this.toggleAttribute('phone', phone); }
       if (!lite) loadFonts();
     }
     // Settings > Grid: "Grid in & Grid out" adds the Grid in / Grid out switch; the chosen view is kept per device
@@ -1915,7 +1932,7 @@ ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">
       this.$('dw').innerHTML = `<div class="${open ? 'dw-open' : ''}"><div class="dw-bg" data-act="close"></div><aside class="dw">
 <div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Settings')}</h3><button class="ibtn" data-act="close">${ic('x')}</button></div>
 <div class="dw-s"><div class="dw-t">${t('Display mode')}</div>
-${[['auto', 'Automatic', 'Detects the device and adapts to it automatically.'], ['light', 'Minimal', 'No animations, blur or shadows, for slower devices.'], ['full', 'Full', 'All animations and visual effects enabled.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}</div>
+${[['auto', 'Automatic', 'Detects the device and adapts to it automatically.'], ['light', 'Minimal', 'No animations, blur or shadows, for slower devices.'], ['full', 'Full', 'All animations and visual effects enabled.'], ['phone', 'Full test', 'The full look, drawn lighter for phones: no moving glow or live blur behind the cards.']].map(([v, b, d]) => `<div class="opt${mode === v ? ' on' : ''}" data-act="mode" data-v="${v}"><i></i><div><b>${t(b)}</b><span>${t(d)}</span></div></div>`).join('')}</div>
 <div class="dw-s"><div class="dw-t">${t('Language')}</div>
 ${[['auto', t('Automatic'), t('Follows the Home Assistant language.')], ['en', 'English', ''], ['sl', 'Slovenščina', '']].map(([v, b, d]) => `<div class="opt${lang === v ? ' on' : ''}" data-act="lang" data-v="${v}"><i></i><div><b>${b}</b>${d ? `<span>${d}</span>` : ''}</div></div>`).join('')}</div>
 ${this._me && this._sync === 'shared' && !this._demo ? `<div class="dw-s"><div class="dw-t">${t('Grid')}</div>
