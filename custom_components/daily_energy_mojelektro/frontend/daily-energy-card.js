@@ -398,8 +398,14 @@
     'Records this year': 'Rekordi letos',
     'Since 1 January {0}': 'Od 1. januarja {0}',
     'Best day': 'Najboljši dan',
-    'Biggest minus': 'Največji minus',
+    'Worst day': 'Najslabši dan',
     'Best month': 'Najboljši mesec',
+    'Worst month': 'Najslabši mesec',
+    'Records {0}': 'Rekordi {0}',
+    'Whole year {0}': 'Celo leto {0}',
+    '{0} % of days in {1}': '{0} % dni v letu {1}',
+    'Previous year': 'Prejšnje leto',
+    'Next year': 'Naslednje leto',
     'Longest run in plus': 'Najdaljši niz v plusu',
     'until {0}': 'do {0}',
     'Days in plus': 'Dni v plusu',
@@ -901,6 +907,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 .nt-ri .ic{width:19px;height:19px}
 .nt-rt{flex:1;min-width:0}.nt-rt b{display:block;font-size:13px;font-weight:500;color:var(--mut)}.nt-rt span{font-size:12px;color:var(--dim)}
 .nt-rv{font-size:20px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.nt-rv small{font-size:12px;font-weight:500;color:var(--mut);margin-left:4px}
+.ynav{display:flex;align-items:center;gap:8px;margin-left:auto}
 .nt-cm{display:grid;grid-template-columns:repeat(var(--w),minmax(0,1fr));gap:3px;margin:0 0 6px 34px;max-width:calc(var(--w) * 24px);font-size:11px;color:var(--dim)}
 .nt-cm span{white-space:nowrap;overflow:visible}
 .nt-cal{display:grid;grid-template-columns:28px minmax(0,calc(var(--w) * 24px - 34px));gap:6px}
@@ -1703,20 +1711,27 @@ ${B.length ? `<path d="${path(B)}" fill="none" stroke="#8f98c2" stroke-width="1.
 <circle cx="${X(end.k).toFixed(1)}" cy="${Yv(end.c).toFixed(1)}" r="6" fill="#050811" stroke="${end.c >= 0 ? NP : NN}" stroke-width="3"/>${hits}</svg>
 <div class="legend nt-leg"><span><i style="background:${NP}"></i>${t('{0} in plus', y)}</span><span><i style="background:${NN}"></i>${t('{0} in minus', y)}</span>${B.length ? `<span><i style="background:repeating-linear-gradient(90deg,#8f98c2 0 4px,transparent 4px 7px)"></i>${y - 1}</span>` : ''}</div>`;
     }
+    // records of one year: the newest by default, [<] [>] step through the years with data (not saved)
     _nRec() {
-      const N = this._N, y = N.last.slice(0, 4), D = N.keys.filter(k => k.startsWith(y)).map(k => ({ k, ...N.days.get(k) }));
+      const N = this._N, Y = [...new Set(N.keys.map(k => k.slice(0, 4)))], ny = N.last.slice(0, 4);
+      const y = Y.includes(this._nrecY) ? this._nrecY : ny, yi = Y.indexOf(y), now = y === ny;
+      const D = N.keys.filter(k => k.startsWith(y)).map(k => ({ k, ...N.days.get(k) }));
       const best = D.reduce((a, x) => x.n > a.n ? x : a), worst = D.reduce((a, x) => x.n < a.n ? x : a), plus = D.filter(x => x.n > 0).length;
       const mo = new Map(); for (const x of D) mo.set(x.k.slice(0, 7), (mo.get(x.k.slice(0, 7)) || 0) + x.n);
-      const bm = [...mo.entries()].reduce((a, e) => e[1] > a[1] ? e : a);
+      const bm = [...mo.entries()].reduce((a, e) => e[1] > a[1] ? e : a), wm = [...mo.entries()].reduce((a, e) => e[1] < a[1] ? e : a);
+      const kwh = v => `${nsg(v)}<small>kWh</small>`;
+      const arrow = (v, off, label, cls) => `<button class="pn-a${cls}" data-act="nrec" data-v="${v}"${off ? ' disabled' : ''} title="${t(label)}" aria-label="${t(label)}">${ic('back')}</button>`;
+      const nav = `<div class="ynav">${arrow(Y[yi - 1] || '', yi <= 0, 'Previous year', '')}${arrow(Y[yi + 1] || '', yi >= Y.length - 1, 'Next year', ' nx')}</div>`;
       let bs = 0, cur = 0, bsEnd = null, prev = null;
       for (const x of D) { cur = x.n > 0 ? (prev && diffD(prev, x.k) === 1 && cur ? cur + 1 : 1) : 0; prev = x.k; if (cur > bs) { bs = cur; bsEnd = x.k; } }
       const row = (icon, c, l, s, v, cl) => `<div><span class="nt-ri" style="--c:${c}">${ic(icon)}</span><span class="nt-rt"><b>${l}</b><span>${s}</span></span><span class="nt-rv ${cl}">${v}</span></div>`;
-      this.$('n-rec').innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Records this year')}</div><div class="h-s">${t('Since 1 January {0}', y)}</div></div></div><div class="nt-rec">
-${row('trophy', NP, t('Best day'), fdate(best.k), nsg(best.n), ncl(best.n))}
-${worst.n < 0 ? row('down', NN, t('Biggest minus'), fdate(worst.k), nsg(worst.n), 'nn') : ''}
-${row('sun', '#e8ff6a', t('Best month'), `${MONL[+bm[0].slice(5) - 1]} ${y}`, nsg(bm[1]), ncl(bm[1]))}
+      this.$('n-rec').innerHTML = `<div class="ch-h"><div><div class="h-t">${now ? t('Records this year') : t('Records {0}', y)}</div><div class="h-s">${now ? t('Since 1 January {0}', y) : t('Whole year {0}', y)}</div></div>${nav}</div><div class="nt-rec">
+${row('trophy', NP, t('Best day'), fdate(best.k), kwh(best.n), ncl(best.n))}
+${row('down', NN, t('Worst day'), fdate(worst.k), kwh(worst.n), ncl(worst.n))}
+${row('sun', '#e8ff6a', t('Best month'), `${MONL[+bm[0].slice(5) - 1]} ${y}`, kwh(bm[1]), ncl(bm[1]))}
+${row('moon', NN, t('Worst month'), `${MONL[+wm[0].slice(5) - 1]} ${y}`, kwh(wm[1]), ncl(wm[1]))}
 ${bs ? row('flame', '#3ee6ff', t('Longest run in plus'), t('until {0}', fdate(bsEnd)), nDays(bs), '') : ''}
-${row('week', '#a18bff', t('Days in plus'), t('{0} % of days this year', Math.round(plus / D.length * 100)), `${plus} / ${D.length}`, '')}</div>`;
+${row('week', '#a18bff', t('Days in plus'), now ? t('{0} % of days this year', Math.round(plus / D.length * 100)) : t('{0} % of days in {1}', Math.round(plus / D.length * 100), y), `${plus} / ${D.length}`, '')}</div>`;
     }
     _nCal() {
       const N = this._N, L = N.last, Wk = (this.$('n-cal').clientWidth || innerWidth) < 640 ? 26 : 53, start = addD(weekStart(L), -7 * (Wk - 1));
@@ -2089,6 +2104,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'brange') { this._ui.brange = t.dataset.v; this._renderBlocks(); }
       else if (a === 'pday') this._pdayAct(t.dataset.v, t.dataset.s);
+      else if (a === 'nrec') { if (t.dataset.v) { this._nrecY = t.dataset.v; this._nRec(); } }
       else if (a === 'form-toggle') {
         // Moj Elektro mode: "Open" offers Add / Remove entry (behind the PIN when one is set); "Close" closes the form
         if (this._me && !this._ui.formOpen) { this._fd = null; this._askFormPin(); }
