@@ -1,3 +1,7 @@
+# Daily Energy for Moj Elektro
+# Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
+# Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
+# any part of this file without written permission is not allowed. See LICENSE.
 """Pure logic for Daily Energy (no Home Assistant imports, so it can be unit-tested on its own).
 
 Date convention used everywhere: a record dated D holds the energy used on calendar day D

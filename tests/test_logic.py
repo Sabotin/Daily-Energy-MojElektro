@@ -1,3 +1,7 @@
+# Daily Energy for Moj Elektro
+# Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
+# Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
+# any part of this file without written permission is not allowed. See LICENSE.
 """Tests for the pure logic module (no Home Assistant needed)."""
 
 from datetime import date, datetime, timedelta
