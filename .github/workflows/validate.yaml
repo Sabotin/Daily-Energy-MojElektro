@@ -22,8 +22,7 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # license: all rights reserved (not an open-source license); that only matters for the default HACS list
-          ignore: brands license
+          ignore: brands
 
   tests:
     name: Logic tests
