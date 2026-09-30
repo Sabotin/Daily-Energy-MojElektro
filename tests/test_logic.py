@@ -219,3 +219,26 @@ def test_grid_out_quarters_and_totals():
     assert out == {"o": 42.513, "ovt": 42.513, "omt": 0.0, "omo": 944.616, "omvt": 944.673, "ommt": 0.0, "oc": 46044.616}
     assert logic.keyed(rec, logic.GRID_IN)["u"] == 42.513
     assert logic.GRID_OUT["registers"]["et"] == "32.0.4.1.19.2.12.0.0.0.0.0.0.0.0.3.72.0"
+
+
+def test_grid_out_first_switch_fetches_once():
+    days = {"2026-09-24": {"u": 30.0}}
+    # the first switch to "Grid in & Grid out": mark it and fetch
+    assert logic.grid_out_switch(False, True, 0, days) == (True, True)
+    # off and on again after that: nothing, whatever the first fetch brought
+    assert logic.grid_out_switch(False, True, 1, days) == (False, False)
+    # staying on, or switching off: nothing
+    assert logic.grid_out_switch(True, True, 0, days) == (False, False)
+    assert logic.grid_out_switch(True, False, 0, days) == (False, False)
+
+
+def test_grid_out_first_switch_with_grid_out_data_does_not_fetch():
+    days = {"2026-09-24": {"u": 30.0, "o": 12.0}}
+    assert logic.grid_out_switch(False, True, 0, days) == (True, False)
+
+
+def test_grid_out_tried_start_for_existing_meters():
+    assert logic.grid_out_tried_start(True, {}) == 1  # grid out already on
+    assert logic.grid_out_tried_start(False, {"2026-09-24": {"u": 1.0, "o": 2.0}}) == 1  # grid-out data exists
+    assert logic.grid_out_tried_start(False, {"2026-09-24": {"u": 1.0}}) == 0
+    assert logic.grid_out_tried_start(False, {}) == 0

@@ -142,6 +142,24 @@ def keyed(record: dict, direction: dict) -> dict:
     return {direction["keys"][k]: v for k, v in record.items()}
 
 
+def _has_grid_out(days: dict) -> bool:
+    return any(isinstance(r, dict) and "o" in r for r in days.values())
+
+
+def grid_out_tried_start(grid_out_on: bool, days: dict) -> int:
+    """For meters stored before the first-switch rule: the first switch to "Grid in & Grid out" counts as done
+    when grid out is already on or a day already has grid-out data."""
+    return 1 if grid_out_on or _has_grid_out(days) else 0
+
+
+def grid_out_switch(was_out: bool, now_out: bool, tried: int, days: dict) -> tuple[bool, bool]:
+    """Settings > Grid saved: (mark the first switch as done, fetch the last 3 days now). Only a meter's first
+    switch to "Grid in & Grid out" counts, and it fetches only when no day has grid-out data yet."""
+    if not now_out or was_out or tried:
+        return False, False
+    return True, not _has_grid_out(days)
+
+
 def readings_url(meter_id: str, reading_type: str, start: date, end: date) -> str:
     """Request for one register's daily readings from start up to (not including) end."""
     return (

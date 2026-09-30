@@ -82,10 +82,11 @@ class DailyEnergyManager:
         # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {b: [5 blocks]}, and/or {o}} manual values that fetching never
         # overwrites, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched},
-        # refresh: {"day": date, "count": fetches a person started that day}
+        # refresh: {"day": date, "count": fetches a person started that day},
+        # meta: {"grid_out_tried": 1 once "Grid in & Grid out" was switched on the first time (the only switch that fetches)}
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
-            "refresh": {},
+            "refresh": {}, "meta": {},
         }
         # 15-minute days older than KEEP_Q15_DAYS, kept for good in a file of their own:
         # {"q15"|"q15o": {"YYYY-MM": {date: [kWh]}}}; the card gets only their dates and loads a month when needed
@@ -102,6 +103,9 @@ class DailyEnergyManager:
             for key in self.data:
                 if isinstance(stored.get(key), dict):
                     self.data[key] = stored[key]
+        if "grid_out_tried" not in self.data["meta"]:
+            self.data["meta"]["grid_out_tried"] = logic.grid_out_tried_start(self.grid_out, self.data["days"])
+            self._save()
         stored = await self._arch_store.async_load()
         if isinstance(stored, dict):
             for key in self.archive:
@@ -475,17 +479,24 @@ class DailyEnergyManager:
         }
 
     @callback
-    def save_settings(self, settings: dict) -> None:
+    def save_settings(self, settings: dict) -> bool:
+        """Save the dashboard settings. Returns whether a fetch started: only the meter's first switch to
+        "Grid in & Grid out" fetches (its last 3 days, not counted as a refresh), and only without grid-out data."""
         clean = {k: settings[k] for k in SETTINGS_KEYS if k in settings}
         was_out = self.grid_out
         self.data["settings"] = {**self.data["settings"], **clean}
+        mark, fetch = logic.grid_out_switch(
+            was_out, self.grid_out, self.data["meta"].get("grid_out_tried", 0), self.data["days"]
+        )
+        if mark:
+            self.data["meta"]["grid_out_tried"] = 1
         self._changed()
-        if self.grid_out and not was_out and self.refresh_allowed():
-            # grid out was just switched on: fetch the last days of it right away (counts as a refresh)
+        if fetch:
             self.hass.async_create_task(self.async_check_updates(force=True))
+        return fetch
 
     def refresh_allowed(self) -> bool:
-        """A fetch a person starts (the Update button, switching grid out on): at most REFRESHES_PER_DAY a day for
+        """A fetch a person starts (the Update button): at most REFRESHES_PER_DAY a day for
         this meter; the count starts again at midnight. The morning checks are not counted."""
         today = dt_util.now().date().isoformat()
         if self.data["refresh"].get("day") != today:

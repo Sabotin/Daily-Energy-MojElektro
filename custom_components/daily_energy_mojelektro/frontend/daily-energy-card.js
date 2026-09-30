@@ -342,6 +342,7 @@
     'Moj Elektro has no data for those days': 'Moj Elektro za te dni nima podatkov',
     'Nothing new — those days are already up to date': 'Nič novega — ti dnevi so že posodobljeni',
     'Grid out is on, fetching the last 3 days from Moj Elektro.': 'Oddaja je vklopljena, prenašam zadnje 3 dni iz Moj Elektro.',
+    'Grid out on': 'Oddaja vklopljena',
     'Demo data loaded — explore away': 'Demo podatki so naloženi — raziskujte',
     'Wrong PIN': 'Napačen PIN',
     'Only administrators can delete data': 'Podatke lahko brišejo samo skrbniki',
@@ -1192,10 +1193,11 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       // a meter was just switched to: its data is drawn, the grid fades back in on the second frame
       if (this._fadeIn) { const g = this._fadeIn; this._fadeIn = null; requestAnimationFrame(() => requestAnimationFrame(() => g.classList.remove('fade'))); }
     }
+    // returns Home Assistant's answer to save_settings ({fetching}), if settings were saved
     async _commit({ put = [], del = [], settings = false } = {}) {
       try {
         if (put.length || del.length) await this._ws('save_manual', { put, delete: del, pin: this._pinOk || '' });
-        if (settings) await this._ws('save_settings', { settings: this._data.settings });
+        if (settings) return await this._ws('save_settings', { settings: this._data.settings });
       } catch (err) { this._toast(t('Could not save to Home Assistant — {0}', err && err.message || err)); }
     }
 
@@ -2391,8 +2393,9 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'set') {
         let v = t.dataset.v; if (t.dataset.k === 'mult') v = Number(v);
         const on = t.dataset.k === 'grid' && v === 'both' && this._data.settings.grid !== 'both';
-        this._data.settings[t.dataset.k] = v; if (this._demo) this._demo = this._genDemo(); this._renderAll(); this._drawer(true); await this._commit({ settings: true });
-        if (on) this._toast(tr('Grid out is on, fetching the last 3 days from Moj Elektro.'), { ms: 6000 });
+        this._data.settings[t.dataset.k] = v; if (this._demo) this._demo = this._genDemo(); this._renderAll(); this._drawer(true); const res = await this._commit({ settings: true });
+        // only the meter's first switch to Grid in & Grid out fetches
+        if (on) this._toast(res && res.fetching ? tr('Grid out is on, fetching the last 3 days from Moj Elektro.') : tr('Grid out on'), { ms: res && res.fetching ? 6000 : 2800 });
       }
       else if (a === 'demo-on') { this._demo = this._genDemo(); this._shown = 0; this._dwOpen = false; this._renderAll(); this._toast(tr('Demo data loaded — explore away')); }
       else if (a === 'demo-off') { this._demo = null; this._shown = 0; this._renderAll(); }

@@ -201,8 +201,8 @@ def ws_verify_pin(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
 def ws_save_settings(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
     manager = _manager(hass, connection, msg)
     if manager is not None:
-        manager.save_settings(msg["settings"])
-        connection.send_result(msg["id"])
+        # fetching: the first switch to "Grid in & Grid out" started a fetch of the last 3 days
+        connection.send_result(msg["id"], {"fetching": manager.save_settings(msg["settings"])})
 
 
 MANUAL_RECORD = vol.Schema(
