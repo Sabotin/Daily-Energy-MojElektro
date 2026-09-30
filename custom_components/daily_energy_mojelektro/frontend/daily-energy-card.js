@@ -1917,17 +1917,17 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       const bk = this._buckets(r);
       const any = bk.some(b => b.has);
       // with Moj Elektro the title says it all, so there is no subtitle
-      const head = `<div class="ch-h"><div><div class="h-t">Energija VT · MT</div>${this._me ? '' : `<div class="h-s">${t('Big (VT) and small (MT) tariff split')}</div>`}</div><div class="row" style="align-items:center;gap:18px">${this._avgChip('vtmt')}<div class="legend"><span><i class="dot vt"></i>${t('VT · big')}</span><span><i class="dot mt"></i>${t('MT · small')}</span></div>${this._tabs(r, 'trange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
+      const head = `<div class="ch-h"><div><div class="h-t">Energija VT · MT</div>${this._me ? '' : `<div class="h-s">${t('Big (VT) and small (MT) tariff split')}</div>`}</div><div class="row" style="align-items:center;gap:18px">${this._avgChip('vtmt')}<div class="legend"><span><i class="dot vt"></i>${t('VT · big')}</span><span><i class="dot mt"></i>${t('MT · small')}</span></div>${this._tabs(r, 'trange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div></div>`;
       if (!any) { this.$('tariff').innerHTML = head + `<div class="empty">${ic('sun')}<b>${t('No tariff data yet')}</b><span>${t('Fill in the Energija VT and MT fields when you log a reading{0} to unlock this split.', this._c.s.tmode === 'reading' ? t(' (both readings are needed on two consecutive entries)') : '')}</span></div>`; return; }
       const cur = [...bk].reverse().find(b => b.has);
-      const nm = { day: cur.now ? t('Today') : fdate(cur.from), week: cur.now ? t('This week') : cur.title, month: cur.now ? t('This month') : cur.title }[r];
+      const nm = { day: cur.now ? t('Today') : fdate(cur.from), week: cur.now ? t('This week') : cur.title, month: cur.now ? t('This month') : cur.title, year: cur.now ? t('This year') : cur.title }[r];
       const tot = cur.vt + cur.mt, fv = tot ? cur.vt / tot : 0;
       const R = 88, C = 2 * Math.PI * R, gap = tot && fv > 0 && fv < 1 ? 6 : 0;
       const vtLen = Math.max(0, C * fv - gap), mtLen = Math.max(0, C * (1 - fv) - gap);
       const s = this._c.s, cv = s.pVT > 0 ? cur.vt * s.pVT : null, cm = s.pMT > 0 ? cur.mt * s.pMT : null;
       const vS = bk.filter(b => b.has).reduce((a, b) => a + b.vt, 0), mS = bk.filter(b => b.has).reduce((a, b) => a + b.mt, 0);
       const totC = bk.reduce((a, b) => { const x = this._cost(b); return x == null ? a : (a || 0) + x; }, null);
-      const sp = t({ day: '30 days', week: '12 weeks', month: '12 months' }[r]);
+      const sp = r === 'year' ? `${bk[0].label}–${bk[bk.length - 1].label}` : t({ day: '30 days', week: '12 weeks', month: '12 months' }[r]);
       this.$('tariff').innerHTML = head + `<div class="tariff-b">
 <div class="donut-w"><div class="dn"><svg viewBox="0 0 200 200"><defs><linearGradient id="dVT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc857"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient><linearGradient id="dMT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a18bff"/><stop offset="1" stop-color="#4f8dff"/></linearGradient></defs>
 <circle cx="100" cy="100" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="18"/>
@@ -2073,7 +2073,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       const el = this.$('blocks'); if (!this._me || !el) return;
       const { days, bLast: meLast, today } = this._c, r = this._ui.brange || 'day';
       const legend = `<div class="blegend">${BLK.map((c, i) => `<span><i style="background:${c}"></i>Blok ${i + 1}</span>`).join('')}</div>`;
-      const head = `<div class="ch-h"><div><div class="h-t">${t('Časovni bloki · tariff blocks')}</div><div class="h-s">${t('Energy per network tariff block, from Moj Elektro')}</div></div><div class="row" style="align-items:center;gap:18px">${this._avgChip('blk')}${legend}${this._tabs(r, 'brange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div></div>`;
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Časovni bloki · tariff blocks')}</div><div class="h-s">${t('Energy per network tariff block, from Moj Elektro')}</div></div><div class="row" style="align-items:center;gap:18px">${this._avgChip('blk')}${legend}${this._tabs(r, 'brange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']])}</div></div>`;
       const y = meLast && days.get(meLast);
       if (!y || !y.b) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<b>${t('No block data yet')}</b><span>${t('The daily automation adds it every morning.')}</span></div>`; return; }
       const rows = (vals, tot) => vals.map((x, i) => `<div class="brow"><span>Blok ${i + 1}</span><div class="bt"><i style="width:${tot ? x / tot * 100 : 0}%;background:${BLK[i]}"></i></div><span class="bv">${fk(x)} kWh<small>${tot ? Math.round(x / tot * 100) : 0}%</small></span></div>`).join('');
