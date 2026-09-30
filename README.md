@@ -71,7 +71,7 @@ type: custom:daily-energy-card
 
 ## Licenca
 
-Vse pravice pridržane – glejte [LICENSE](LICENSE). Integracijo lahko namestite in uporabljate v svojem Home Assistantu za osebno, nekomercialno rabo. Kopiranje, spreminjanje, deljenje, objavljanje, ponovna uporaba delov kode ali prodaja brez pisnega dovoljenja avtorja niso dovoljeni. Projekt ni povezan z Elektro Slovenije ali katerim koli distribucijskim podjetjem.
+MIT – glejte [LICENSE](LICENSE). Projekt ni povezan z Elektro Slovenije ali katerim koli distribucijskim podjetjem.
 
 ---
 
@@ -144,4 +144,4 @@ type: custom:daily-energy-card
 
 ## Licence
 
-All rights reserved – see [LICENSE](LICENSE). You may install and use the integration in your own Home Assistant for personal, non-commercial use. Copying, modifying, sharing, publishing, reusing parts of the code or selling it without the author's written permission is not allowed. Not affiliated with Elektro Slovenije or any distribution company.
+MIT – see [LICENSE](LICENSE). Not affiliated with Elektro Slovenije or any distribution company.
