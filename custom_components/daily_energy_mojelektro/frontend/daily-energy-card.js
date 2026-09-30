@@ -1572,7 +1572,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       this.$('kpis').innerHTML =
         tile(0, '#3ef0a8', '#3ee6ff', t('Daily average · this month'), avg, peak ? t(this._c.out ? 'Peak sent out {0} kWh on {1}' : 'Peak {0} kWh on {1}', `<b>${fk(peak.v)}</b>`, fshort(peak.k)) : MONL[d.getMonth()], dm, 'avg') +
         tile(1, '#3ee6ff', '#5b8cff', t('This week'), wk.n ? wk.t : null, `${t('Last week {0} kWh', `<b>${lw.n ? fk(lw.t) : '—'}</b>`)}${cost(wk)}`, wks, 'week') +
-        tile(2, '#8f7dff', '#c07bff', `${MONL[d.getMonth()]}${mo.me ? ' · Moj Elektro' : ''}`, mo.n ? mo.t : null, `${t(this._c.out ? 'Projected sent out {0} kWh' : 'Projected {0} kWh', `<b>${proj == null ? '—' : fk(proj)}</b>`)}${cost(mo)}`, mos, 'month') +
+        tile(2, '#8f7dff', '#c07bff', MONL[d.getMonth()], mo.n ? mo.t : null, `${t(this._c.out ? 'Projected sent out {0} kWh' : 'Projected {0} kWh', `<b>${proj == null ? '—' : fk(proj)}</b>`)}${cost(mo)}`, mos, 'month') +
         tile(3, '#ffc857', '#ff7a3d', t('Year {0}', d.getFullYear()), yr.n ? yr.t : null, `${MON[0]} – ${MON[d.getMonth()]}${cost(yr)}`, mos.slice(-(d.getMonth() + 1)), 'year');
     }
     _spark(vals, a, b, id) {
