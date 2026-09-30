@@ -66,7 +66,7 @@ type: custom:daily-energy-card
 
 ## Dobro je vedeti
 
-- Novi podatki se preverjajo vsako uro. Včerajšnji 15-minutni podatki so običajno na voljo okoli 06:00, skupna poraba števca (z VT / MT) pa šele naslednji dan. Do takrat se včerajšnja poraba prikazuje na podlagi 15-minutnih podatkov.
+- Novi podatki se preverijo vsako jutro med 06:05 in 11:05 in ob osvežitvi (do 5-krat na dan), vedno za zadnje 3 dni. Starejše dni prenesete sami v Nastavitve (⚙) → Zgodovina Moj Elektro. Včerajšnji 15-minutni podatki so običajno na voljo okoli 06:00, skupna poraba števca (z VT / MT) pa šele naslednji dan. Do takrat se včerajšnja poraba prikazuje na podlagi 15-minutnih podatkov.
 - Vse se shranjuje v Home Assistant in je vključeno v njegove varnostne kopije. API-žeton nikoli ne pride do brskalnika.
 
 ## Licenca
@@ -139,7 +139,7 @@ type: custom:daily-energy-card
 
 ## Good to know
 
-- New data is checked every hour. Yesterday's 15-minute data arrives at about 06:00, the meter total (with VT / MT) a day later – until then yesterday is shown from the 15-minute data.
+- New data is checked every morning between 06:05 and 11:05 and when you refresh (up to 5 times a day), always for the last 3 days. Older days you fetch yourself in Settings (⚙) → Moj Elektro history. Yesterday's 15-minute data arrives at about 06:00, the meter total (with VT / MT) a day later – until then yesterday is shown from the 15-minute data.
 - Everything is stored in Home Assistant and included in its backups. The token never reaches the browser.
 
 ## Licence

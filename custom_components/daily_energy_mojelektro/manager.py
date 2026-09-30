@@ -25,7 +25,6 @@ from homeassistant.util import dt as dt_util
 from . import logic
 from .const import (
     API_PAUSE,
-    BACKFILL_SPAN,
     CHECK_HOURS,
     CHECK_MINUTE,
     CONF_METER,
@@ -83,11 +82,10 @@ class DailyEnergyManager:
         # manual: {date: {t, vt, mt}}, edits: {date: {vt, mt} or {u}, and/or {b: [5 blocks]}, and/or {o}} manual values that fetching never
         # overwrites, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched},
-        # q15_try: {"q15"|"q15o": the day older missing 15-minute days were last requested},
         # refresh: {"day": date, "count": fetches a person started that day}
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
-            "q15_try": {}, "refresh": {},
+            "refresh": {},
         }
         # 15-minute days older than KEEP_Q15_DAYS, kept for good in a file of their own:
         # {"q15"|"q15o": {"YYYY-MM": {date: [kWh]}}}; the card gets only their dates and loads a month when needed
@@ -269,7 +267,6 @@ class DailyEnergyManager:
         * daily meter readings (total, VT, MT): usage, VT, MT and month totals of the last three days
         * 15-minute data of the last two days: the 15-minute chart, and the tariff blocks once a day
           is complete; a day is only replaced by data that is at least as complete
-        * older 15-minute days still missing (up to KEEP_Q15_DAYS back), requested once a day
         * with Settings > Grid "Grid in & Grid out": the same for the energy sent to the grid
         Uses the meter ID and API token entered at setup.
         force = False (the morning checks) does not contact Moj Elektro when nothing is missing.
@@ -303,24 +300,14 @@ class DailyEnergyManager:
                 result = await self._fetch(
                     session, meter, token, direction, (today - 2 * day, today), ((first, first + day), (d3, today + day))
                 )
-                # older 15-minute days still missing (up to KEEP_Q15_DAYS back), requested once a day
-                backfill = []
-                for start, end in logic.backfill_spans(
-                    min(self.data[q_key], default=None), today, self.data["q15_try"].get(q_key), KEEP_Q15_DAYS, BACKFILL_SPAN
-                ):
-                    await asyncio.sleep(API_PAUSE)
-                    backfill.append(
-                        await self._get_json(session, logic.quarters_range_url(meter, start, end, direction["q15"]), token)
-                    )
-                fetched.append((direction, q_key, miss_key, *result, backfill))
+                fetched.append((direction, q_key, miss_key, *result))
         finally:
             self._fetching = False
-        if not any(answered for *_, answered, _backfill in fetched):
+        if not any(answered for *_, answered in fetched):
             return {"changed": False, "error": "Moj Elektro did not answer"}
 
         cutoff = (today - timedelta(days=KEEP_Q15_DAYS)).isoformat()
-        filled, tried = False, False
-        for direction, q_key, miss_key, quarters, registers, _answered, backfill in fetched:
+        for direction, q_key, miss_key, quarters, registers, _answered in fetched:
             if quarters is not None:
                 self._store_quarters(
                     q_key,
@@ -329,20 +316,6 @@ class DailyEnergyManager:
                     logic.quarters_missing(quarters, today, direction["q15"]),
                     cutoff,
                 )
-            if backfill:
-                for payload in backfill:
-                    if payload is not None:
-                        filled |= bool(
-                            self._store_quarters(
-                                q_key,
-                                miss_key,
-                                logic.quarters_from_api(payload, today, direction["q15"]),
-                                logic.quarters_missing(payload, today, direction["q15"]),
-                                cutoff,
-                            )
-                        )
-                self.data["q15_try"][q_key] = today.isoformat()
-                tried = True
             if direction is logic.GRID_IN:
                 # blocks follow the best 15-minute data there is: a day with quarter hours Moj Elektro has not
                 # received yet still gets blocks (and so a provisional day total); they are updated once it has them
@@ -362,11 +335,9 @@ class DailyEnergyManager:
                 if any(not isinstance(old.get(k), (int, float)) or abs(old[k] - v) > 0.0015 for k, v in rec.items()):
                     self._merge_day(d, rec)
 
-        changed = snap() != before or filled
+        changed = snap() != before
         if changed:
             self._changed()
-        elif tried:
-            self._save()
         return {"changed": changed, "missing": self.missing(today)}
 
     async def async_import_range(self, start: date, end: date) -> dict:
@@ -537,7 +508,7 @@ class DailyEnergyManager:
     @callback
     def clear_all(self) -> None:
         """Settings > Delete all data: every Moj Elektro day, 15-minute day and manual reading. Settings stay."""
-        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss", "q15_try"):
+        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss"):
             self.data[key] = {}
         self.archive = {"q15": {}, "q15o": {}}
         self._save_archive()

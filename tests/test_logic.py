@@ -197,19 +197,6 @@ def test_month_spans():
     )
 
 
-def test_backfill_spans():
-    # only yesterday stored: today - 35 up to yesterday, in pieces of at most 28 days
-    assert logic.backfill_spans("2026-09-24", TODAY, None, 35) == [
-        (date(2026, 8, 21), date(2026, 9, 18)),
-        (date(2026, 9, 18), date(2026, 9, 24)),
-    ]
-    assert logic.backfill_spans("2026-09-24", TODAY, "2026-09-25", 35) == []  # already tried today
-    assert logic.backfill_spans("2026-09-24", TODAY, "2026-09-24", 35) != []  # tried yesterday: again
-    assert logic.backfill_spans("2026-08-22", TODAY, None, 35) == []  # nothing missing
-    assert logic.backfill_spans("2026-08-23", TODAY, None, 35) == [(date(2026, 8, 21), date(2026, 8, 23))]
-    assert logic.backfill_spans(None, TODAY, None, 35) == []  # nothing stored yet
-
-
 def test_grid_out_quarters_and_totals():
     # Moj Elektro's answer for grid out: the same format with the A- reading type and empty readingQualities
     start = datetime(2026, 9, 25, 0, 15)

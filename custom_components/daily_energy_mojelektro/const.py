@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.9.26"
+VERSION = "0.9.27"
 
 # Moj Elektro API access, entered at setup.
 CONF_TOKEN = "token"
@@ -32,10 +32,8 @@ CHECK_MINUTE = 5
 REFRESHES_PER_DAY = 5
 # Pause between API requests: Moj Elektro allows 5 requests per second.
 API_PAUSE = 0.3
-# The 15-minute chart (one day at a time, picked with [<] [date] [>]) keeps this many days; older quarter hours
-# are dropped, and older missing days are fetched once a day in requests of at most BACKFILL_SPAN days.
+# The card gets this many days of 15-minute data with every update; older days are kept in the month archive.
 KEEP_Q15_DAYS = 35
-BACKFILL_SPAN = 28
 
 SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur", "grid")
 # Import from Moj Elektro (Settings): the longest range fetched in one call; the card asks month by month.
