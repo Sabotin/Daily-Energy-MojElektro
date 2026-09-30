@@ -322,7 +322,7 @@
     'Import CSV / JSON': 'Uvozi CSV / JSON',
     'Delete': 'Izbriši',
     'Delete all data': 'Izbriši vse podatke',
-    'Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed; settings stay. Export JSON first if you want a backup — Moj Elektro days can be fetched again with Moj Elektro history.': 'Izbrišem VSE podatke Daily Energy za vse uporabnike? Odstranjeni bodo vsi dnevi Moj Elektro, 15-minutni podatki in vsi ročni odčitki; nastavitve ostanejo. Če želite varnostno kopijo, najprej izvozite JSON — dneve Moj Elektro lahko znova prenesete z Zgodovino Moj Elektro.',
+    'Delete all data?': 'Izbrišem vse podatke?',
     // pop-up messages
     'Could not save to Home Assistant — {0}': 'Shranjevanje v Home Assistant ni uspelo — {0}',
     'Checking for updates…': 'Preverjam posodobitve…',
@@ -2202,7 +2202,7 @@ ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">${t('Moj Elektro h
 <div class="dw-note">${t(this._sync === 'shared' ? 'Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.' : 'The Daily Energy integration is not set up, so nothing can be saved.')}</div>
 <div class="row"><button class="btn sm gh" data-act="export">${ic('down')}${t('Export JSON')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import CSV / JSON')}</button></div>
 ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-items:center">${this._ui.pin
-        ? `<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN"><button class="btn sm warn" data-act="clear-ok">${ic('del')}${t('Delete')}</button><button class="btn sm gh" data-act="clear-no">${t('Cancel')}</button>`
+        ? `${this._hasPin ? '<input class="in pin" id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN">' : `<span class="dw-note" style="margin:0">${t('Delete all data?')}</span>`}<button class="btn sm warn" data-act="clear-ok">${ic('del')}${t('Delete')}</button><button class="btn sm gh" data-act="clear-no">${t('Cancel')}</button>`
         : `<button class="btn sm warn" data-act="clear">${ic('del')}${t('Delete all data')}</button>`}</div>` : ''}</div>
 </aside></div>`;
     }
@@ -2399,11 +2399,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'export') this._export();
       else if (a === 'import') this.$('file').click();
       else if (a === 'api-import') this._apiImport();
-      else if (a === 'clear') {
-        if (!confirm(tr('Delete ALL Daily Energy data for every user? Every Moj Elektro day, the 15-minute data and all manual readings are removed; settings stay. Export JSON first if you want a backup — Moj Elektro days can be fetched again with Moj Elektro history.'))) return;
-        if (!this._hasPin) { this._clearAll(''); return; }
-        this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50);
-      }
+      // no popup: the row asks for the PIN (or, without a PIN, just to confirm) right there
+      else if (a === 'clear') { this._ui.pin = true; this._renderDrawer(); setTimeout(() => this.$('pin') && this.$('pin').focus(), 50); }
       else if (a === 'clear-no') { this._ui.pin = false; this._renderDrawer(); }
       else if (a === 'clear-ok') this._clearAll();
     }
