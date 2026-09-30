@@ -125,8 +125,6 @@
     'Deleted: {0}': 'Izbrisano: {0}',
     'Nothing to delete for {0}': 'Za {0} ni ničesar za izbris',
     'Edit mode: tap the pencil next to a day in the Log.': 'Način urejanja: v dnevniku tapnite svinčnik ob dnevu.',
-    'manual edit': 'ročno urejeno',
-    'Manual': 'Ročno',
     'Saved: {0}': 'Shranjeno: {0}',
     'Enter a number of kWh': 'Vpišite število kWh',
     'Save': 'Shrani',
@@ -272,7 +270,10 @@
     "Every counter reading you've entered": 'Vsi odčitki števca, ki ste jih vnesli',
     'Log': 'Dnevnik',
     '{0} · since {1}': '{0} · od {1}',
-    'Counter / source': 'Števec / vir',
+    'Source': 'Vir',
+    'Counter': 'Števec',
+    'Manually edited': 'Ročno urejeno',
+    'Manual reading': 'Ročni odčitek',
     'Used': 'Porabljeno',
     'baseline': 'izhodišče',
     'tariff blocks only': 'samo časovni bloki',
@@ -760,7 +761,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 /* log */
 .tbl{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:14px}
 .tbl th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:500;text-align:right;padding:0 14px 4px}
-.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl th:first-child,.tbl td:first-child,.tbl th:nth-child(2),.tbl td:nth-child(2){text-align:left}
 .tbl td{padding:12px 14px;background:rgba(255,255,255,.028);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tbl tr td:first-child{border-radius:12px 0 0 12px}.tbl tr td:last-child{border-radius:0 12px 12px 0}
 .tbl tbody tr{transition:.2s}.tbl tbody tr:hover td{background:rgba(255,255,255,.06)}
@@ -906,7 +907,9 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .tbl tr.me td:nth-child(2){color:#4cc9f0;font-size:12px}
 .tbl .lnote{display:block;font-size:11px;margin-top:2px}
 .tbl input.in.ed{width:92px;padding:6px 9px;font-size:14px;text-align:right}
-.tbl tr.man td:nth-child(4){color:var(--vt1)}
+.tbl tr.man td:nth-child(5){color:var(--vt1)}
+.tbl .vir-s{display:none}
+@media (max-width:640px){.tbl .vcol{display:none}.tbl .vir-s{display:block;font-size:11px;margin-top:3px;color:var(--dim);white-space:normal}.tbl tr.me .vir-s{color:#4cc9f0}}
 .fold{display:flex;align-items:center;justify-content:space-between;gap:14px}
 @media (max-width:860px){.blk-b{grid-template-columns:1fr}.bpk{grid-template-columns:repeat(3,1fr)}}
 /* grid in / grid out */
@@ -1171,7 +1174,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       });
       // grid out (energy sent to the grid) is stored in the same day records as o, ovt, omt, omo, omvt, ommt
       const meOut = Object.entries(s.days || {}).filter(([d, r]) => ok(d) && r && typeof r.o === 'number')
-        .map(([d, r]) => ({ d, me: true, u: r.o, vt: r.ovt, mt: r.omt, mo: r.omo, mvt: r.omvt, mmt: r.ommt }));
+        .map(([d, r]) => ({ d, me: true, u: r.o, vt: r.ovt, mt: r.omt, mo: r.omo, mvt: r.omvt, mmt: r.ommt, c: r.oc }));
       this._q15 = s.q15 || {}; this._q15o = s.q15o || {}; this._edits = s.edits || {}; this._hasPin = !!s.has_pin;
       // older 15-minute days: the months kept in Home Assistant, and those already loaded (for this meter)
       if (!this._archData || this._archFor !== s.meter) { this._archFor = s.meter; this._archData = { q15: {}, q15o: {} }; this._archLoaded = new Set(); }
@@ -2134,8 +2137,10 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
         const e = edv(m.d), off = typeof m.u === 'number', bt = Array.isArray(m.b) && m.b.some(x => +x > 0) ? m.b.reduce((a, x) => a + (+x || 0), 0) : null;
         const u = e ? e.u : off ? m.u : bt, vt = e ? e.vt : m.vt, mt = e ? e.mt : m.mt, split = !out && (vt != null && mt != null);
         // what the day is based on, in small print under the source
-        const note = e ? t('manual edit') : off ? '' : bt != null ? t('15-min data · VT / MT tomorrow') : t('tariff blocks only');
-        const date = `<td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span></td><td>${m.added ? t('Manual') : 'Moj Elektro'}${note ? `<small class="m lnote">${note}</small>` : ''}</td>`;
+        const note = e || off ? '' : bt != null ? t('15-min data · VT / MT tomorrow') : t('tariff blocks only');
+        const cnt = typeof m.c === 'number' ? `<td class="mono">${rawStr(m.c / s.mult, s.mult)}</td>` : `<td>${dash}</td>`;
+        const vir = e || m.added ? t('Manually edited') : 'Moj Elektro';
+        const date = `<td>${fdate(m.d)} <span class="m">${pd(m.d).getFullYear()}</span><small class="vir-s">${vir}${note ? ` · ${note}` : ''}</small></td><td class="vcol">${vir}${note ? `<small class="m lnote">${note}</small>` : ''}</td>${cnt}`;
         let cells;
         if (ui.editDay === m.d && edm) {
           // editing: grid out Sent out, grid in VT and MT (the day total is their sum), or the kWh of a 15-minute day
@@ -2153,14 +2158,14 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
         const dt = p ? (e.t - p.t) * s.mult : null;
         const vtu = s.tmode === 'usage' ? e.vt : (p && e.vt != null && p.vt != null ? (e.vt - p.vt) * s.mult : null);
         const mtu = s.tmode === 'usage' ? e.mt : (p && e.mt != null && p.mt != null ? (e.mt - p.mt) * s.mult : null);
-        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span></td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : fk(dt) + ' kWh'}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
+        rows.push([e.d + 'a', `<tr><td>${fdate(e.d)} <span class="m">${pd(e.d).getFullYear()}</span><small class="vir-s">${t('Manual reading')}</small></td><td class="vcol">${t('Manual reading')}</td><td class="mono">${rawStr(e.t, s.mult)}</td><td class="${dt == null ? 'm' : dt < 0 ? 'neg' : 'use'}">${dt == null ? t('baseline') : fk(dt) + ' kWh'}</td><td class="vtc">${vtu == null ? dash : fk(vtu)}</td><td class="mtc">${mtu == null ? dash : fk(mtu)}</td>${act ? `<td>${tool(e.d, 'manual')}</td>` : ''}</tr>`]);
       }
       rows.sort((a, b) => a[0] < b[0] ? 1 : -1);
       const show = (ui.all ? rows : rows.slice(0, 8)).map(r => r[1]);
       const first = [...E.map(e => e.d), ...ME.map(m => m.d)].sort()[0];
       const sub = [E.length ? count(E.length, 'manual reading', 'manual readings', 'ročni odčitki') : '', ME.length ? (out ? count(ME.length, 'Moj Elektro grid-out day', 'Moj Elektro grid-out days', 'dnevi oddaje Moj Elektro') : count(ME.length, 'Moj Elektro day', 'Moj Elektro days', 'dnevi Moj Elektro')) : ''].filter(Boolean).join(' · ');
       el.innerHTML = `<div class="ch-h"><div><div class="h-t">${t('Log')}</div><div class="h-s">${t('{0} · since {1}', sub, `${fdate(first)} ${pd(first).getFullYear()}`)}</div></div>${unlocked ? `<div class="row"><button class="btn sm warn" data-act="del-done">${t('Done')}</button><button class="btn sm gh" data-act="export">${ic('down')}${t('Export')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import')}</button></div>` : ''}</div>
-<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th>${t('Counter / source')}</th><th>${t(out ? 'Sent out' : 'Used')}</th>${out ? '' : '<th>VT kWh</th><th>MT kWh</th>'}${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
+<div class="tscroll"><table class="tbl"><thead><tr><th>${t('Date')}</th><th class="vcol">${t('Source')}</th><th>${t('Counter')} ${s.mult === 1000 ? 'MWh' : 'kWh'}</th><th>${t(out ? 'Sent out' : 'Used')}</th>${out ? '' : '<th>VT kWh</th><th>MT kWh</th>'}${act ? '<th></th>' : ''}</tr></thead><tbody>${show.join('')}</tbody></table></div>
 ${rows.length > 8 ? `<div class="more"><button class="btn sm gh" data-act="all">${ui.all ? t('Show less') : t('Show all {0}', rows.length)}</button></div>` : ''}`;
     }
 

@@ -146,12 +146,12 @@ READING_MT_OUT = "32.0.4.1.19.2.12.0.0.0.0.2.0.0.0.3.72.0"
 GRID_IN = {
     "q15": READING_A_PLUS_15,
     "registers": {"et": READING_ET, "vt": READING_VT, "mt": READING_MT},
-    "keys": {"u": "u", "vt": "vt", "mt": "mt", "mo": "mo", "mvt": "mvt", "mmt": "mmt"},
+    "keys": {"u": "u", "vt": "vt", "mt": "mt", "mo": "mo", "mvt": "mvt", "mmt": "mmt", "c": "c"},
 }
 GRID_OUT = {
     "q15": READING_A_MINUS_15,
     "registers": {"et": READING_ET_OUT, "vt": READING_VT_OUT, "mt": READING_MT_OUT},
-    "keys": {"u": "o", "vt": "ovt", "mt": "omt", "mo": "omo", "mvt": "omvt", "mmt": "ommt"},
+    "keys": {"u": "o", "vt": "ovt", "mt": "omt", "mo": "omo", "mvt": "omvt", "mmt": "ommt", "c": "oc"},
 }
 
 
@@ -204,6 +204,7 @@ def totals_from_readings(et: dict, vt: dict, mt: dict, days: list[date]) -> dict
             "mo": round(et[n] - et[fm], 3),
             "mvt": round(vt[n] - vt[fm], 3),
             "mmt": round(mt[n] - mt[fm], 3),
+            "c": round(et[n], 3),  # the meter number at the end of the day
         }
     return out
 

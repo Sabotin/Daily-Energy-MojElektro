@@ -152,7 +152,7 @@ def test_totals_from_meter_readings():
     mt = logic.readings_from_api(_register({"2026-09-01": 400.0, "2026-09-24": 650.5, "2026-09-25": 658.0}))
     out = logic.totals_from_readings(et, vt, mt, [date(2026, 9, 23), date(2026, 9, 24)])
     assert list(out) == ["2026-09-24"]  # 23 Sep needs the reading of 23 Sep
-    assert out["2026-09-24"] == {"u": 37.5, "vt": 30.0, "mt": 7.5, "mo": 638.0, "mvt": 380.0, "mmt": 258.0}
+    assert out["2026-09-24"] == {"u": 37.5, "vt": 30.0, "mt": 7.5, "mo": 638.0, "mvt": 380.0, "mmt": 258.0, "c": 1638.0}
 
 
 def test_totals_skip_numbers_that_do_not_add_up():
@@ -229,6 +229,6 @@ def test_grid_out_quarters_and_totals():
     mt = {"2026-09-01": 14560.943, "2026-09-23": 14560.943, "2026-09-24": 14560.943}
     rec = logic.totals_from_readings(et, vt, mt, [date(2026, 9, 23)])["2026-09-23"]
     out = logic.keyed(rec, logic.GRID_OUT)
-    assert out == {"o": 42.513, "ovt": 42.513, "omt": 0.0, "omo": 944.616, "omvt": 944.673, "ommt": 0.0}
+    assert out == {"o": 42.513, "ovt": 42.513, "omt": 0.0, "omo": 944.616, "omvt": 944.673, "ommt": 0.0, "oc": 46044.616}
     assert logic.keyed(rec, logic.GRID_IN)["u"] == 42.513
     assert logic.GRID_OUT["registers"]["et"] == "32.0.4.1.19.2.12.0.0.0.0.0.0.0.0.3.72.0"
