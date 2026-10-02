@@ -84,7 +84,8 @@ class DailyEnergyManager:
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched},
         # refresh: {"day": date, "count": fetches a person started that day},
         # meta: {"grid_out_tried": 1 once "Grid in & Grid out" was switched on the first time (the only switch that fetches)},
-        # agreed: {"day": date it was last fetched, "periods": logic.agreed_powers()} the agreed power per tariff block
+        # agreed: {"day": date it was last fetched, "periods": logic.agreed_powers(), "raw": logic.agreed_raw()}
+        # the agreed power per tariff block
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
             "refresh": {}, "meta": {}, "agreed": {},
@@ -233,8 +234,9 @@ class DailyEnergyManager:
             return None
 
     def _agreed_due(self, today) -> bool:
-        """The agreed power is fetched at most once a day (it changes rarely)."""
-        return self.data["agreed"].get("day") != today.isoformat()
+        """The agreed power is fetched at most once a day (it changes rarely), and once more when Moj Elektro's
+        answer is not stored yet (stored since 0.9.34)."""
+        return self.data["agreed"].get("day") != today.isoformat() or "raw" not in self.data["agreed"]
 
     async def _fetch_agreed(self, session, meter: str, token: str, today) -> bool:
         """The agreed power per tariff block of every period, from the metering point's grid-in point (two
@@ -246,7 +248,7 @@ class DailyEnergyManager:
         gsrn = logic.omto_gsrn(point)
         if not gsrn:
             # Moj Elektro answered without a grid-in point: try again tomorrow, not at every check
-            self.data["agreed"] = {**self.data["agreed"], "day": today.isoformat()}
+            self.data["agreed"] = {**self.data["agreed"], "day": today.isoformat(), "raw": []}
             self._save()
             return False
         await asyncio.sleep(API_PAUSE)
@@ -255,7 +257,7 @@ class DailyEnergyManager:
             return False
         periods = logic.agreed_powers(payload)
         changed = periods != self.data["agreed"].get("periods", [])
-        self.data["agreed"] = {"day": today.isoformat(), "periods": periods}
+        self.data["agreed"] = {"day": today.isoformat(), "periods": periods, "raw": logic.agreed_raw(payload)}
         self._save()
         return changed
 

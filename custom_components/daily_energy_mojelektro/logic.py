@@ -256,6 +256,17 @@ def agreed_powers(payload: dict) -> list[dict]:
     return sorted(out, key=lambda p: p["from"])
 
 
+def agreed_raw(payload: dict) -> list[dict]:
+    """Moj Elektro's agreed-power entries as sent (dates, validity and the five blocks only), kept next to the
+    parsed periods so that what Moj Elektro answered can be checked."""
+    keys = ("datumOd", "datumDo", "veljavnost", *(f"casovniBlok{i}" for i in range(1, 6)))
+    return [
+        {k: item.get(k) for k in keys if k in item}
+        for item in (payload or {}).get("dogovorjeneMoci") or []
+        if isinstance(item, dict)
+    ]
+
+
 def agreed_on(periods: list[dict], day: str) -> list[float] | None:
     """The agreed power per block valid on this day (the newest period that covers it)."""
     found = None

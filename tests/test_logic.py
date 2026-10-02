@@ -269,6 +269,8 @@ def test_agreed_power_from_the_metering_point():
     assert logic.agreed_on(periods, "2025-09-30") == [5.5, 5.5, 6.0, 6.0, 6.0]
     assert logic.agreed_on(periods, "2026-07-15") == [6.9] * 5
     assert logic.agreed_on(periods, "2024-05-01") is None
+    raw = logic.agreed_raw(payload)
+    assert len(raw) == 4 and raw[3]["casovniBlok1"] == 0 and raw[0]["veljavnost"] is True
     # a UTC time is a local date
     assert logic.agreed_powers({"dogovorjeneMoci": [
         {"datumOd": "2025-09-30T22:00:00Z", "casovniBlok1": 1, "casovniBlok2": 1, "casovniBlok3": 1, "casovniBlok4": 1,
