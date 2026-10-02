@@ -1034,6 +1034,8 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .bchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--c);background:rgba(255,255,255,.06);border:1px solid var(--c)}
 .bchip:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--c)}
 .pch{position:relative;display:flex;align-items:flex-end;gap:1px;height:170px;margin-top:18px;border-bottom:1px solid rgba(255,255,255,.14)}
+/* the 15-minute card is as tall as the card next to it (the hero): the chart takes the extra height */
+.prof .pch{flex:1 1 170px;height:auto;min-height:170px}
 .pc{flex:1;height:100%;display:flex;align-items:flex-end;cursor:pointer}
 .pc i{display:block;width:100%;border-radius:2px 2px 0 0;min-height:2px;opacity:.85;transform-origin:bottom;animation:grow .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*6ms)}
 .pc:hover i{opacity:1;filter:brightness(1.3)}
