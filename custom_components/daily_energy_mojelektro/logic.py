@@ -266,25 +266,6 @@ def agreed_powers(payload: dict) -> list[dict]:
     return out
 
 
-def contract_info(point: dict, gsrn_payload: dict) -> dict:
-    """How the metering point is billed, for the estimated bill: {"scheme": obracunskaVezalnaShema, "month":
-    mesecObracuna (settlement month, 0 if unknown), "tariffs": steviloTarifMerjenja (1 = ET, 2 = VT/MT, 0 if
-    unknown), "yearly": energy is netted and settled once a year (self-supply under EZ-1, e.g. "OS.3A.1
-    Individualna samooskrba po EZ-1"; the monthly bills then charge only the agreed power and the fee)}."""
-    contract = (point or {}).get("pogodbeniPodatki") or {}
-    if isinstance(contract, list):
-        contract = next((c for c in contract if isinstance(c, dict)), {})
-    scheme = str((gsrn_payload or {}).get("obracunskaVezalnaShema") or "").strip()
-    month = to_float(contract.get("mesecObracuna") if isinstance(contract, dict) else None)
-    tariffs = to_float((gsrn_payload or {}).get("steviloTarifMerjenja"))
-    return {
-        "scheme": scheme,
-        "month": int(month) if month and 1 <= month <= 12 else 0,
-        "tariffs": int(tariffs) if tariffs in (1, 2) else 0,
-        "yearly": scheme.upper().startswith("OS") and "EZ-1" in scheme.upper(),
-    }
-
-
 def agreed_on(periods: list[dict], day: str) -> dict | None:
     """The period that applies on this day: of the periods covering it, the one entered last (Moj Elektro keeps
     older entries for the same dates); None when no period covers it."""

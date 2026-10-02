@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.9.39"
+VERSION = "0.9.40"
 
 # Moj Elektro API access, entered at setup.
 CONF_TOKEN = "token"
@@ -35,8 +35,6 @@ API_PAUSE = 0.3
 # The card gets this many days of 15-minute data with every update; older days are kept in the month archive.
 KEEP_Q15_DAYS = 35
 
-# pET: supplier price for single-tariff energy, fee: supplier's monthly fee, kw1-kw5: agreed power from the bill
-# (used for the estimated bill only when Moj Elektro has none); all prices without VAT
-SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur", "grid", "pET", "fee", "kw1", "kw2", "kw3", "kw4", "kw5")
+SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur", "grid")
 # Import from Moj Elektro (Settings): the longest range fetched in one call; the card asks month by month.
 MAX_IMPORT_DAYS = 400
