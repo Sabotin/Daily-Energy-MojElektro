@@ -248,7 +248,9 @@ class DailyEnergyManager:
         gsrn = logic.omto_gsrn(point)
         if not gsrn:
             # Moj Elektro answered without a grid-in point: try again tomorrow, not at every check
-            self.data["agreed"] = {"v": 3, "day": today.isoformat(), "periods": [], "contract": {}}
+            self.data["agreed"] = {
+                "v": 3, "day": today.isoformat(), "periods": [], "contract": logic.contract_info(point, {}),
+            }
             self._save()
             return False
         await asyncio.sleep(API_PAUSE)

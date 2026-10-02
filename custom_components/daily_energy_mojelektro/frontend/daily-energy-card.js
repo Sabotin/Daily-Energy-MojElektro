@@ -118,8 +118,8 @@
     'Edit prices': 'Uredi cene',
     'Your exact prices': 'Vaše cene energije',
     "Your supplier's energy prices without VAT, as on your bill. Empty fields use typical prices (shown in grey).": 'Cene energije vašega dobavitelja brez DDV, kot na računu. Prazna polja uporabijo okvirne cene (v sivem).',
-    'Single price (ET)': 'Enotna cena (ET)',
-    'Only if your package has one price for all hours:': 'Samo če ima vaš paket eno ceno za ves dan:',
+    'If your package has one price for all hours, type it in both fields.': 'Če ima vaš paket eno ceno za ves dan, jo vpišite v obe polji.',
+    'Waiting for the meter details from Moj Elektro – press ↻.': 'Čakam na podatke o števcu iz Moj Elektro – pritisnite ↻.',
     'Agreed power (from your bill)': 'Dogovorjena moč (z računa)',
     'Moj Elektro has no agreed power for this meter yet. Empty blocks take the block before.': 'Moj Elektro za ta števec še nima dogovorjene moči. Prazni bloki prevzamejo vrednost prejšnjega bloka.',
     'Use typical prices': 'Uporabi okvirne cene',
@@ -1678,11 +1678,14 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
     }
     // The meter's tariffs from Moj Elektro (1 = single tariff ET, 2 = VT / MT, 0 = unknown)
     _tariffs() { return +(this._contract && this._contract.tariffs) || 0; }
-    // Supplier prices for the bill: the user's own (an ET price wins: some packages have one price on a VT / MT meter),
-    // else typical prices for the meter's tariffs. approx: at least one typical price is used.
+    // The metering point's details (tariffs, billing scheme) have arrived from Moj Elektro: until then the bill shows no
+    // amount, as a yearly self-supply meter would look like an ordinary monthly bill
+    _contractKnown() { return !!(this._contract && 'yearly' in this._contract); }
+    // Supplier prices for the bill: the user's own for the meter's tariffs (VT / MT, or ET), else typical prices.
+    // A one-price package on a VT / MT meter is typed as the same price in both fields. approx: a typical price is used.
     _billPrices(has) {
       const s = this._c.s, tf = this._tariffs();
-      if (s.pET > 0) return { et: s.pET, approx: false };
+      if (tf === 1 || (tf === 0 && s.pET > 0)) return s.pET > 0 ? { et: s.pET, approx: false } : { et: DEF_PRICE.et, approx: true };
       if ((s.pVT > 0 || s.pMT > 0) && has) return { vt: s.pVT > 0 ? s.pVT : DEF_PRICE.vt, mt: s.pMT > 0 ? s.pMT : DEF_PRICE.mt, approx: !(s.pVT > 0 && s.pMT > 0) };
       if (tf !== 1 && has) return { vt: DEF_PRICE.vt, mt: DEF_PRICE.mt, approx: true };
       return { et: DEF_PRICE.et, approx: true };
@@ -1695,14 +1698,14 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       const s = this._c.s, tf = this._tariffs(), B = this._bill(this._ui.billM || 'prev');
       const fld = (id, label, v, ph, cls = '') => `<label class="fld${cls}"><span>${label}</span><div class="iw"><input class="in" id="bp-${id}" inputmode="decimal" autocomplete="off" value="${v > 0 ? v : ''}" placeholder="${ph}"><em>€/kWh</em></div></label>`;
       const vtmt = `<div class="two">${fld('vt', '<i class="dot vt"></i>VT', s.pVT, DEF_PRICE.vt, ' vt')}${fld('mt', '<i class="dot mt"></i>MT', s.pMT, DEF_PRICE.mt, ' mt')}</div>`;
-      const et = fld('et', tf === 2 ? t('Single price (ET)') : 'ET', s.pET, DEF_PRICE.et);
+      const et = fld('et', 'ET', s.pET, DEF_PRICE.et);
       const kw = B.noKw || B.kwSrc === 'man' ? `<div class="bp-t">${t('Agreed power (from your bill)')}</div>
 <div class="kw5">${[1, 2, 3, 4, 5].map(k => `<label class="fld"><span>B${k} kW</span><input class="in" id="bp-kw${k}" inputmode="decimal" autocomplete="off" value="${s['kw' + k] || ''}" placeholder="7.7"></label>`).join('')}</div>
 <div class="dw-note">${t('Moj Elektro has no agreed power for this meter yet. Empty blocks take the block before.')}</div>` : '';
       el.innerHTML = `<div class="bp-bg" data-act="bp-close"></div><div class="bp" role="dialog" aria-modal="true">
 <div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Your exact prices')}</h3><button class="ibtn" data-act="bp-close">${ic('x')}</button></div>
-<div class="dw-note">${t("Your supplier's energy prices without VAT, as on your bill. Empty fields use typical prices (shown in grey).")}</div>
-${tf === 1 ? et : tf === 2 ? `${vtmt}<div class="dw-note">${t('Only if your package has one price for all hours:')}</div>${et}` : `${vtmt}${et}`}
+<div class="dw-note">${t("Your supplier's energy prices without VAT, as on your bill. Empty fields use typical prices (shown in grey).")}${tf === 2 ? ' ' + t('If your package has one price for all hours, type it in both fields.') : ''}</div>
+${tf === 1 ? et : tf === 2 ? vtmt : `${vtmt}${et}`}
 ${kw}
 <div class="row bp-b"><button class="btn sm gh" data-act="bp-reset">${t('Use typical prices')}</button><button class="btn sm pri" data-act="bp-save">${t('Save')}</button></div></div>`;
       setTimeout(() => { const i = el.querySelector('input'); if (i && !this._phone) i.focus(); }, 60);
@@ -1726,6 +1729,10 @@ ${kw}
       const which = this._ui.billM || 'prev', B = this._bill(which), open = !!this._ui.billOpen, m = v => this._money(v);
       const tabs = this._tabs(which, 'bill-m', [['prev', 'Previous month'], ['cur', 'This month']]);
       const head = `<div class="bill-h"><span class="meter-l">${t('Estimated bill')}</span>${tabs}</div>`;
+      if (!this._contractKnown()) {
+        el.innerHTML = `<div class="bill">${head}<div class="meter-s">${t('Waiting for the meter details from Moj Elektro – press ↻.')}</div></div>`;
+        return;
+      }
       if (B.empty || B.few) {
         el.innerHTML = `<div class="bill">${head}<div class="meter-s">${t(B.empty ? 'No data for {0} yet.' : 'The estimate for {0} starts after 3 days.', MONL[B.mi])}</div></div>`;
         return;
