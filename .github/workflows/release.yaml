@@ -1,0 +1,34 @@
+# Daily Energy for Moj Elektro
+# Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
+# Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
+# any part of this file without written permission is not allowed. See LICENSE.
+
+# Every push to main whose manifest.json has a new version gets a GitHub release (tag v<version>), so HACS shows the
+# version number and its notes instead of a commit hash. A push without a version change makes no release.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the release for a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version custom_components/daily_energy_mojelektro/manifest.json)
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists"
+            exit 0
+          fi
+          git log -1 --format=%B "$GITHUB_SHA" > notes.md
+          gh release create "$tag" --target "$GITHUB_SHA" --title "$version" --notes-file notes.md
