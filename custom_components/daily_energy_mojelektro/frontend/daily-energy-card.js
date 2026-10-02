@@ -738,8 +738,12 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .lnk:hover{background:rgba(255,255,255,.1)}
 .hbill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--txt,#e8ecff);font:inherit;font-size:14px;font-weight:500;padding:9px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .hbill b{font-weight:700}
-/* with the Odjem / Oddaja switch the header is full: the bill button gets its own centred row */
-.hdr #hbill.row2{order:10;flex-basis:100%;display:flex;justify-content:center;margin-top:-6px}
+/* tablets with the Odjem / Oddaja switch: the bill button sits just left of the switch, a little smaller, so the
+   header stays on one row */
+.hdr #hbill.gs{margin-right:-6px}
+.hdr #hbill.gs .hbill{font-size:13px;padding:8px 12px;gap:6px}
+/* portrait tablets: no room for the words, only "≈ €X ▾" (the full title is on the button and in the window) */
+@media (max-width:900px){.hdr #hbill .hbl{display:none}}
 .hbill svg{width:16px;height:16px;opacity:.75}
 .hbill:hover{background:rgba(255,255,255,.1)}
 .hb-bg{position:fixed;inset:0;z-index:76;background:rgba(2,4,10,.6)}
@@ -1584,7 +1588,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       const d = new Date(), c = this._c || {}, msm = this._meterBtn(true);
       // only warnings get a chip; normal operation keeps the header clean
       const chip = this._demo ? `<span class="chip warn"><i></i>${t('Demo preview')}</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>${t('Daily Energy integration not set up')}</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div class="ttl${msm ? ' hasm' : ''}"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div>${msm}</div><div class="sp"></div>${this._tablet ? (this._gridBoth() ? '<span id="hbill" class="row2"></span>' : '<span id="hbill"></span><div class="sp"></div>') : ''}<div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._meterBtn()}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
+      return `<div class="logo">${ic('bolt')}</div><div class="ttl${msm ? ' hasm' : ''}"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div>${msm}</div><div class="sp"></div>${this._tablet && !this._gridBoth() ? '<span id="hbill"></span><div class="sp"></div>' : ''}<div class="chips">${chip}</div>${this._tablet && this._gridBoth() ? '<span id="hbill" class="gs"></span>' : ''}${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._meterBtn()}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
     _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); this._placeMM(); if (this._tablet && this._c && this._loaded) this._renderBill(); }
     // Update button: asks the Moj Elektro API for new data now (the integration also checks every morning by itself). At most 5 a day per meter.
@@ -1757,7 +1761,7 @@ ${kw}
     _renderBillBtn(B) {
       const hb = this.$('hbill'); if (!hb) return;
       const ok = B && !B.empty && !B.few && this._contractKnown();
-      hb.innerHTML = B ? `<button class="hbill" data-act="hb-open">${t('Estimated bill')}${ok ? ` <b>≈ ${this._money(B.total)}</b>` : ''}${ic('chev')}</button>` : '';
+      hb.innerHTML = B ? `<button class="hbill" data-act="hb-open" title="${t('Estimated bill')}"><span class="hbl">${t('Estimated bill')}</span>${ok ? ` <b>≈ ${this._money(B.total)}</b>` : ''}${ic('chev')}</button>` : '';
     }
     _renderBillWin() {
       const w = this.$('hb'); if (!w) return;
