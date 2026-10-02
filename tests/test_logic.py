@@ -269,6 +269,11 @@ def test_agreed_power_from_the_metering_point():
     assert logic.agreed_on(periods, "2025-09-30") == [5.5, 5.5, 6.0, 6.0, 6.0]
     assert logic.agreed_on(periods, "2026-07-15") == [6.9] * 5
     assert logic.agreed_on(periods, "2024-05-01") is None
+    # after the last period (Moj Elektro has 0 kW there): the last known one, with its end date
+    assert logic.agreed_for(periods, "2025-09-30") == ([5.5, 5.5, 6.0, 6.0, 6.0], None)
+    later = [p for p in periods if p["to"]]
+    assert logic.agreed_for(later, "2025-11-01") == ([5.5, 5.5, 6.0, 6.0, 6.0], "2025-09-30")
+    assert logic.agreed_for(later, "2024-05-01") == (None, None)
     raw = logic.agreed_raw(payload)
     assert len(raw) == 4 and raw[3]["casovniBlok1"] == 0 and raw[0]["veljavnost"] is True
     # a UTC time is a local date

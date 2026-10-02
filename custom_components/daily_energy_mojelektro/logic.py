@@ -276,6 +276,19 @@ def agreed_on(periods: list[dict], day: str) -> list[float] | None:
     return found
 
 
+def agreed_for(periods: list[dict], day: str) -> tuple[list[float] | None, str | None]:
+    """(agreed power, None) of the period covering the day; when there is none (Moj Elektro lists a period with
+    0 kW, which is skipped), the last known: (the newest period that ended before the day, its end date)."""
+    found = agreed_on(periods, day)
+    if found is not None:
+        return found, None
+    before = [p for p in periods if p["to"] is not None and p["to"] < day]
+    if not before:
+        return None, None
+    last = max(before, key=lambda p: p["to"])
+    return last["kw"], last["to"]
+
+
 def excess_power(quarters_kw: list[tuple[int, float]], agreed: list[float]) -> list[float]:
     """Excess power per block for a month, as on the bill (presežna moč): the square root of the sum of the
     squared overshoots of every 15-minute power above the block's agreed power. quarters_kw: (block, kW)."""
