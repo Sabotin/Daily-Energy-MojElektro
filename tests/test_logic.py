@@ -242,3 +242,44 @@ def test_grid_out_tried_start_for_existing_meters():
     assert logic.grid_out_tried_start(False, {"2026-09-24": {"u": 1.0, "o": 2.0}}) == 1  # grid-out data exists
     assert logic.grid_out_tried_start(False, {"2026-09-24": {"u": 1.0}}) == 0
     assert logic.grid_out_tried_start(False, {}) == 0
+
+
+def _period(od, do, vnos, kw, valid=True, new=False):
+    blocks = {f"casovniBlok{i + 1}": v for i, v in enumerate(kw)}
+    return {"datumOd": od, "datumDo": do, "datumVnosa": vnos, "veljavnost": valid, "novUporabnik": new, **blocks}
+
+
+def test_agreed_power_from_the_metering_point():
+    point = {"merilneTocke": [{"gsrn": "111", "vrsta": "MTP"}, {"gsrn": "222", "vrsta": "OMTO"}]}
+    assert logic.omto_gsrn(point) == "222"
+    assert logic.omto_gsrn({"merilneTocke": [{"gsrn": "111", "vrsta": "MTP"}]}) is None
+    assert logic.omto_gsrn(None) is None
+    # as Moj Elektro answers for a meter with a change of contract on 17 August 2026
+    payload = {"dogovorjeneMoci": [
+        _period("2025-01-01T00:00:00Z", "2025-12-31T00:00:00Z", "2024-06-22", ["10.2"] * 5),
+        _period("2026-01-01T00:00:00Z", "2026-12-31T00:00:00Z", "2025-06-19", ["5.8", "5.8", "6.5", "6.5", "6.5"],
+                valid=False),
+        _period("2026-01-01T00:00:00Z", "2026-08-17T00:00:00Z", "2025-10-17", ["5.7", "6.9", "6.9", "6.9", "6.9"]),
+        _period("2026-08-17T00:00:00Z", "2026-12-31T00:00:00Z", "2026-09-08", ["0.0"] * 5, new=True),
+    ]}
+    periods = logic.agreed_powers(payload)
+    assert len(periods) == 3  # the replaced 2026 entry (veljavnost false) is left out
+    assert periods[0] == {"from": "2025-01-01", "to": "2025-12-31", "entered": "2024-06-22", "kw": [10.2] * 5,
+                          "new": False}
+    assert periods[2]["kw"] is None and periods[2]["new"] is True  # 0.0 kW: not set
+    assert logic.agreed_on(periods, "2026-07-19")["kw"] == [5.7, 6.9, 6.9, 6.9, 6.9]
+    # 17 August is in two periods: the one entered last applies (the new user)
+    assert logic.agreed_on(periods, "2026-08-17")["new"] is True
+    assert logic.agreed_on(periods, "2026-10-01")["kw"] is None
+    assert logic.agreed_on(periods, "2024-05-01") is None
+    # comma decimals, an open end, and a UTC time is a local date
+    more = logic.agreed_powers({"dogovorjeneMoci": [
+        _period("2025-09-30T22:00:00Z", "9999-12-31T00:00:00+01:00", "", ["5,5", 5.5, 6, 6, 6]),
+    ]})
+    assert more == [{"from": "2025-10-01", "to": None, "entered": "", "kw": [5.5, 5.5, 6.0, 6.0, 6.0], "new": False}]
+
+
+def test_excess_power_as_on_the_bill():
+    # the regulator's example: agreed 4.0 kW, peaks 4.5, 5.0, 5.0 and 5.5 kW in block 1 -> 2.12 kW
+    quarters = [(1, 4.5), (1, 5.0), (1, 5.0), (1, 5.5), (1, 3.9), (2, 3.0)]
+    assert logic.excess_power(quarters, [4.0, 4.0, 4.0, 4.0, 4.0]) == [2.12, 0.0, 0.0, 0.0, 0.0]
