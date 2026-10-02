@@ -713,8 +713,10 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .meter-l{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .meter-s{font-size:12px;color:var(--mut);margin-top:4px}
 /* estimated bill */
-.bill{margin-top:0;padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);width:clamp(360px,24vw,440px);min-height:100%;max-width:100%;box-sizing:border-box}
-@media (max-width:860px){.bill{width:auto;min-height:0}}
+.bill{margin-top:0;padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);width:clamp(360px,24vw,440px);max-width:100%;box-sizing:border-box}
+/* PC: the opened box reaches the bottom of the card; closed it is only as tall as its content */
+.bill.open{min-height:100%}
+@media (max-width:860px){.bill{width:auto}.bill.open{min-height:0}}
 .bill-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .bill-h .seg-tabs button{padding:5px 10px;font-size:12px}
 .bill-v{display:flex;align-items:baseline;gap:8px;margin-top:10px;cursor:pointer;user-select:none}
