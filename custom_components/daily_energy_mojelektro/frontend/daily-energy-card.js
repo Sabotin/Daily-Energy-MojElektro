@@ -713,12 +713,12 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .meter-l{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .meter-s{font-size:12px;color:var(--mut);margin-top:4px}
 /* estimated bill */
-.bill{margin-top:0;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);width:380px;max-width:100%;box-sizing:border-box}
-@media (max-width:860px){.bill{width:auto}}
+.bill{margin-top:0;padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);width:clamp(360px,24vw,440px);min-height:100%;max-width:100%;box-sizing:border-box}
+@media (max-width:860px){.bill{width:auto;min-height:0}}
 .bill-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .bill-h .seg-tabs button{padding:5px 10px;font-size:12px}
 .bill-v{display:flex;align-items:baseline;gap:8px;margin-top:10px;cursor:pointer;user-select:none}
-.bill-v span{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.bill-v span{font-size:32px;font-weight:700;letter-spacing:-.01em}
 .bill-v small{font-size:12px;color:var(--mut)}
 .bill-v svg{width:16px;height:16px;align-self:center;margin-left:auto;transition:transform .25s;opacity:.7}
 .bill.open .bill-v svg{transform:rotate(180deg)}
@@ -747,9 +747,9 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .od-r{display:flex;flex-direction:column;transition:transform 1.4s cubic-bezier(.2,.9,.1,1)}
 .od-r i{font-style:normal;height:1.25em;line-height:1.25em}
 .od-sep{font-family:'JetBrains Mono',monospace;font-size:26px;color:var(--vt1);font-weight:700;padding:0 1px}
-.hero-r{min-width:0;align-self:start}
+.hero-r{min-width:0;align-self:stretch}
 .hero-r:empty{display:none}
-.gwrap{position:relative;width:260px;height:260px;align-self:center;margin:22px 0 0 40px}
+.gwrap{position:relative;width:260px;height:260px;align-self:center;margin:66px 0 0 40px}
 .gauge{width:100%;height:100%;overflow:visible}
 .g-val{transition:stroke-dasharray 1.6s cubic-bezier(.2,.8,.2,1)}
 .g-spin{transform-origin:100px 100px;animation:spin 40s linear infinite}
@@ -1733,7 +1733,7 @@ ${kw}
       const el = this.$('bill'); if (!el) return;
       const c = this._c;
       if (this._demo || !this._me || !(c.out ? (this._data.me || []).length : c.keys.length)) { el.innerHTML = ''; return; }
-      const which = this._ui.billM || 'prev', B = this._billIn(which), open = !!this._ui.billOpen, m = v => this._money(v);
+      const which = this._ui.billM || 'prev', B = this._billIn(which), open = this._ui.billOpen ?? !this._phone, m = v => this._money(v);
       const tabs = this._tabs(which, 'bill-m', [['prev', 'Previous month'], ['cur', 'This month']]);
       const head = `<div class="bill-h"><span class="meter-l">${t('Estimated bill')}</span>${tabs}</div>`;
       if (!this._contractKnown()) {
@@ -2690,7 +2690,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'bill-m') { this._ui.billM = t.dataset.v; this._renderBill(); }
-      else if (a === 'bill-open') { this._ui.billOpen = !this._ui.billOpen; this._renderBill(); }
+      else if (a === 'bill-open') { this._ui.billOpen = !(this._ui.billOpen ?? !this._phone); this._renderBill(); }
       else if (a === 'bp-open') { this._ui.bpOpen = true; this._renderPrices(); }
       else if (a === 'bp-close') { this._ui.bpOpen = false; this._renderPrices(); }
       else if (a === 'bp-save') this._savePrices(false);
