@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.9.30"
+VERSION = "0.9.31"
 
 # Moj Elektro API access, entered at setup.
 CONF_TOKEN = "token"
@@ -25,8 +25,8 @@ PANEL_TITLE = "Daily Energy"
 
 # Mornings at these hours (local time), at this minute, whatever is still missing is fetched from the Moj Elektro API
 # (yesterday's 15-minute curve, meter totals of the last days); nothing is requested when everything is there.
-# 06:05 and 09:05.
-CHECK_HOURS = (6, 9)
+# The same as porabim.com: 06:05 to 11:05.
+CHECK_HOURS = (6, 7, 8, 9, 10, 11)
 CHECK_MINUTE = 5
 # Fetches a person starts (the Update button): at most this many a day per meter.
 REFRESHES_PER_DAY = 5

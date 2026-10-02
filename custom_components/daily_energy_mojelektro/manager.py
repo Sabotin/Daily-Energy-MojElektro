@@ -169,7 +169,7 @@ class DailyEnergyManager:
 
     @callback
     def async_start(self) -> CALLBACK_TYPE:
-        """Mornings at 06:05 and 09:05 (and once Home Assistant has started, or the meter was added):
+        """Mornings every hour from 06:05 to 11:05 (and once Home Assistant has started, or the meter was added):
         fetch whatever is still missing from the Moj Elektro API. Returns a callable that stops it."""
         unsubs: list[CALLBACK_TYPE] = [
             async_track_time_change(
