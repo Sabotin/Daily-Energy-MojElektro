@@ -283,3 +283,14 @@ def test_excess_power_as_on_the_bill():
     # the regulator's example: agreed 4.0 kW, peaks 4.5, 5.0, 5.0 and 5.5 kW in block 1 -> 2.12 kW
     quarters = [(1, 4.5), (1, 5.0), (1, 5.0), (1, 5.5), (1, 3.9), (2, 3.0)]
     assert logic.excess_power(quarters, [4.0, 4.0, 4.0, 4.0, 4.0]) == [2.12, 0.0, 0.0, 0.0, 0.0]
+
+
+def test_contract_info_yearly_self_supply():
+    point = {"pogodbeniPodatki": {"mesecObracuna": 12}}
+    tocka = {"obracunskaVezalnaShema": "OS.3A.1 Individualna samooskrba po EZ-1", "steviloTarifMerjenja": 1}
+    assert logic.contract_info(point, tocka) == {
+        "scheme": "OS.3A.1 Individualna samooskrba po EZ-1", "month": 12, "tariffs": 1, "yearly": True,
+    }
+    # an ordinary metering point, and answers without the fields
+    assert logic.contract_info({}, {"obracunskaVezalnaShema": "M1", "steviloTarifMerjenja": "2"})["yearly"] is False
+    assert logic.contract_info(None, None) == {"scheme": "", "month": 0, "tariffs": 0, "yearly": False}

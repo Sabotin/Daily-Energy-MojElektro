@@ -16,6 +16,7 @@ Pregled porabe energije za Home Assistant, neposredno iz API-ja Moj Elektro.
 - Tarifni bloki 1–5
 - Moč v 15-minutnih intervalih z najvišjo vrednostjo za posamezen blok
 - Dogovorjena moč iz Moj Elektro in presežna moč po blokih, izračunana kot na računu
+- Ocena računa za prejšnji in tekoči mesec: energija, omrežnina, prispevki in DDV (tudi samooskrba z letnim obračunom)
 - Toplotni zemljevid vzorca porabe
 - Celotna zgodovina podatkov iz Moj Elektro za poljubno časovno obdobje
 - Oddaja energije v omrežje za sončne elektrarne (izbirno)
@@ -62,7 +63,8 @@ type: custom:daily-energy-card
 | Omrežje | Odjem, ali Odjem in oddaja |
 | Ta naprava | Samodejno, Lahek ali Poln (za vsako napravo posebej) |
 | Zgodovina Moj Elektro | Uvoz poljubnega časovnega obdobja |
-| Cene | Cena VT / MT za oceno stroškov |
+| Cene | Cena VT / MT ali ET in mesečno nadomestilo dobavitelja (brez DDV) |
+| Dogovorjena moč | Z računa, samo če je Moj Elektro nima (npr. nov uporabnik) |
 | Vaši podatki | Izvoz, uvoz CSV / JSON, brisanje vseh podatkov |
 
 ## Dobro je vedeti
@@ -90,6 +92,7 @@ Energy dashboard for Home Assistant, straight from the Moj Elektro API.
 - Tariff blocks 1–5
 - 15-minute power with the peak per block
 - Agreed power from Moj Elektro and excess power per block, worked out like on the bill
+- Estimated bill for last month and this month: energy, network charge, levies and VAT (also yearly-netted self-supply)
 - Energy rhythm heat map
 - Full history from Moj Elektro, any date range
 - Grid out for solar panels (optional)
@@ -136,7 +139,8 @@ type: custom:daily-energy-card
 | Grid | Grid in, or Grid in & Grid out |
 | This device | Automatic, Light or Full (per device) |
 | Moj Elektro history | Import any date range |
-| Prices | VT / MT price for cost estimates |
+| Prices | Supplier's VT / MT or ET price and monthly fee (without VAT) |
+| Agreed power | From your bill, only when Moj Elektro has none (e.g. a new user) |
 | Your data | Export, import CSV / JSON, delete all data |
 
 ## Good to know
