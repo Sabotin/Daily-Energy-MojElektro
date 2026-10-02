@@ -88,6 +88,49 @@
     'Your first reading is the baseline; every reading after it becomes usage.': 'Prvi odčitek je izhodišče; vsak naslednji postane poraba.',
     'Preview with demo data': 'Predogled z demo podatki',
     // hero
+    // estimated bill
+    'Estimated bill': 'Ocena računa',
+    'Previous month': 'Prejšnji mesec',
+    'This month': 'Ta mesec',
+    'with VAT': 'z DDV',
+    'No data for {0} yet.': 'Za {0} še ni podatkov.',
+    'The estimate for {0} starts after 3 days.': 'Ocena za {0} bo na voljo po 3 dneh.',
+    '{0} · projected from {1} of {2} days': '{0} · projekcija iz {1} od {2} dni',
+    '{0} · whole month': '{0} · cel mesec',
+    'Network prices for {0} are not confirmed yet: the last known ones are used.': 'Cene omrežnine za {0} še niso potrjene: uporabljene so zadnje znane.',
+    'supplier': 'dobavitelj',
+    'Network charge': 'Omrežnina',
+    'power': 'moč',
+    'energy': 'energija',
+    'Levies': 'Prispevki',
+    'other': 'ostalo',
+    'Total without VAT': 'Skupaj brez DDV',
+    'VAT 22 %': 'DDV 22 %',
+    'Total': 'Skupaj',
+    "Without excess power (informative on the bill) and the supplier's monthly fee.": 'Brez presežne moči (na računu je informativna) in mesečnega nadomestila dobavitelja.',
+    'Self-supply with yearly settlement: the monthly bill has only the agreed power; energy is netted in December.': 'Samooskrba z letnim obračunom: mesečni račun vsebuje le dogovorjeno moč, energija se poračuna decembra.',
+    'No agreed power from Moj Elektro: type it from your bill under the prices.': 'Moj Elektro nima dogovorjene moči: vnesite jo z računa pri cenah.',
+    ' (typical ET price)': ' (okvirna cena ET)',
+    'supplier · typical prices': 'dobavitelj · okvirne cene',
+    'supplier · your prices': 'dobavitelj · vaše cene',
+    '≈ typical energy prices': '≈ okvirne cene energije',
+    'Enter your exact prices': 'Vpišite svoje cene energije',
+    'Edit prices': 'Uredi cene',
+    'Your exact prices': 'Vaše cene energije',
+    "Your supplier's energy prices without VAT, as on your bill. Empty fields use typical prices (shown in grey).": 'Cene energije vašega dobavitelja brez DDV, kot na računu. Prazna polja uporabijo okvirne cene (v sivem).',
+    'Single price (ET)': 'Enotna cena (ET)',
+    'Only if your package has one price for all hours:': 'Samo če ima vaš paket eno ceno za ves dan:',
+    'Agreed power (from your bill)': 'Dogovorjena moč (z računa)',
+    'Moj Elektro has no agreed power for this meter yet. Empty blocks take the block before.': 'Moj Elektro za ta števec še nima dogovorjene moči. Prazni bloki prevzamejo vrednost prejšnjega bloka.',
+    'Use typical prices': 'Uporabi okvirne cene',
+    'Enter a price in €/kWh, e.g. 0.125': 'Vnesite ceno v €/kWh, npr. 0,125',
+    'Typical prices are used': 'Uporabljene so okvirne cene',
+    'Prices saved': 'Cene shranjene',
+    'Yearly settlement {0}': 'Letni obračun {0}',
+    'Switch on Grid in &amp; Grid out in ⚙ to see the yearly balance.': 'Za letno bilanco v ⚙ vklopite Odjem in oddaja.',
+    'So far {0} kWh more sent out than taken: the surplus is not paid out.': 'Do zdaj {0} kWh več oddane kot prevzete energije: presežek se ne izplača.',
+    'So far {0} kWh more taken than sent out{1}.': 'Do zdaj {0} kWh več prevzete kot oddane energije{1}.',
+    'Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).': 'Za oceno stroškov energijskega dela VT/MT (omrežnine in davki niso vključeni).',
     'Today': 'Danes',
     'Used today': 'Porabljena energija danes',
     'Used yesterday': 'Porabljena energija včeraj',
@@ -304,7 +347,6 @@
     'Type how many kWh were used on VT and MT for that day.': 'Vpišite, koliko kWh je bilo tisti dan porabljenih na VT in MT.',
     'Prices (optional)': 'Cene (neobvezno)',
     'Currency symbol': 'Simbol valute',
-    'Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).': 'Za oceno stroškov energijskega dela VT/MT (omrežnine in davki niso vključeni).',
     'Language': 'Jezik',
     'Automatic': 'Samodejno',
     'Follows the Home Assistant language.': 'Sledi jeziku Home Assistanta.',
@@ -488,6 +530,78 @@
     return (hi ? 1 : 2) + (isFree(dt) ? 1 : 0) + tier;
   };
 
+  /* Estimated bill (Ocena računa): Slovenian household rules, user group 0, prices without VAT, checked against bills.
+     NET: network charge (omrežnina) from a date on: pw = €/kW a month of agreed power per tariff block (0 = the block
+     is not charged), en = €/kWh per block, et = €/kWh for a single-tariff self-supply bill (Omrežnina ET),
+     ove = OVE+SPTE €/kW of the agreed power of the season's first block (B1 in the higher, B2 in the lower season).
+     Prices change during the year (transitional discounts), so a row applies until the next one. guess: not every
+     price of the row is confirmed by a bill; unknown: not published yet, the last known row of the season is used.
+     Power charges and OVE+SPTE are for the whole month; excess power (presežna moč) is informative only. */
+  const NET = [
+    // 2025: B1 of Jan–Feb charged at B2's price, B5 free, OVE+SPTE free until June (yearly settlement 2025)
+    { from: '2025-01-01', season: 'hi', pw: [0.91224, 0.91224, 0.16297, 0.00407, 0], en: [0.01998, 0.01833, 0.01809, 0.01855, 0], et: 0.01856, ove: 0, guess: true },
+    { from: '2025-03-01', season: 'lo', pw: [0, 0.91224, 0.16297, 0.00407, 0], en: [0, 0.01998, 0.01717, 0.01805, 0.01299], et: 0.01856, ove: 0, guess: true },
+    { from: '2025-07-01', season: 'lo', pw: [0, 0.91224, 0.16297, 0.00407, 0], en: [0, 0.01998, 0.01717, 0.01805, 0.01299], et: 0.01856, ove: 0.77562, guess: true },
+    { from: '2025-11-01', season: 'hi', pw: [1.71126, 0.91224, 0.16297, 0.00407, 0], en: [0.01998, 0.01833, 0.01809, 0.01855, 0], et: 0.01856, ove: 0.38781 },
+    { from: '2026-03-01', season: 'lo', pw: [0, 1.0923, 0.28902, 0.02436, 0.00245], en: [0, 0.01998, 0.01717, 0.01805, 0.01299], et: 0.01864, ove: 0.77562 },
+    // Nov 2026: B1 at 70 % of 3.82301 €/kW (AGEN-RS, tariff rates 2026); OVE+SPTE and et as in the last winter
+    { from: '2026-11-01', season: 'hi', pw: [2.67611, 1.0923, 0.28902, 0.02436, 0], en: [0.02217, 0.01998, 0.01717, 0.01805, 0], et: 0.01864, ove: 0.38781 }
+  ];
+  // Typical supplier prices (€/kWh without VAT, regular household offers, Oct 2026) used until the user types their own
+  // in the card's price window: the estimate is then marked approximate.
+  const DEF_PRICE = { vt: 0.135, mt: 0.105, et: 0.125 };
+  // per kWh: market operator, energy efficiency, excise duty
+  const LEVY = [0.00013, 0.0008, 0.00153];
+  const VAT = 0.22;
+  const seasonOf = ym => [11, 12, 1, 2].includes(+ym.slice(5, 7)) ? 'hi' : 'lo';
+  const netRow = ym => {
+    const se = seasonOf(ym), day = ym + '-01';
+    const row = NET.filter(r => r.from <= day).pop();
+    if (row && !row.unknown && row.season === se) return { row, guess: !!row.guess };
+    const known = NET.filter(r => !r.unknown && r.season === se), past = known.filter(r => r.from <= day);
+    return { row: (past.length ? past : known).pop(), guess: true };
+  };
+  const r2 = x => Math.round(x * 100) / 100;
+  // i: { ym, kwh, vt, mt, has (VT/MT known), b: kWh of blocks 1-5, kw: agreed kW of blocks 1-5 or null,
+  //      pET or pVT + pMT (supplier €/kWh), yearly (self-supply under EZ-1: the month's bill has only the agreed
+  //      power; energy is netted in the yearly settlement) }. The supplier's monthly fee is not included.
+  // Every line is rounded to cents, as on the bill.
+  const billEstimate = i => {
+    const se = seasonOf(i.ym), { row, guess } = netRow(i.ym), kw = i.kw, yearly = !!i.yearly, kwh = yearly ? 0 : i.kwh;
+    // days without tariff blocks: their energy is spread like the known blocks (or at the season's average price)
+    let b = i.b.slice();
+    const bt = b.reduce((a, x) => a + x, 0);
+    if (kwh > bt + 0.01) b = bt > 0 ? b.map(x => x * kwh / bt) : null;
+    let supplier = null;
+    if (yearly) supplier = 0;
+    else if (i.pET > 0) supplier = r2(kwh * i.pET);
+    else if ((i.pVT > 0 || i.pMT > 0) && i.has && i.vt + i.mt > 0) {
+      const f = kwh / (i.vt + i.mt);
+      supplier = r2(i.vt * f * i.pVT) + r2(i.mt * f * i.pMT);
+    }
+    const power = kw ? row.pw.reduce((a, p, k) => a + r2(p * kw[k]), 0) : 0;
+    const avgEn = row.en.filter(x => x > 0).reduce((a, x, _, l) => a + x / l.length, 0);
+    const energy = yearly ? 0 : b ? row.en.reduce((a, p, k) => a + r2(p * b[k]), 0) : r2(kwh * avgEn);
+    const ove = kw && !yearly ? r2(row.ove * kw[se === 'hi' ? 0 : 1]) : 0;
+    const other = LEVY.reduce((a, p) => a + r2(p * kwh), 0);
+    const g = {
+      energy: supplier == null ? null : r2(supplier),
+      network: r2(power + energy),
+      levies: r2(ove + other)
+    };
+    const net = r2((g.energy || 0) + g.network + g.levies), vat = r2(net * VAT);
+    return { g, supplier, power: r2(power), energy: r2(energy), ove, other: r2(other), net, vat, total: r2(net + vat), guess, noKw: !kw, noPrice: supplier == null, yearly };
+  };
+  // Yearly settlement of self-supply under EZ-1: energy taken minus energy sent out over the calendar year. A surplus
+  // is not paid out or carried over (settlement 2025); energy taken above it is charged per kWh with the single-tariff
+  // network price and the levies.
+  const yearlyNet = (ym, inKwh, outKwh, pET) => {
+    const { row } = netRow(ym), net = inKwh - outKwh;
+    if (net <= 0) return { net, cost: 0 };
+    const x = r2(net * (pET || 0)) + r2(net * row.et) + LEVY.reduce((a, p) => a + r2(p * net), 0);
+    return { net, cost: r2(x * (1 + VAT)), noPrice: !(pET > 0) };
+  };
+
   const I = {
     bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
     week: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/>',
@@ -597,13 +711,44 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .meter{margin-top:26px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .meter-l{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 .meter-s{font-size:12px;color:var(--mut);margin-top:4px}
+/* estimated bill */
+.bill{margin-top:0;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);width:380px;max-width:100%;box-sizing:border-box}
+@media (max-width:860px){.bill{width:auto}}
+.bill-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bill-h .seg-tabs button{padding:5px 10px;font-size:12px}
+.bill-v{display:flex;align-items:baseline;gap:8px;margin-top:10px;cursor:pointer;user-select:none}
+.bill-v span{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.bill-v small{font-size:12px;color:var(--mut)}
+.bill-v svg{width:16px;height:16px;align-self:center;margin-left:auto;transition:transform .25s;opacity:.7}
+.bill.open .bill-v svg{transform:rotate(180deg)}
+.bill-n{font-size:12px;color:var(--dim);margin-top:6px}
+.bl-d{margin-top:12px;border-top:1px solid rgba(255,255,255,.08);padding-top:6px}
+.bl-r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:7px 0}
+.bl-r b{display:block;font-size:13px;font-weight:600}
+.bl-r span{display:block;font-size:11.5px;color:var(--mut);margin-top:2px}
+.bl-r em{font-style:normal;font-family:'JetBrains Mono',monospace;font-size:13px;white-space:nowrap}
+.bl-r.sum{border-top:1px solid rgba(255,255,255,.08);margin-top:4px}
+.kw5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.bill-p{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--dim)}
+.lnk{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--txt,#e8ecff);font:inherit;font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:999px;cursor:pointer;margin-left:auto}
+.lnk svg{width:14px;height:14px}
+.lnk:hover{background:rgba(255,255,255,.1)}
+.bp-bg{position:fixed;inset:0;z-index:80;background:rgba(2,4,10,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.bp{position:fixed;z-index:81;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box;padding:20px;border-radius:20px;background:linear-gradient(180deg,#0c1228,#070a16);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 80px -20px rgba(0,0,0,.8);display:flex;flex-direction:column;gap:12px}
+.bp h3{margin:0;font-size:18px}
+.bp-t{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-top:6px}
+.bp-b{justify-content:flex-end;gap:10px;margin-top:4px}
+.bp .iw input.in{padding-right:64px}
+.kw5 .fld span{font-size:11px}
 .odo{display:inline-flex;align-items:center;padding:8px 10px;gap:3px;border-radius:14px;background:linear-gradient(180deg,#02040a,#0b1124);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 2px 10px rgba(0,0,0,.8),0 0 0 4px rgba(255,255,255,.02)}
 .od{display:inline-block;width:.78em;height:1.25em;overflow:hidden;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:26px;font-weight:700;color:#e9fbff;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 50%,rgba(255,255,255,.07));border-radius:6px;text-align:center;position:relative;text-shadow:0 0 12px rgba(62,230,255,.6)}
 .od.frac{color:#ffd9a8;text-shadow:0 0 12px rgba(255,160,70,.6)}
 .od-r{display:flex;flex-direction:column;transition:transform 1.4s cubic-bezier(.2,.9,.1,1)}
 .od-r i{font-style:normal;height:1.25em;line-height:1.25em}
 .od-sep{font-family:'JetBrains Mono',monospace;font-size:26px;color:var(--vt1);font-weight:700;padding:0 1px}
-.gwrap{position:relative;width:260px;height:260px;align-self:center}
+.hero-r{min-width:0;align-self:start}
+.hero-r:empty{display:none}
+.gwrap{position:relative;width:260px;height:260px;align-self:center;margin:22px 0 0 40px}
 .gauge{width:100%;height:100%;overflow:visible}
 .g-val{transition:stroke-dasharray 1.6s cubic-bezier(.2,.8,.2,1)}
 .g-spin{transform-origin:100px 100px;animation:spin 40s linear infinite}
@@ -852,7 +997,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .dw-note{font-size:12.5px;color:var(--mut);line-height:1.5}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 @media (max-width:1280px){.s7,.s5,.s8,.s4{grid-column:span 12}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.heat .hm-g,.heat .hm-m{max-width:none}}
-@media (max-width:860px){.tariff-b{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.hero{grid-template-columns:1fr}.gwrap{margin:0 auto;width:230px;height:230px}}
+@media (max-width:860px){.tariff-b{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.hero{grid-template-columns:1fr}.gwrap{margin:30px auto 0;width:230px;height:230px}}
 @media (max-width:640px){.kpis{grid-template-columns:1fr}.two{grid-template-columns:1fr}.ch-b.dense .col:nth-child(even) .xl{visibility:hidden}.card{padding:18px;border-radius:22px}.od,.od-sep{font-size:21px}.hdr .chip{display:none}}
 /* moj elektro: 15-min profile + tariff blocks */
 .prof{display:flex;flex-direction:column}
@@ -1196,6 +1341,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       this._archDays = { q15: dates(ad.q15), q15o: dates(ad.q15o) };
       // the agreed power per tariff block, every period Moj Elektro has: [{from, to, kw: [block 1..5]}]
       this._agreed = Array.isArray(s.agreed) ? s.agreed : [];
+      // how the metering point is billed (logic.contract_info): yearly = self-supply netted once a year
+      this._contract = s.contract && typeof s.contract === 'object' ? s.contract : {};
       this._q15 = { ...this._archData.q15, ...this._q15 }; this._q15o = { ...this._archData.q15o, ...this._q15o };
       // the integration always fetches from Moj Elektro, so the dashboard is always in Moj Elektro mode
       this._api = !!s.api; this._me = true;
@@ -1359,7 +1506,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
  <section class="card s12" id="n-cal"></section>
  <section class="card s12" id="n-log"></section>
 </div></div>
-<div id="dw"></div></div>
+<div id="dw"></div><div id="bp"></div></div>
 <div class="tip" id="tip"></div><div class="toast" id="toast"></div>
 <input type="file" id="file" accept=".csv,text/csv,.json,application/json" hidden>`;
       const R = this.shadowRoot;
@@ -1372,7 +1519,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Enter' && e.target.id === 'mm-name') this._mmRename(this._mm && this._mm.edit); if (e.key === 'Enter' && e.target.id === 'mm-newtok') this._mmToken(this._mm && this._mm.key); if (e.key === 'Escape') { this._closeMM(); this._closeCals(); this._drawer(false); } });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Enter' && e.target.id === 'mm-name') this._mmRename(this._mm && this._mm.edit); if (e.key === 'Enter' && e.target.id === 'mm-newtok') this._mmToken(this._mm && this._mm.key); if (e.key === 'Enter' && /^bp-/.test(e.target.id || '')) this._savePrices(false); if (e.key === 'Escape') { if (this._ui.bpOpen) { this._ui.bpOpen = false; this._renderPrices(); } this._closeMM(); this._closeCals(); this._drawer(false); } });
       // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
       // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
       // Only a mouse (or a tablet's trackpad) hovers: a finger sliding over the bars while scrolling (tablets) shows nothing.
@@ -1470,7 +1617,6 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
  <div class="big"><span class="bignum" id="bignum">${hv ? fk(this._shown) : '0'}</span><span class="unit">kWh</span></div>
  <div class="pills">${pills.join('') || `<span class="pill">${t(out ? 'No grid-out data yet' : this._me ? 'Waiting for the first Moj Elektro day' : 'Log two readings to see daily usage')}</span>`}</div>
  <div class="meter">${meter}<div class="odo">${odo}</div></div>
-</div>
 <div class="gwrap"><svg class="gauge" viewBox="0 0 200 200">
  <defs><linearGradient id="gG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3ee6ff"/><stop offset=".55" stop-color="#7b6bff"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient>
  <filter id="gl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
@@ -1479,12 +1625,134 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
  <g transform="rotate(135 100 100)"><circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="13" stroke-linecap="round" stroke-dasharray="${arc} ${C}"/>
  <circle class="g-val" id="gval" cx="100" cy="100" r="80" fill="none" stroke="url(#gG)" stroke-width="13" stroke-linecap="round" stroke-dasharray="0 ${C}" filter="url(#gl)" opacity="${f > 0 ? 1 : 0}" data-to="${arc * f} ${C}"/></g>
  <circle cx="100" cy="11" r="3.5" fill="#fff" opacity=".85"/><text x="100" y="-2" fill="#8f98c2" font-size="8" text-anchor="middle" letter-spacing="1">${t('AVG')}</text>
-</svg><div class="g-c"><div class="g-v">${ratio == null ? '—' : Math.round(ratio * 100)}<small>%</small></div><div class="g-l">${t('of your average')}</div><div class="g-a">${t('avg {0} kWh/day', avg == null ? '—' : fk(avg))}</div></div></div>`;
+</svg><div class="g-c"><div class="g-v">${ratio == null ? '—' : Math.round(ratio * 100)}<small>%</small></div><div class="g-l">${t('of your average')}</div><div class="g-a">${t('avg {0} kWh/day', avg == null ? '—' : fk(avg))}</div></div></div></div>
+<div class="hero-r" id="bill"></div>`;
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const g = this.$('gval'); if (g) g.setAttribute('stroke-dasharray', g.dataset.to);
         this.shadowRoot.querySelectorAll('.od-r').forEach(r => r.style.transform = `translateY(-${r.dataset.v * 10}%)`);
       }));
       if (hv) this._count(this.$('bignum'), hv.t);
+      this._renderBill();
+    }
+    /* ----- estimated bill (Ocena računa) ----- */
+    // agreed power for the bill: Moj Elektro's on the month's last day with data (or its last day), else the one
+    // typed in ⚙ from the bill (blank blocks take the block before, or the first one filled in)
+    _billKw(day, end) {
+      const me = this._agOn(end) || this._agOn(day);
+      if (me) return { kw: me, src: 'me' };
+      const s = this._c.s, v = [1, 2, 3, 4, 5].map(k => +s['kw' + k] || 0);
+      const first = v.find(x => x > 0);
+      if (!first) return { kw: null, src: null };
+      let prev = first; return { kw: v.map(x => (prev = x > 0 ? x : prev)), src: 'man' };
+    }
+    // which: 'prev' (last month) or 'cur' (this month). A month whose days are not all in yet is projected from the
+    // average of its days so far (from 3 days on); fixed charges always count for the whole month.
+    _bill(which) {
+      const c = this._c, td = pd(c.today);
+      const base = new Date(td.getFullYear(), td.getMonth() - (which === 'prev' ? 1 : 0), 1);
+      const y = base.getFullYear(), mi = base.getMonth(), ym = iso(base).slice(0, 7), dim = new Date(y, mi + 1, 0).getDate();
+      const r = this._monthVal(y, mi);
+      const mm = c.months[ym], last = c.keys.filter(k => k.slice(0, 7) === ym).pop();
+      const thru = mm && (!last || mm.thru > last) ? mm.thru : last;
+      if (!thru || !(r.t > 0)) return { ym, mi, empty: true };
+      const nd = pd(thru).getDate();
+      if (nd < dim && nd < 3) return { ym, mi, nd, dim, few: true };
+      const f = dim / nd, ag = this._billKw(thru, iso(new Date(y, mi, dim))), yearly = !!this._contract.yearly;
+      const P = this._billPrices(r.has);
+      const res = billEstimate({
+        ym, kwh: r.t * f, vt: r.vt * f, mt: r.mt * f, has: r.has, b: r.b.map(x => x * f), kw: ag.kw,
+        pET: P.et, pVT: P.vt, pMT: P.mt, yearly
+      });
+      // self-supply: the calendar year so far, energy taken minus sent out (Moj Elektro's day totals)
+      let yr = null;
+      if (yearly) {
+        let i = 0, o = 0, n = 0;
+        for (const [d, rec] of Object.entries((this._snap && this._snap.days) || {})) if (d.slice(0, 4) === String(y) && d.slice(0, 7) <= ym && rec) {
+          if (typeof rec.u === 'number') i += rec.u;
+          if (typeof rec.o === 'number') { o += rec.o; n++; }
+        }
+        const s = c.s, et = s.pET > 0 ? s.pET : DEF_PRICE.et;
+        yr = n ? { y, in: i, out: o, ...yearlyNet(ym, i, o, et), approx: !(s.pET > 0) } : { y, noOut: true };
+      }
+      return { ym, mi, nd, dim, proj: nd < dim, kwh: r.t * f, kwSrc: ag.src, yr, approx: P.approx, ...res };
+    }
+    // The meter's tariffs from Moj Elektro (1 = single tariff ET, 2 = VT / MT, 0 = unknown)
+    _tariffs() { return +(this._contract && this._contract.tariffs) || 0; }
+    // Supplier prices for the bill: the user's own (an ET price wins: some packages have one price on a VT / MT meter),
+    // else typical prices for the meter's tariffs. approx: at least one typical price is used.
+    _billPrices(has) {
+      const s = this._c.s, tf = this._tariffs();
+      if (s.pET > 0) return { et: s.pET, approx: false };
+      if ((s.pVT > 0 || s.pMT > 0) && has) return { vt: s.pVT > 0 ? s.pVT : DEF_PRICE.vt, mt: s.pMT > 0 ? s.pMT : DEF_PRICE.mt, approx: !(s.pVT > 0 && s.pMT > 0) };
+      if (tf !== 1 && has) return { vt: DEF_PRICE.vt, mt: DEF_PRICE.mt, approx: true };
+      return { et: DEF_PRICE.et, approx: true };
+    }
+    // The price window (Vpiši svoje točne cene): the meter's fields, with the typical prices as hints; agreed power
+    // per block only when Moj Elektro has none
+    _renderPrices() {
+      const el = this.$('bp'); if (!el) return;
+      if (!this._ui.bpOpen) { el.innerHTML = ''; return; }
+      const s = this._c.s, tf = this._tariffs(), B = this._bill(this._ui.billM || 'prev');
+      const fld = (id, label, v, ph, cls = '') => `<label class="fld${cls}"><span>${label}</span><div class="iw"><input class="in" id="bp-${id}" inputmode="decimal" autocomplete="off" value="${v > 0 ? v : ''}" placeholder="${ph}"><em>€/kWh</em></div></label>`;
+      const vtmt = `<div class="two">${fld('vt', '<i class="dot vt"></i>VT', s.pVT, DEF_PRICE.vt, ' vt')}${fld('mt', '<i class="dot mt"></i>MT', s.pMT, DEF_PRICE.mt, ' mt')}</div>`;
+      const et = fld('et', tf === 2 ? t('Single price (ET)') : 'ET', s.pET, DEF_PRICE.et);
+      const kw = B.noKw || B.kwSrc === 'man' ? `<div class="bp-t">${t('Agreed power (from your bill)')}</div>
+<div class="kw5">${[1, 2, 3, 4, 5].map(k => `<label class="fld"><span>B${k} kW</span><input class="in" id="bp-kw${k}" inputmode="decimal" autocomplete="off" value="${s['kw' + k] || ''}" placeholder="7.7"></label>`).join('')}</div>
+<div class="dw-note">${t('Moj Elektro has no agreed power for this meter yet. Empty blocks take the block before.')}</div>` : '';
+      el.innerHTML = `<div class="bp-bg" data-act="bp-close"></div><div class="bp" role="dialog" aria-modal="true">
+<div class="row" style="align-items:center;justify-content:space-between"><h3>${t('Your exact prices')}</h3><button class="ibtn" data-act="bp-close">${ic('x')}</button></div>
+<div class="dw-note">${t("Your supplier's energy prices without VAT, as on your bill. Empty fields use typical prices (shown in grey).")}</div>
+${tf === 1 ? et : tf === 2 ? `${vtmt}<div class="dw-note">${t('Only if your package has one price for all hours:')}</div>${et}` : `${vtmt}${et}`}
+${kw}
+<div class="row bp-b"><button class="btn sm gh" data-act="bp-reset">${t('Use typical prices')}</button><button class="btn sm pri" data-act="bp-save">${t('Save')}</button></div></div>`;
+      setTimeout(() => { const i = el.querySelector('input'); if (i && !this._phone) i.focus(); }, 60);
+    }
+    async _savePrices(reset) {
+      const S = this._data.settings, v = id => { const i = this.$('bp-' + id); return i ? num(i.value) : null; };
+      if (reset) { S.pVT = 0; S.pMT = 0; S.pET = 0; }
+      else {
+        for (const [k, id] of [['pVT', 'vt'], ['pMT', 'mt'], ['pET', 'et']]) if (this.$('bp-' + id)) { const x = v(id); if (x != null && (x < 0 || x > 2)) { this._toast(t('Enter a price in €/kWh, e.g. 0.125')); return; } S[k] = x || 0; }
+        for (let k = 1; k <= 5; k++) if (this.$('bp-kw' + k)) { const x = v('kw' + k); S['kw' + k] = x > 0 ? x : 0; }
+      }
+      this._ui.bpOpen = false; this._renderPrices();
+      this._calc(); this._renderHero(); this._renderKpis(); this._renderChart(); this._renderTariff();
+      await this._commit({ settings: true });
+      this._toast(t(reset ? 'Typical prices are used' : 'Prices saved'));
+    }
+    _renderBill() {
+      const el = this.$('bill'); if (!el) return;
+      const c = this._c;
+      if (c.out || this._demo || !this._me || !c.keys.length) { el.innerHTML = ''; return; }
+      const which = this._ui.billM || 'prev', B = this._bill(which), open = !!this._ui.billOpen, m = v => this._money(v);
+      const tabs = this._tabs(which, 'bill-m', [['prev', 'Previous month'], ['cur', 'This month']]);
+      const head = `<div class="bill-h"><span class="meter-l">${t('Estimated bill')}</span>${tabs}</div>`;
+      if (B.empty || B.few) {
+        el.innerHTML = `<div class="bill">${head}<div class="meter-s">${t(B.empty ? 'No data for {0} yet.' : 'The estimate for {0} starts after 3 days.', MONL[B.mi])}</div></div>`;
+        return;
+      }
+      const sub = B.proj ? t('{0} · projected from {1} of {2} days', MONL[B.mi], B.nd, B.dim) : t('{0} · whole month', MONL[B.mi]);
+      const notes = [];
+      if (B.noKw) notes.push(t('No agreed power from Moj Elektro: type it from your bill under the prices.'));
+      if (B.guess) notes.push(t('Network prices for {0} are not confirmed yet: the last known ones are used.', MONL[B.mi]));
+      const row = (l, v, d, cls = '') => `<div class="bl-r${cls}"><div><b>${l}</b>${d ? `<span>${d}</span>` : ''}</div><em>${v}</em></div>`;
+      const yr = B.yr, yl = !yr ? '' : yr.noOut
+        ? row(t('Yearly settlement {0}', yr.y), '—', t('Switch on Grid in &amp; Grid out in ⚙ to see the yearly balance.'))
+        : row(t('Yearly settlement {0}', yr.y), yr.net <= 0 ? m(0) : '≈ ' + m(yr.cost), yr.net <= 0
+          ? t('So far {0} kWh more sent out than taken: the surplus is not paid out.', fk(-yr.net))
+          : t('So far {0} kWh more taken than sent out{1}.', fk(yr.net), yr.approx ? t(' (typical ET price)') : ''));
+      const det = open ? `<div class="bl-d">
+${B.yearly ? `<div class="bill-n">${t('Self-supply with yearly settlement: the monthly bill has only the agreed power; energy is netted in December.')}</div>` : ''}
+${B.yearly ? '' : row(t('Energy'), m(B.g.energy), B.approx ? t('supplier · typical prices') : t('supplier · your prices'))}
+${row(t('Network charge'), m(B.g.network), `${t('power')} ${m(B.power)} · ${t('energy')} ${m(B.energy)}`)}
+${row(t('Levies'), m(B.g.levies), `OVE+SPTE ${m(B.ove)} · ${t('other')} ${m(B.other)}`)}
+${row(t('Total without VAT'), m(B.net), '', ' sum')}
+${row(t('VAT 22 %'), m(B.vat), '')}
+${row(t('Total'), m(B.total), t("Without excess power (informative on the bill) and the supplier's monthly fee."), ' sum')}
+${yl}</div>` : '';
+      el.innerHTML = `<div class="bill${open ? ' open' : ''}">${head}
+<div class="bill-v" data-act="bill-open"><span>≈ ${m(B.total)}</span><small>${t('with VAT')}</small>${ic('chev')}</div>
+<div class="meter-s">${sub} · ${fk(B.kwh)} kWh</div>${notes.map(n => `<div class="bill-n">${n}</div>`).join('')}
+<div class="bill-p">${B.approx && !B.yearly ? `<span>${t('≈ typical energy prices')}</span>` : ''}<button class="lnk" data-act="bp-open">${ic('edit')}${t(B.approx || B.noKw ? 'Enter your exact prices' : 'Edit prices')}</button></div>${det}</div>`;
     }
     _odo(str) {
       const dot = str.indexOf('.');
@@ -2407,6 +2675,12 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       if (a === 'range') { this._ui.range = t.dataset.v; this._renderChart(); }
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
+      else if (a === 'bill-m') { this._ui.billM = t.dataset.v; this._renderBill(); }
+      else if (a === 'bill-open') { this._ui.billOpen = !this._ui.billOpen; this._renderBill(); }
+      else if (a === 'bp-open') { this._ui.bpOpen = true; this._renderPrices(); }
+      else if (a === 'bp-close') { this._ui.bpOpen = false; this._renderPrices(); }
+      else if (a === 'bp-save') this._savePrices(false);
+      else if (a === 'bp-reset') this._savePrices(true);
       else if (a === 'brange') { this._ui.brange = t.dataset.v; this._renderBlocks(); }
       else if (a === 'pday') this._pdayAct(t.dataset.v, t.dataset.s);
       else if (a === 'nrec') { if (t.dataset.v) { this._nrecY = t.dataset.v; this._nRec(); } }

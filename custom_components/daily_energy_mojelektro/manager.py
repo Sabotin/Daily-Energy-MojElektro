@@ -84,8 +84,8 @@ class DailyEnergyManager:
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched},
         # refresh: {"day": date, "count": fetches a person started that day},
         # meta: {"grid_out_tried": 1 once "Grid in & Grid out" was switched on the first time (the only switch that fetches)},
-        # agreed: {"v": 2, "day": date it was last fetched, "periods": logic.agreed_powers()} the agreed power per
-        # tariff block
+        # agreed: {"v": 3, "day": date it was last fetched, "periods": logic.agreed_powers() the agreed power per
+        # tariff block, "contract": logic.contract_info() how the metering point is billed}
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
             "refresh": {}, "meta": {}, "agreed": {},
@@ -236,7 +236,7 @@ class DailyEnergyManager:
     def _agreed_due(self, today) -> bool:
         """The agreed power is fetched at most once a day (it changes rarely), and at once when it is stored in an
         older form."""
-        return self.data["agreed"].get("day") != today.isoformat() or self.data["agreed"].get("v") != 2
+        return self.data["agreed"].get("day") != today.isoformat() or self.data["agreed"].get("v") != 3
 
     async def _fetch_agreed(self, session, meter: str, token: str, today) -> bool:
         """The agreed power per tariff block of every period, from the metering point's grid-in point (two
@@ -248,7 +248,7 @@ class DailyEnergyManager:
         gsrn = logic.omto_gsrn(point)
         if not gsrn:
             # Moj Elektro answered without a grid-in point: try again tomorrow, not at every check
-            self.data["agreed"] = {"v": 2, "day": today.isoformat(), "periods": []}
+            self.data["agreed"] = {"v": 3, "day": today.isoformat(), "periods": [], "contract": {}}
             self._save()
             return False
         await asyncio.sleep(API_PAUSE)
@@ -256,8 +256,9 @@ class DailyEnergyManager:
         if payload is None:
             return False
         periods = logic.agreed_powers(payload)
-        changed = periods != self.data["agreed"].get("periods", [])
-        self.data["agreed"] = {"v": 2, "day": today.isoformat(), "periods": periods}
+        contract = logic.contract_info(point, payload)
+        changed = periods != self.data["agreed"].get("periods", []) or contract != self.data["agreed"].get("contract", {})
+        self.data["agreed"] = {"v": 3, "day": today.isoformat(), "periods": periods, "contract": contract}
         self._save()
         return changed
 
@@ -514,6 +515,7 @@ class DailyEnergyManager:
             "api": all(self.credentials()),
             "has_pin": bool(self.pin),
             "agreed": self.data["agreed"].get("periods", []),
+            "contract": self.data["agreed"].get("contract", {}),
         }
 
     @callback

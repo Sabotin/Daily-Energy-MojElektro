@@ -16,6 +16,7 @@ Pregled porabe energije za Home Assistant, neposredno iz API-ja Moj Elektro.
 - Tarifni bloki 1–5
 - Moč v 15-minutnih intervalih z najvišjo vrednostjo za posamezen blok
 - Dogovorjena moč iz Moj Elektro in presežna moč po blokih, izračunana kot na računu
+- Ocena računa za prejšnji in tekoči mesec: energija, omrežnina, prispevki in DDV (tudi samooskrba z letnim obračunom); okvirne cene energije ali vaše cene, vpisane kar na kartici
 - Toplotni zemljevid vzorca porabe
 - Celotna zgodovina podatkov iz Moj Elektro za poljubno časovno obdobje
 - Oddaja energije v omrežje za sončne elektrarne (izbirno)
@@ -90,6 +91,7 @@ Energy dashboard for Home Assistant, straight from the Moj Elektro API.
 - Tariff blocks 1–5
 - 15-minute power with the peak per block
 - Agreed power from Moj Elektro and excess power per block, worked out like on the bill
+- Estimated bill for last month and this month: energy, network charge, levies and VAT (also yearly-netted self-supply); typical energy prices, or your own typed right on the card
 - Energy rhythm heat map
 - Full history from Moj Elektro, any date range
 - Grid out for solar panels (optional)
