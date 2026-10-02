@@ -237,15 +237,11 @@
     'Energy': 'Energija',
     'no data': 'ni podatkov',
     'Agreed power': 'Dogovorjena moč',
-    'of {0} kW agreed': 'od {0} kW dogovorjene',
-    'All peaks within agreed power': 'Vse konice pod dogovorjeno močjo',
-    'Blok {0} over agreed power by {1} kW': 'Blok {0} nad dogovorjeno močjo za {1} kW',
-    'over by {0} kW': 'presežek {0} kW',
-    'Excess power · {0}': 'Presežna moč · {0}',
-    'up to {0}': 'do {0}',
-    'No excess power': 'Brez presežne moči',
-    'Agreed power per block from Moj Elektro: {0}. The dashed line shows it for each quarter hour; striped parts of a bar are above it.': 'Dogovorjena moč po blokih iz Moj Elektro: {0}. Črtkana črta jo prikazuje za vsak 15-minutni interval, šrafirani deli stolpcev so nad njo.',
-    'Excess power is worked out like on your bill: per block, the square root of the sum of the squares of all overshoots in the month.': 'Presežna moč je izračunana kot na računu: po blokih, kvadratni koren vsote kvadratov vseh presežkov v mesecu.',
+    '+{0} kW over agreed': '+{0} kW nad dogovorjeno',
+    'Excess power in {0}': 'Presežna moč · {0}',
+    'none': 'brez',
+    'Agreed power: {0}. The light tip of a bar is the part above it.': 'Dogovorjena moč: {0}. Svetli vrh stolpca je del nad njo.',
+    'Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.': 'Presežna moč kot na računu: po blokih, koren vsote kvadratov vseh presežkov v mesecu.',
     'kW peak': 'kW konica',
     'Highest 15-min power per block · {0}': 'Najvišja 15-min moč po blokih · {0}',
     "Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.": 'Obračunska moč na vašem omrežnem računu temelji na 15-minutnih konicah, kot so te, za vsak omrežninski blok. Barve prikazujejo, v kateri blok spada posamezen 15-minutni interval.',
@@ -895,16 +891,13 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .pc:hover i{opacity:1;filter:brightness(1.3)}
 .pc.top i{opacity:1;box-shadow:0 0 14px var(--c)}
 .pc{position:relative}
-.pc .ag{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(255,255,255,.55);pointer-events:none}
-.pc .ov{position:absolute;left:0;right:0;border-radius:2px 2px 0 0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.9) 0 2px,transparent 2px 4px);pointer-events:none}
-.agst{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
-.agst.ok{color:#3ef0a8;background:rgba(62,240,168,.1);border:1px solid rgba(62,240,168,.35)}
-.agst.over{color:#ff6b81;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.45)}
-.agb{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin:7px 0 5px;overflow:hidden}
-.agb i{display:block;height:100%;border-radius:3px;background:var(--c)}
-.bpk>div.over{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.35);border-top-color:var(--c)}
-.bpk em.ov{color:#ff6b81;font-weight:600}
-.xrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pc .ov{position:absolute;left:0;right:0;border-radius:2px 2px 0 0;background:rgba(255,255,255,.85);pointer-events:none}
+.agst{font-size:12px;font-weight:600;color:#ff6b81}
+.bpk span.over{color:#ff6b81}
+.bpk span.wa{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bpk span small.ag{font-size:11px;color:var(--dim);font-weight:500}
+.xline{font-size:12px;color:var(--mut);margin-top:12px}
+.xline b{color:#ff6b81;font-weight:600}
 .pxl{position:relative;height:16px;margin-top:6px;font-size:10px;color:var(--dim)}
 .pxl span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .bpk{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
@@ -1990,7 +1983,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
     // the agreed power per block valid on a day (the newest period that covers it), or null
     _agOn(d) {
       let f = null;
-      for (const p of this._agreed || []) if (p.from <= d && (!p.to || d <= p.to) && Array.isArray(p.kw) && p.kw.length === 5) f = p.kw;
+      for (const p of this._agreed || []) if (p.from <= d && (!p.to || d <= p.to) && Array.isArray(p.kw) && p.kw.length === 5 && p.kw.every(v => v > 0)) f = p.kw;
       return f;
     }
     // excess power of the day's month per block, as on the bill: √(Σ (kW − agreed)²) of every quarter hour above
@@ -2086,26 +2079,24 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       const P = this._prof, day = this._pDay(), L = day && P.byDay.get(day);
       let h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')}</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${hm(L[L.length - 1].t)}` : t('Moj Elektro · 24 h delay')}</div></div>${L ? this._pNav(day) : ''}<span class="badge">kW</span></div>`;
       if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${t(P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…')}</b><span>${P && P.err ? esc(P.err) : t('Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.')}</span></div>`; return; }
-      const AG = this._agOn(day), pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(Math.max(pk.kw, ...(AG || []))), peaks = [null, null, null, null, null];
+      const AG = this._agOn(day), pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw), peaks = [null, null, null, null, null];
       for (const s of L) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
-      const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>${AG ? `<div class="r">${t('Agreed power')}<span class="v">${fk(AG[s.b - 1])} kW</span></div>` : ''}`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i>${AG ? `<b class="ag" style="bottom:${AG[s.b - 1] / mx * 100}%"></b>${s.kw > AG[s.b - 1] ? `<b class="ov" style="bottom:${AG[s.b - 1] / mx * 100}%;height:${(s.kw - AG[s.b - 1]) / mx * 100}%"></b>` : ''}` : ''}</div>`).join('');
+      const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>${AG ? `<div class="r">${t('Agreed power')}<span class="v">${fk(AG[s.b - 1])} kW</span></div>` : ''}`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i>${AG && s.kw > AG[s.b - 1] ? `<b class="ov" style="bottom:${AG[s.b - 1] / mx * 100}%;height:${(s.kw - AG[s.b - 1]) / mx * 100}%"></b>` : ''}</div>`).join('');
       // with the agreed power: the day's status, and the month's excess power
       let agst = '', xs = '';
       if (AG) {
         const over = peaks.map((p, i) => p && p.kw > AG[i] ? { i, by: p.kw - AG[i] } : null).filter(Boolean).sort((a, b) => b.by - a.by);
-        agst = over.length ? `<span class="agst over">⚠ ${t('Blok {0} over agreed power by {1} kW', over[0].i + 1, fk(over[0].by))}</span>` : `<span class="agst ok">✓ ${t('All peaks within agreed power')}</span>`;
-        const X = this._excess(day), mm = +day.slice(5, 7), end = X && X.last < iso(new Date(+day.slice(0, 4), mm, 0));
-        const chips = X ? X.kw.map((v, i) => +v.toFixed(1) > 0 ? `<span class="bchip" style="--c:${BLK[i]}">Blok ${i + 1} · ${v.toFixed(1)} kW</span>` : '').join('') : '';
-        xs = `<div class="bsub" style="margin-top:14px">${t('Excess power · {0}', `${MONL[mm - 1]} ${day.slice(0, 4)}`)}${end ? ` · ${t('up to {0}', fshort(X.last))}` : ''}</div>
-<div class="xrow">${!X ? `<span class="agst">${t('Loading…')}</span>` : chips || `<span class="agst ok">✓ ${t('No excess power')}</span>`}</div>`;
+        agst = over.length ? `<span class="agst">${t('+{0} kW over agreed', over[0].by.toFixed(1))}</span>` : '';
+        const X = this._excess(day), parts = X ? X.kw.map((v, i) => +v.toFixed(1) > 0 ? `Blok ${i + 1} <b>${v.toFixed(1)} kW</b>` : '').filter(Boolean) : [];
+        if (X) xs = `<div class="xline" data-tip="${esc(t('Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.'))}">${t('Excess power in {0}', MONL[+day.slice(5, 7) - 1])}: ${parts.length ? parts.join(' · ') : t('none')}</div>`;
       }
       const xl = L.map((s, i) => s.t.getMinutes() === 0 && s.t.getHours() % 6 === 0 ? `<span style="left:${(i + .5) / L.length * 100}%">${pad(s.t.getHours())}:00</span>` : '').join('');
-      const bp = peaks.map((s, i) => { const o = AG && s && s.kw > AG[i]; return `<div class="${o ? 'over' : ''}" style="--c:${BLK[i]}"><b>Blok ${i + 1}</b><span>${s ? fk(s.kw) : '—'}${s ? '<small style="font-size:11px;color:var(--mut);font-weight:500"> kW</small>' : ''}</span>${AG ? `<i class="agb"><i style="width:${s ? Math.min(100, s.kw / AG[i] * 100) : 0}%;${o ? 'background:#ff4d6d' : ''}"></i></i><em>${t('of {0} kW agreed', fk(AG[i]))}</em>` : ''}<em class="${o ? 'ov' : ''}">${o ? t('over by {0} kW', fk(s.kw - AG[i])) : s ? `${fshort(iso(s.t))} ${hm(s.t)}` : t('no data')}</em></div>`; }).join('');
+      const bp = peaks.map((s, i) => { const o = AG && s && s.kw > AG[i]; return `<div style="--c:${BLK[i]}"><b>Blok ${i + 1}</b><span class="${AG ? 'wa' : ''}${o ? ' over' : ''}">${s ? fk(s.kw) : '—'}${s ? `${AG ? `<small class="ag"> / ${fk(AG[i])}</small>` : '<small style="font-size:11px;color:var(--mut);font-weight:500"> kW</small>'}` : ''}</span><em>${s ? `${fshort(iso(s.t))} ${hm(s.t)}` : t('no data')}</em></div>`; }).join('');
       el.innerHTML = h + `<div class="pkrow"><div class="pk-v">${fk(pk.kw)}<small>${t('kW peak')}</small></div><div class="pk-s">${fdate(iso(pk.t))} · ${hm(pk.t)} <span class="bchip" style="--c:${BLK[pk.b - 1]}">Blok ${pk.b}</span>${agst}</div></div>
 <div class="pch">${bars}</div><div class="pxl">${xl}</div>
 <div class="bsub" style="margin-top:14px">${t('Highest 15-min power per block · {0}', fdate(day))}</div>
 <div class="bpk">${bp}</div>${xs}
-<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` ${t('Agreed power per block from Moj Elektro: {0}. The dashed line shows it for each quarter hour; striped parts of a bar are above it.', AG.map((v, i) => `B${i + 1} ${fk(v)}`).join(' · ') + ' kW')} ${t('Excess power is worked out like on your bill: per block, the square root of the sum of the squares of all overshoots in the month.')}` : ''}</div>`;
+<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` ${t('Agreed power: {0}. The light tip of a bar is the part above it.', AG.every(v => v === AG[0]) ? `${fk(AG[0])} kW` : AG.map((v, i) => `B${i + 1} ${fk(v)}`).join(' · ') + ' kW')}` : ''}</div>`;
     }
     // Grid out: the newest complete day of energy sent to the grid, what that day sent out, the net against
     // grid in and the hours it was exporting.

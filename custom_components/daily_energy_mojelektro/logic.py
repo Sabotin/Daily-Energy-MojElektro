@@ -238,7 +238,7 @@ def _local_day(value, end: bool = False) -> str | None:
 
 
 def agreed_powers(payload: dict) -> list[dict]:
-    """Agreed power per tariff block from a merilna-tocka response, every valid period:
+    """Agreed power per tariff block from a merilna-tocka response, every valid period with all blocks set:
     [{"from": date, "to": date or None (still valid), "kw": [block 1..5]}], oldest first."""
     out = []
     for item in (payload or {}).get("dogovorjeneMoci") or []:
@@ -246,7 +246,8 @@ def agreed_powers(payload: dict) -> list[dict]:
             continue
         kw = [to_float(item.get(f"casovniBlok{i}")) for i in range(1, 6)]
         start = _local_day(item.get("datumOd"))
-        if start is None or any(v is None or v < 0 for v in kw):
+        # a period with a block at 0 kW has no agreed power set (Moj Elektro lists such periods too)
+        if start is None or any(v is None or v <= 0 for v in kw):
             continue
         end = _local_day(item.get("datumDo"), end=True) if item.get("datumDo") else None
         if end is not None and end >= "9000":

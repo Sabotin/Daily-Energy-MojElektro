@@ -257,6 +257,8 @@ def test_agreed_power_from_the_metering_point():
              "casovniBlok1": "5,5", "casovniBlok2": 5.5, "casovniBlok3": 6, "casovniBlok4": 6, "casovniBlok5": 6},
             {"datumOd": "2024-01-01T00:00:00+01:00", "datumDo": "2024-09-30T00:00:00+02:00", "veljavnost": False,
              "casovniBlok1": 1, "casovniBlok2": 1, "casovniBlok3": 1, "casovniBlok4": 1, "casovniBlok5": 1},
+            {"datumOd": "2025-06-01T00:00:00+02:00", "datumDo": "2025-09-01T00:00:00+02:00", "veljavnost": True,
+             "casovniBlok1": 0, "casovniBlok2": 0, "casovniBlok3": 0, "casovniBlok4": 0, "casovniBlok5": 0},
         ]
     }
     periods = logic.agreed_powers(payload)
