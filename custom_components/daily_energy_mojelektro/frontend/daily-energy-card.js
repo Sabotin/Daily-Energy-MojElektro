@@ -736,6 +736,22 @@ padding:26px clamp(14px,2.6vw,40px) 56px}
 .lnk{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--txt,#e8ecff);font:inherit;font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:999px;cursor:pointer;margin-left:auto}
 .lnk svg{width:14px;height:14px}
 .lnk:hover{background:rgba(255,255,255,.1)}
+.hbill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--txt,#e8ecff);font:inherit;font-size:14px;font-weight:500;padding:9px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.hbill b{font-weight:700}
+/* with the Odjem / Oddaja switch the header is full: the bill button gets its own centred row */
+.hdr #hbill.row2{order:10;flex-basis:100%;display:flex;justify-content:center;margin-top:-6px}
+.hbill svg{width:16px;height:16px;opacity:.75}
+.hbill:hover{background:rgba(255,255,255,.1)}
+.hb-bg{position:fixed;inset:0;z-index:76;background:rgba(2,4,10,.6)}
+.hbp{position:fixed;z-index:77;left:50%;top:50%;transform:translate(-50%,-50%);width:min(480px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;border-radius:20px;background:linear-gradient(180deg,#0c1228,#070a16);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 80px -20px rgba(0,0,0,.8)}
+.hbp .bill{width:auto;min-height:0;border:0;background:none;padding:20px 22px}
+.hbp .bill-v{cursor:default}
+.hbp .bill-v svg{display:none}
+.hbp .bill-h{padding-right:44px}
+.hb-x{position:absolute;top:14px;right:14px;z-index:1}
+/* tablets: the hero card as before the estimated bill */
+:host([tablet]) .gwrap{margin:0}
+@media (max-width:860px){:host([tablet]) .gwrap{margin:0 auto}}
 .bp-bg{position:fixed;inset:0;z-index:80;background:rgba(2,4,10,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .bp{position:fixed;z-index:81;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box;padding:20px;border-radius:20px;background:linear-gradient(180deg,#0c1228,#070a16);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 80px -20px rgba(0,0,0,.8);display:flex;flex-direction:column;gap:12px}
 .bp h3{margin:0;font-size:18px}
@@ -1252,6 +1268,10 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       // Samodejno on a phone: the full look, drawn the way phones can keep up with
       const phone = !lite && m === 'auto' && isPhone();
       if (phone !== this._phone) { this._phone = phone; this.toggleAttribute('phone', phone); }
+      // Tablets: the hero card as before the estimated bill (counter left, gauge right); the bill is a button in the
+      // header that opens it in a window
+      const tablet = isTablet();
+      if (tablet !== this._tablet) { this._tablet = tablet; this.toggleAttribute('tablet', tablet); }
       if (!lite) loadFonts();
     }
     // Settings > Grid: "Grid in & Grid out" adds the Grid in / Grid out switch; the chosen view is kept per device
@@ -1511,7 +1531,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
  <section class="card s12" id="n-cal"></section>
  <section class="card s12" id="n-log"></section>
 </div></div>
-<div id="dw"></div><div id="bp"></div></div>
+<div id="dw"></div><div id="hb"></div><div id="bp"></div></div>
 <div class="tip" id="tip"></div><div class="toast" id="toast"></div>
 <input type="file" id="file" accept=".csv,text/csv,.json,application/json" hidden>`;
       const R = this.shadowRoot;
@@ -1524,7 +1544,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
         if (e.target.id === 'ed-vt' || e.target.id === 'ed-mt') { const v = num(this.$('ed-vt').value), m = num(this.$('ed-mt').value), s = this.$('ed-sum'); if (s) s.textContent = v != null && m != null ? fk(v + m) + ' kWh' : '—'; }
       });
       R.addEventListener('change', e => this._change(e));
-      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Enter' && e.target.id === 'mm-name') this._mmRename(this._mm && this._mm.edit); if (e.key === 'Enter' && e.target.id === 'mm-newtok') this._mmToken(this._mm && this._mm.key); if (e.key === 'Enter' && /^bp-/.test(e.target.id || '')) this._savePrices(false); if (e.key === 'Escape') { if (this._ui.bpOpen) { this._ui.bpOpen = false; this._renderPrices(); } this._closeMM(); this._closeCals(); this._drawer(false); } });
+      R.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id && e.target.id.startsWith('f-')) this._saveForm(); if (e.key === 'Enter' && e.target.id === 'pin') this._clearAll(); if (e.key === 'Enter' && e.target.id === 'fpin') this._openFormPin(); if (e.key === 'Enter' && /^ed-/.test(e.target.id || '')) this._saveEdit(this._ui.editDay); if (e.key === 'Enter' && e.target.id === 'oa-o') this._saveOutAdd(); if (e.key === 'Enter' && /^bl-\d$/.test(e.target.id || '')) this._saveBlocks(this._ui.blEdit); if (e.key === 'Enter' && e.target.id === 'mm-name') this._mmRename(this._mm && this._mm.edit); if (e.key === 'Enter' && e.target.id === 'mm-newtok') this._mmToken(this._mm && this._mm.key); if (e.key === 'Enter' && /^bp-/.test(e.target.id || '')) this._savePrices(false); if (e.key === 'Escape') { if (this._ui.bpOpen) { this._ui.bpOpen = false; this._renderPrices(); } else if (this._ui.hbOpen) { this._ui.hbOpen = false; this._renderBillWin(); } this._closeMM(); this._closeCals(); this._drawer(false); } });
       // Info boxes (data-tip): hovering with a mouse shows them; a click or tap on a bar pins the box (see _click) until
       // a click or tap somewhere else, or a scroll of 40 px or more. While pinned, hovering does not change it.
       // Only a mouse (or a tablet's trackpad) hovers: a finger sliding over the bars while scrolling (tablets) shows nothing.
@@ -1564,9 +1584,9 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       const d = new Date(), c = this._c || {}, msm = this._meterBtn(true);
       // only warnings get a chip; normal operation keeps the header clean
       const chip = this._demo ? `<span class="chip warn"><i></i>${t('Demo preview')}</span>` : this._sync === 'none' ? `<span class="chip warn"><i></i>${t('Daily Energy integration not set up')}</span>` : '';
-      return `<div class="logo">${ic('bolt')}</div><div class="ttl${msm ? ' hasm' : ''}"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div>${msm}</div><div class="sp"></div><div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._meterBtn()}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
+      return `<div class="logo">${ic('bolt')}</div><div class="ttl${msm ? ' hasm' : ''}"><h1><span>Daily Energy</span></h1><div class="sub">${flong(d)}</div>${msm}</div><div class="sp"></div>${this._tablet ? (this._gridBoth() ? '<span id="hbill" class="row2"></span>' : '<span id="hbill"></span><div class="sp"></div>') : ''}<div class="chips">${chip}</div>${this._gridBoth() ? (() => { const cur = this._isOut() ? 'out' : this._isNet() ? 'net' : 'in', b = (v, i, l) => `<button class="${v}${cur === v ? ' on' : ''}" data-act="view" data-v="${v}">${ic(i)}${t(l)}</button>`; return `<div class="gsw">${b('in', 'bolt', 'Grid in')}<button class="m${cur === 'net' ? ' on' : ''}" data-act="view" data-v="net" title="${t('Net')}" aria-label="${t('Net')}">${ic('merge')}</button>${b('out', 'sun', 'Grid out')}</div>`; })() : ''}${this._meterBtn()}${this._entry ? `<button class="ibtn upd${this._checking ? ' busy' : ''}" data-act="update" title="${t('Check for updates')}">${ic('sync')}</button>` : ''}<button class="ibtn" data-act="settings" title="${t('Settings')}">${ic('gear')}</button>`;
     }
-    _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); this._placeMM(); }
+    _renderHdr() { this.$('hdr').innerHTML = this._hdrHtml(); this._placeMM(); if (this._tablet && this._c && this._loaded) this._renderBill(); }
     // Update button: asks the Moj Elektro API for new data now (the integration also checks every morning by itself). At most 5 a day per meter.
     async _checkUpdates() {
       if (this._checking || !this._entry) return;
@@ -1622,7 +1642,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
  <div class="big"><span class="bignum" id="bignum">${hv ? fk(this._shown) : '0'}</span><span class="unit">kWh</span></div>
  <div class="pills">${pills.join('') || `<span class="pill">${t(out ? 'No grid-out data yet' : this._me ? 'Waiting for the first Moj Elektro day' : 'Log two readings to see daily usage')}</span>`}</div>
  <div class="meter">${meter}<div class="odo">${odo}</div></div>
-<div class="gwrap"><svg class="gauge" viewBox="0 0 200 200">
+${this._tablet ? '</div>' : ''}<div class="gwrap"><svg class="gauge" viewBox="0 0 200 200">
  <defs><linearGradient id="gG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3ee6ff"/><stop offset=".55" stop-color="#7b6bff"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient>
  <filter id="gl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
  ${ticks}
@@ -1630,8 +1650,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
  <g transform="rotate(135 100 100)"><circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="13" stroke-linecap="round" stroke-dasharray="${arc} ${C}"/>
  <circle class="g-val" id="gval" cx="100" cy="100" r="80" fill="none" stroke="url(#gG)" stroke-width="13" stroke-linecap="round" stroke-dasharray="0 ${C}" filter="url(#gl)" opacity="${f > 0 ? 1 : 0}" data-to="${arc * f} ${C}"/></g>
  <circle cx="100" cy="11" r="3.5" fill="#fff" opacity=".85"/><text x="100" y="-2" fill="#8f98c2" font-size="8" text-anchor="middle" letter-spacing="1">${t('AVG')}</text>
-</svg><div class="g-c"><div class="g-v">${ratio == null ? '—' : Math.round(ratio * 100)}<small>%</small></div><div class="g-l">${t('of your average')}</div><div class="g-a">${t('avg {0} kWh/day', avg == null ? '—' : fk(avg))}</div></div></div></div>
-<div class="hero-r" id="bill"></div>`;
+</svg><div class="g-c"><div class="g-v">${ratio == null ? '—' : Math.round(ratio * 100)}<small>%</small></div><div class="g-l">${t('of your average')}</div><div class="g-a">${t('avg {0} kWh/day', avg == null ? '—' : fk(avg))}</div></div></div>${this._tablet ? '' : `</div>
+<div class="hero-r" id="bill"></div>`}`;
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const g = this.$('gval'); if (g) g.setAttribute('stroke-dasharray', g.dataset.to);
         this.shadowRoot.querySelectorAll('.od-r').forEach(r => r.style.transform = `translateY(-${r.dataset.v * 10}%)`);
@@ -1733,11 +1753,22 @@ ${kw}
       await this._commit({ settings: true });
       this._toast(t(reset ? 'Typical prices are used' : 'Prices saved'));
     }
+    // Tablets: "Ocena računa ≈ €X ▾" in the header; a tap opens the whole box (breakdown open) in a window
+    _renderBillBtn(B) {
+      const hb = this.$('hbill'); if (!hb) return;
+      const ok = B && !B.empty && !B.few && this._contractKnown();
+      hb.innerHTML = B ? `<button class="hbill" data-act="hb-open">${t('Estimated bill')}${ok ? ` <b>≈ ${this._money(B.total)}</b>` : ''}${ic('chev')}</button>` : '';
+    }
+    _renderBillWin() {
+      const w = this.$('hb'); if (!w) return;
+      w.innerHTML = this._tablet && this._ui.hbOpen ? `<div class="hb-bg" data-act="hb-close"></div><div class="hbp" role="dialog" aria-modal="true"><button class="ibtn hb-x" data-act="hb-close">${ic('x')}</button><div id="bill"></div></div>` : '';
+    }
     _renderBill() {
+      const c = this._c, has = !this._demo && this._me && (c.out ? (this._data.me || []).length : c.keys.length);
+      if (this._tablet) { this._renderBillBtn(has ? this._billIn(this._ui.billM || 'prev') : null); if (!has && this._ui.hbOpen) { this._ui.hbOpen = false; this._renderBillWin(); } }
       const el = this.$('bill'); if (!el) return;
-      const c = this._c;
-      if (this._demo || !this._me || !(c.out ? (this._data.me || []).length : c.keys.length)) { el.innerHTML = ''; return; }
-      const which = this._ui.billM || 'prev', B = this._billIn(which), open = this._ui.billOpen ?? !this._phone, m = v => this._money(v);
+      if (!has) { el.innerHTML = ''; return; }
+      const which = this._ui.billM || 'prev', B = this._billIn(which), open = this._tablet || (this._ui.billOpen ?? !this._phone), m = v => this._money(v);
       const tabs = this._tabs(which, 'bill-m', [['prev', 'Previous month'], ['cur', 'This month']]);
       const head = `<div class="bill-h"><span class="meter-l">${t('Estimated bill')}</span>${tabs}</div>`;
       if (!this._contractKnown()) {
@@ -2696,6 +2727,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       else if (a === 'bill-m') { this._ui.billM = t.dataset.v; this._renderBill(); }
       else if (a === 'bill-open') { this._ui.billOpen = !(this._ui.billOpen ?? !this._phone); this._renderBill(); }
       else if (a === 'bp-open') { this._ui.bpOpen = true; this._renderPrices(); }
+      else if (a === 'hb-open') { this._ui.hbOpen = true; this._renderBillWin(); this._renderBill(); }
+      else if (a === 'hb-close') { this._ui.hbOpen = false; this._renderBillWin(); }
       else if (a === 'bp-close') { this._ui.bpOpen = false; this._renderPrices(); }
       else if (a === 'bp-save') this._savePrices(false);
       else if (a === 'bp-reset') this._savePrices(true);
