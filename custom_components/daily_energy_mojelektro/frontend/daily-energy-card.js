@@ -119,6 +119,7 @@
     'Your exact prices': 'Vaše cene energije',
     "Your supplier's energy prices without VAT, as on your bill. Empty fields use typical prices (shown in grey).": 'Cene energije vašega dobavitelja brez DDV, kot na računu. Prazna polja uporabijo okvirne cene (v sivem).',
     'If your package has one price for all hours, type it in both fields.': 'Če ima vaš paket eno ceno za ves dan, jo vpišite v obe polji.',
+    'taken from the grid': 'prevzeto iz omrežja',
     'Waiting for the meter details from Moj Elektro – press ↻.': 'Čakam na podatke o števcu iz Moj Elektro – pritisnite ↻.',
     'Agreed power (from your bill)': 'Dogovorjena moč (z računa)',
     'Moj Elektro has no agreed power for this meter yet. Empty blocks take the block before.': 'Moj Elektro za ta števec še nima dogovorjene moči. Prazni bloki prevzamejo vrednost prejšnjega bloka.',
@@ -1645,6 +1646,12 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       if (!first) return { kw: null, src: null };
       let prev = first; return { kw: v.map(x => (prev = x > 0 ? x : prev)), src: 'man' };
     }
+    // The bill is always for energy taken from the grid: on the grid-out view it is worked out from the grid-in data
+    _billIn(which) {
+      if (!this._c.out) return this._bill(which);
+      const keep = this._c;
+      try { this._calc(false); return this._bill(which); } finally { this._c = keep; }
+    }
     // which: 'prev' (last month) or 'cur' (this month). A month whose days are not all in yet is projected from the
     // average of its days so far (from 3 days on); fixed charges always count for the whole month.
     _bill(which) {
@@ -1695,7 +1702,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
     _renderPrices() {
       const el = this.$('bp'); if (!el) return;
       if (!this._ui.bpOpen) { el.innerHTML = ''; return; }
-      const s = this._c.s, tf = this._tariffs(), B = this._bill(this._ui.billM || 'prev');
+      const s = this._c.s, tf = this._tariffs(), B = this._billIn(this._ui.billM || 'prev');
       const fld = (id, label, v, ph, cls = '') => `<label class="fld${cls}"><span>${label}</span><div class="iw"><input class="in" id="bp-${id}" inputmode="decimal" autocomplete="off" value="${v > 0 ? v : ''}" placeholder="${ph}"><em>€/kWh</em></div></label>`;
       const vtmt = `<div class="two">${fld('vt', '<i class="dot vt"></i>VT', s.pVT, DEF_PRICE.vt, ' vt')}${fld('mt', '<i class="dot mt"></i>MT', s.pMT, DEF_PRICE.mt, ' mt')}</div>`;
       const et = fld('et', 'ET', s.pET, DEF_PRICE.et);
@@ -1725,8 +1732,8 @@ ${kw}
     _renderBill() {
       const el = this.$('bill'); if (!el) return;
       const c = this._c;
-      if (c.out || this._demo || !this._me || !c.keys.length) { el.innerHTML = ''; return; }
-      const which = this._ui.billM || 'prev', B = this._bill(which), open = !!this._ui.billOpen, m = v => this._money(v);
+      if (this._demo || !this._me || !(c.out ? (this._data.me || []).length : c.keys.length)) { el.innerHTML = ''; return; }
+      const which = this._ui.billM || 'prev', B = this._billIn(which), open = !!this._ui.billOpen, m = v => this._money(v);
       const tabs = this._tabs(which, 'bill-m', [['prev', 'Previous month'], ['cur', 'This month']]);
       const head = `<div class="bill-h"><span class="meter-l">${t('Estimated bill')}</span>${tabs}</div>`;
       if (!this._contractKnown()) {
@@ -1758,7 +1765,7 @@ ${row(t('Total'), m(B.total), t("Without excess power (informative on the bill) 
 ${yl}</div>` : '';
       el.innerHTML = `<div class="bill${open ? ' open' : ''}">${head}
 <div class="bill-v" data-act="bill-open"><span>≈ ${m(B.total)}</span><small>${t('with VAT')}</small>${ic('chev')}</div>
-<div class="meter-s">${sub} · ${fk(B.kwh)} kWh</div>${notes.map(n => `<div class="bill-n">${n}</div>`).join('')}
+<div class="meter-s">${sub} · ${fk(B.kwh)} kWh${c.out ? ' ' + t('taken from the grid') : ''}</div>${notes.map(n => `<div class="bill-n">${n}</div>`).join('')}
 <div class="bill-p">${B.approx && !B.yearly ? `<span>${t('≈ typical energy prices')}</span>` : ''}<button class="lnk" data-act="bp-open">${ic('edit')}${t(B.approx || B.noKw ? 'Enter your exact prices' : 'Edit prices')}</button></div>${det}</div>`;
     }
     _odo(str) {
