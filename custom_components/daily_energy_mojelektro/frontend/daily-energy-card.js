@@ -895,6 +895,7 @@ input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;tex
 .bpk span small.ag{font-size:11px;color:var(--dim);font-weight:500}
 .xline{font-size:12px;color:var(--mut);margin-top:12px}
 .xline b{color:#ff6b81;font-weight:600}
+@media (max-width:640px){.pnote .agn{display:block}}
 .pxl{position:relative;height:16px;margin-top:6px;font-size:10px;color:var(--dim)}
 .pxl span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .bpk{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
@@ -2100,7 +2101,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
 <div class="pch">${bars}</div><div class="pxl">${xl}</div>
 <div class="bsub" style="margin-top:14px">${t('Highest 15-min power per block · {0}', fdate(day))}</div>
 <div class="bpk">${bp}</div>${xs}
-<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` ${t('Agreed power: {0}.', agv)}` : AGF ? ` ${t(AGF.new ? 'Moj Elektro has no agreed power set for this day (new user).' : 'Moj Elektro has no agreed power set for this day.')}` : ''}</div>`;
+<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` <span class="agn">${t('Agreed power: {0}.', agv)}</span>` : AGF ? ` ${t(AGF.new ? 'Moj Elektro has no agreed power set for this day (new user).' : 'Moj Elektro has no agreed power set for this day.')}` : ''}</div>`;
     }
     // Grid out: the newest complete day of energy sent to the grid, what that day sent out, the net against
     // grid in and the hours it was exporting.
