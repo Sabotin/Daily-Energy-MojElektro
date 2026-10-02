@@ -131,7 +131,6 @@
     'Switch on Grid in &amp; Grid out in ⚙ to see the yearly balance.': 'Za letno bilanco v ⚙ vklopite Odjem in oddaja.',
     'So far {0} kWh more sent out than taken: the surplus is not paid out.': 'Do zdaj {0} kWh več oddane kot prevzete energije: presežek se ne izplača.',
     'So far {0} kWh more taken than sent out{1}.': 'Do zdaj {0} kWh več prevzete kot oddane energije{1}.',
-    'Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).': 'Za oceno stroškov energijskega dela VT/MT (omrežnine in davki niso vključeni).',
     'Today': 'Danes',
     'Used today': 'Porabljena energija danes',
     'Used yesterday': 'Porabljena energija včeraj',
@@ -268,7 +267,7 @@
     'MT share': 'Delež MT',
     'of tariff energy': 'tarifne energije',
     'Energy cost': 'Strošek energije',
-    'set prices in ⚙': 'nastavite cene v ⚙',
+    'set prices in Ocena računa': 'vpišite cene pri Oceni računa',
     // 15-minute power
     '15-minute power': '15-minutna moč',
     'grid out': 'oddaja',
@@ -346,8 +345,6 @@
     'Counter readings': 'Odčitki števca',
     'Type the VT and MT registers from the meter; usage is the difference between readings.': 'Vpišite stanji VT in MT s števca; poraba je razlika med odčitki.',
     'Type how many kWh were used on VT and MT for that day.': 'Vpišite, koliko kWh je bilo tisti dan porabljenih na VT in MT.',
-    'Prices (optional)': 'Cene (neobvezno)',
-    'Currency symbol': 'Simbol valute',
     'Language': 'Jezik',
     'Automatic': 'Samodejno',
     'Follows the Home Assistant language.': 'Sledi jeziku Home Assistanta.',
@@ -2277,7 +2274,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
 <div class="dn-c"><div class="dn-l">${nm}</div><div class="dn-v">${fk(tot)}<small>kWh</small></div><div class="dn-l">${Math.round(fv * 100)}% VT · ${100 - Math.round(fv * 100)}% MT</div></div></div>
 <div class="tl"><div class="tl-i vt"><div class="tl-n">${ic('sun')}Energija VT</div><div class="tl-v">${fk(cur.vt)}<small>kWh</small></div><div class="tl-s">${cv != null ? '≈ ' + this._money(cv) : t('big tariff')}</div></div>
 <div class="tl-i mt"><div class="tl-n">${ic('moon')}Energija MT</div><div class="tl-v">${fk(cur.mt)}<small>kWh</small></div><div class="tl-s">${cm != null ? '≈ ' + this._money(cm) : t('small tariff')}</div></div></div></div>
-<div>${this._bars(bk, true, true, 'vtmt')}<div class="stats"><div class="st"><div class="st-l">VT · ${sp}</div><div class="st-v" style="color:var(--vt1)">${fk(vS)}<small>kWh</small></div><div class="st-s">${s.pVT > 0 ? '≈ ' + this._money(vS * s.pVT) : t('big tariff')}</div></div><div class="st"><div class="st-l">MT · ${sp}</div><div class="st-v" style="color:var(--mt1)">${fk(mS)}<small>kWh</small></div><div class="st-s">${s.pMT > 0 ? '≈ ' + this._money(mS * s.pMT) : t('small tariff')}</div></div><div class="st"><div class="st-l">${t('MT share')}</div><div class="st-v">${vS + mS ? Math.round(mS / (vS + mS) * 100) : 0}<small>%</small></div><div class="st-s">${t('of tariff energy')}</div></div><div class="st"><div class="st-l">${t('Energy cost')}</div><div class="st-v">${totC != null ? this._money(totC) : '—'}</div><div class="st-s">${totC != null ? sp : t('set prices in ⚙')}</div></div></div></div></div>`;
+<div>${this._bars(bk, true, true, 'vtmt')}<div class="stats"><div class="st"><div class="st-l">VT · ${sp}</div><div class="st-v" style="color:var(--vt1)">${fk(vS)}<small>kWh</small></div><div class="st-s">${s.pVT > 0 ? '≈ ' + this._money(vS * s.pVT) : t('big tariff')}</div></div><div class="st"><div class="st-l">MT · ${sp}</div><div class="st-v" style="color:var(--mt1)">${fk(mS)}<small>kWh</small></div><div class="st-s">${s.pMT > 0 ? '≈ ' + this._money(mS * s.pMT) : t('small tariff')}</div></div><div class="st"><div class="st-l">${t('MT share')}</div><div class="st-v">${vS + mS ? Math.round(mS / (vS + mS) * 100) : 0}<small>%</small></div><div class="st-s">${t('of tariff energy')}</div></div><div class="st"><div class="st-l">${t('Energy cost')}</div><div class="st-v">${totC != null ? this._money(totC) : '—'}</div><div class="st-s">${totC != null ? sp : t('set prices in Ocena računa')}</div></div></div></div></div>`;
     }
 
     /* ----- Moj Elektro: 15-minute load profile -----
@@ -2568,11 +2565,6 @@ ${this._canApiImport() ? `<div class="dw-s"><div class="dw-t">${t('Moj Elektro h
 <div class="two"><label class="fld"><span>${t('From')}</span><input class="in" type="date" id="imp-from" value="${this._ui.impFrom}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label>
 <label class="fld"><span>${t('To')}</span><input class="in" type="date" id="imp-to" value="${this._ui.impTo}" max="${this._impMax()}"${this._importing ? ' disabled' : ''}></label></div>
 <div class="row"><button class="btn sm gh" data-act="api-import"${this._importing ? ' disabled' : ''}>${ic('sync', this._importing ? 'spin' : '')}${t(this._importing ? 'Importing…' : 'Export &amp; import from Moj Elektro')}</button></div></div>` : ''}
-<div class="dw-s"><div class="dw-t">${t('Prices (optional)')}</div>
-<div class="two"><label class="fld vt"><span><i class="dot vt"></i>VT / kWh</span><input class="in" data-set="pVT" inputmode="decimal" value="${s.pVT || ''}" placeholder="0.12"></label>
-<label class="fld mt"><span><i class="dot mt"></i>MT / kWh</span><input class="in" data-set="pMT" inputmode="decimal" value="${s.pMT || ''}" placeholder="0.08"></label></div>
-<label class="fld"><span>${t('Currency symbol')}</span><input class="in" data-set="cur" value="${esc(s.cur)}" maxlength="4"></label>
-<div class="dw-note">${t('Used for cost estimates of the VT/MT energy part only (network fees and taxes are not included).')}</div></div>
 <div class="dw-s"><div class="dw-t">${t('Your data')}</div>
 <div class="dw-note">${t(this._sync === 'shared' ? 'Everything is stored by the Daily Energy integration inside Home Assistant (included in its backups) and shared by every user; changes show up live on every open dashboard. New Moj Elektro days are logged automatically. Import accepts Moj Elektro CSV exports (daily readings, daily per block, 15-minute data) and Daily Energy JSON backups.' : 'The Daily Energy integration is not set up, so nothing can be saved.')}</div>
 <div class="row"><button class="btn sm gh" data-act="export">${ic('down')}${t('Export JSON')}</button><button class="btn sm gh" data-act="import">${ic('up')}${t('Import CSV / JSON')}</button></div>

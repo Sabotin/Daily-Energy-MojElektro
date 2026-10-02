@@ -63,7 +63,6 @@ type: custom:daily-energy-card
 | Omrežje | Odjem, ali Odjem in oddaja |
 | Ta naprava | Samodejno, Lahek ali Poln (za vsako napravo posebej) |
 | Zgodovina Moj Elektro | Uvoz poljubnega časovnega obdobja |
-| Cene | Cena VT / MT za oceno stroškov |
 | Vaši podatki | Izvoz, uvoz CSV / JSON, brisanje vseh podatkov |
 
 ## Dobro je vedeti
@@ -138,7 +137,6 @@ type: custom:daily-energy-card
 | Grid | Grid in, or Grid in & Grid out |
 | This device | Automatic, Light or Full (per device) |
 | Moj Elektro history | Import any date range |
-| Prices | VT / MT price for cost estimates |
 | Your data | Export, import CSV / JSON, delete all data |
 
 ## Good to know
