@@ -17,6 +17,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 
 def to_float(value) -> float | None:
@@ -207,6 +208,71 @@ def totals_from_readings(et: dict, vt: dict, mt: dict, days: list[date]) -> dict
             "c": round(et[n], 3),  # the meter number at the end of the day
         }
     return out
+
+
+# ---------------------------------------------------------------- agreed power (dogovorjena obračunska moč)
+
+POINT_URL = "https://api.informatika.si/mojelektro/v1/merilno-mesto/"
+GSRN_URL = "https://api.informatika.si/mojelektro/v1/merilna-tocka/"
+
+
+def omto_gsrn(payload: dict) -> str | None:
+    """The GSRN of the metering point's grid-in point ("vrsta" OMTO) from a merilno-mesto response."""
+    points = [p for p in (payload or {}).get("merilneTocke") or [] if isinstance(p, dict) and p.get("gsrn")]
+    best = next((p for p in points if p.get("vrsta") == "OMTO"), None)
+    return str(best["gsrn"]) if best else None
+
+
+def _local_day(value, end: bool = False) -> str | None:
+    """Local date of an API time; an end at 00:00 means up to the day before."""
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(ZoneInfo("Europe/Ljubljana"))
+    day = moment.date()
+    if end and (moment.hour, moment.minute, moment.second) == (0, 0, 0):
+        day -= timedelta(days=1)
+    return day.isoformat()
+
+
+def agreed_powers(payload: dict) -> list[dict]:
+    """Agreed power per tariff block from a merilna-tocka response, every valid period:
+    [{"from": date, "to": date or None (still valid), "kw": [block 1..5]}], oldest first."""
+    out = []
+    for item in (payload or {}).get("dogovorjeneMoci") or []:
+        if not isinstance(item, dict) or item.get("veljavnost") is False:
+            continue
+        kw = [to_float(item.get(f"casovniBlok{i}")) for i in range(1, 6)]
+        start = _local_day(item.get("datumOd"))
+        if start is None or any(v is None or v < 0 for v in kw):
+            continue
+        end = _local_day(item.get("datumDo"), end=True) if item.get("datumDo") else None
+        if end is not None and end >= "9000":
+            end = None
+        out.append({"from": start, "to": end, "kw": [round(v, 2) for v in kw]})
+    return sorted(out, key=lambda p: p["from"])
+
+
+def agreed_on(periods: list[dict], day: str) -> list[float] | None:
+    """The agreed power per block valid on this day (the newest period that covers it)."""
+    found = None
+    for p in periods:
+        if p["from"] <= day and (p["to"] is None or day <= p["to"]):
+            found = p["kw"]
+    return found
+
+
+def excess_power(quarters_kw: list[tuple[int, float]], agreed: list[float]) -> list[float]:
+    """Excess power per block for a month, as on the bill (presežna moč): the square root of the sum of the
+    squared overshoots of every 15-minute power above the block's agreed power. quarters_kw: (block, kW)."""
+    sums = [0.0] * 5
+    for block, kw in quarters_kw:
+        over = kw - agreed[block - 1]
+        if over > 0:
+            sums[block - 1] += over * over
+    return [round(s**0.5, 2) for s in sums]
 
 
 # ---------------------------------------------------------------- network tariff blocks

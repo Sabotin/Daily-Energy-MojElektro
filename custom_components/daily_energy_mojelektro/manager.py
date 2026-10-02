@@ -83,10 +83,11 @@ class DailyEnergyManager:
         # overwrites, q15 / q15o: {date: [kWh]} grid in / grid out,
         # q15_miss / q15o_miss: {date: quarter hours Moj Elektro had not published yet when the day was fetched},
         # refresh: {"day": date, "count": fetches a person started that day},
-        # meta: {"grid_out_tried": 1 once "Grid in & Grid out" was switched on the first time (the only switch that fetches)}
+        # meta: {"grid_out_tried": 1 once "Grid in & Grid out" was switched on the first time (the only switch that fetches)},
+        # agreed: {"day": date it was last fetched, "periods": logic.agreed_powers()} the agreed power per tariff block
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
-            "refresh": {}, "meta": {},
+            "refresh": {}, "meta": {}, "agreed": {},
         }
         # 15-minute days older than KEEP_Q15_DAYS, kept for good in a file of their own:
         # {"q15"|"q15o": {"YYYY-MM": {date: [kWh]}}}; the card gets only their dates and loads a month when needed
@@ -231,6 +232,33 @@ class DailyEnergyManager:
             _LOGGER.debug("Moj Elektro request failed: %s", err)
             return None
 
+    def _agreed_due(self, today) -> bool:
+        """The agreed power is fetched at most once a day (it changes rarely)."""
+        return self.data["agreed"].get("day") != today.isoformat()
+
+    async def _fetch_agreed(self, session, meter: str, token: str, today) -> bool:
+        """The agreed power per tariff block of every period, from the metering point's grid-in point (two
+        requests). Returns whether it changed."""
+        await asyncio.sleep(API_PAUSE)
+        point = await self._get_json(session, logic.POINT_URL + meter, token)
+        if point is None:
+            return False
+        gsrn = logic.omto_gsrn(point)
+        if not gsrn:
+            # Moj Elektro answered without a grid-in point: try again tomorrow, not at every check
+            self.data["agreed"] = {**self.data["agreed"], "day": today.isoformat()}
+            self._save()
+            return False
+        await asyncio.sleep(API_PAUSE)
+        payload = await self._get_json(session, logic.GSRN_URL + gsrn, token)
+        if payload is None:
+            return False
+        periods = logic.agreed_powers(payload)
+        changed = periods != self.data["agreed"].get("periods", [])
+        self.data["agreed"] = {"day": today.isoformat(), "periods": periods}
+        self._save()
+        return changed
+
     async def _fetch(self, session, meter: str, token: str, direction: dict, q_range, r_ranges) -> tuple:
         """One direction: the 15-minute data of q_range and the three daily registers of every r_range.
 
@@ -273,13 +301,14 @@ class DailyEnergyManager:
           is complete; a day is only replaced by data that is at least as complete
         * with Settings > Grid "Grid in & Grid out": the same for the energy sent to the grid
         Uses the meter ID and API token entered at setup.
+        * once a day: the agreed power per tariff block
         force = False (the morning checks) does not contact Moj Elektro when nothing is missing.
         Returns {"changed": bool, ...}.
         """
         today = dt_util.now().date()
         if self._fetching:
             return {"changed": False, "busy": True}
-        if not force and not self.missing(today):
+        if not force and not self.missing(today) and not self._agreed_due(today):
             return {"changed": False, "skipped": True}
         meter, token = self.credentials()
         if not token or not meter:
@@ -296,9 +325,12 @@ class DailyEnergyManager:
         )
         before = snap()
         fetched = []
+        agreed_changed = False
         self._fetching = True
         try:
             session = async_get_clientsession(self.hass)
+            if self._agreed_due(today):
+                agreed_changed = await self._fetch_agreed(session, meter, token, today)
             for direction, q_key, miss_key in directions:
                 # the 1st of the month (for month totals) and the last days
                 result = await self._fetch(
@@ -339,7 +371,7 @@ class DailyEnergyManager:
                 if any(not isinstance(old.get(k), (int, float)) or abs(old[k] - v) > 0.0015 for k, v in rec.items()):
                     self._merge_day(d, rec)
 
-        changed = snap() != before
+        changed = snap() != before or agreed_changed
         if changed:
             self._changed()
         return {"changed": changed, "missing": self.missing(today)}
@@ -349,7 +381,8 @@ class DailyEnergyManager:
 
         Month by month: daily meter readings (usage, VT, MT, month totals) and 15-minute data (tariff
         blocks of every complete day; the 15-minute chart, older days in the archive), and with
-        Settings > Grid "Grid in & Grid out" the same for the energy sent to the grid. Moj Elektro's
+        Settings > Grid "Grid in & Grid out" the same for the energy sent to the grid; once a day also the
+        agreed power per tariff block (every period, so older months get theirs). Moj Elektro's
         numbers replace what is stored for those days. Returns {"days": days changed, ...} or {"error": ...}.
         """
         today = dt_util.now().date()
@@ -367,10 +400,12 @@ class DailyEnergyManager:
         day = timedelta(days=1)
         directions = self._directions()
         collected = {id(dr): {"q": {}, "miss": {}, "reg": {"et": {}, "vt": {}, "mt": {}}} for dr, _, _ in directions}
-        answered = False
+        answered = agreed_changed = False
         self._fetching = True
         try:
             session = async_get_clientsession(self.hass)
+            if self._agreed_due(today):
+                agreed_changed = await self._fetch_agreed(session, meter, token, today)
             for span_start, span_end in logic.month_spans(start, end):
                 # readings from the 1st of the month (month totals) up to the day after the last day, in two
                 # requests so that none is longer than a month
@@ -420,7 +455,7 @@ class DailyEnergyManager:
             else:
                 result.update(totals_out=len(totals))
             touched |= self._store_quarters(q_key, miss_key, quarters, bucket["miss"], cutoff)
-        if touched:
+        if touched or agreed_changed:
             self._changed()
         return {"days": len(touched), **result}
 
@@ -476,6 +511,7 @@ class DailyEnergyManager:
             "meter": self.entry.entry_id,
             "api": all(self.credentials()),
             "has_pin": bool(self.pin),
+            "agreed": self.data["agreed"].get("periods", []),
         }
 
     @callback
@@ -519,7 +555,7 @@ class DailyEnergyManager:
     @callback
     def clear_all(self) -> None:
         """Settings > Delete all data: every Moj Elektro day, 15-minute day and manual reading. Settings stay."""
-        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss"):
+        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss", "agreed"):
             self.data[key] = {}
         self.archive = {"q15": {}, "q15o": {}}
         self._save_archive()

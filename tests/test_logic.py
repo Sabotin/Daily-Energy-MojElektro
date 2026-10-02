@@ -242,3 +242,39 @@ def test_grid_out_tried_start_for_existing_meters():
     assert logic.grid_out_tried_start(False, {"2026-09-24": {"u": 1.0, "o": 2.0}}) == 1  # grid-out data exists
     assert logic.grid_out_tried_start(False, {"2026-09-24": {"u": 1.0}}) == 0
     assert logic.grid_out_tried_start(False, {}) == 0
+
+
+def test_agreed_power_from_the_metering_point():
+    point = {"merilneTocke": [{"gsrn": "111", "vrsta": "OMTE"}, {"gsrn": "222", "vrsta": "OMTO"}]}
+    assert logic.omto_gsrn(point) == "222"
+    assert logic.omto_gsrn({"merilneTocke": [{"gsrn": "111", "vrsta": "OMTE"}]}) is None
+    assert logic.omto_gsrn(None) is None
+    payload = {
+        "dogovorjeneMoci": [
+            {"datumOd": "2025-10-01T00:00:00+02:00", "datumDo": "9999-12-31T00:00:00+01:00", "veljavnost": True,
+             "casovniBlok1": 6.9, "casovniBlok2": 6.9, "casovniBlok3": 6.9, "casovniBlok4": 6.9, "casovniBlok5": 6.9},
+            {"datumOd": "2024-10-01T00:00:00+02:00", "datumDo": "2025-10-01T00:00:00+02:00", "veljavnost": True,
+             "casovniBlok1": "5,5", "casovniBlok2": 5.5, "casovniBlok3": 6, "casovniBlok4": 6, "casovniBlok5": 6},
+            {"datumOd": "2024-01-01T00:00:00+01:00", "datumDo": "2024-09-30T00:00:00+02:00", "veljavnost": False,
+             "casovniBlok1": 1, "casovniBlok2": 1, "casovniBlok3": 1, "casovniBlok4": 1, "casovniBlok5": 1},
+        ]
+    }
+    periods = logic.agreed_powers(payload)
+    assert periods == [
+        {"from": "2024-10-01", "to": "2025-09-30", "kw": [5.5, 5.5, 6.0, 6.0, 6.0]},
+        {"from": "2025-10-01", "to": None, "kw": [6.9] * 5},
+    ]
+    assert logic.agreed_on(periods, "2025-09-30") == [5.5, 5.5, 6.0, 6.0, 6.0]
+    assert logic.agreed_on(periods, "2026-07-15") == [6.9] * 5
+    assert logic.agreed_on(periods, "2024-05-01") is None
+    # a UTC time is a local date
+    assert logic.agreed_powers({"dogovorjeneMoci": [
+        {"datumOd": "2025-09-30T22:00:00Z", "casovniBlok1": 1, "casovniBlok2": 1, "casovniBlok3": 1, "casovniBlok4": 1,
+         "casovniBlok5": 1}
+    ]})[0]["from"] == "2025-10-01"
+
+
+def test_excess_power_as_on_the_bill():
+    # the regulator's example: agreed 4.0 kW, peaks 4.5, 5.0, 5.0 and 5.5 kW in block 1 -> 2.12 kW
+    quarters = [(1, 4.5), (1, 5.0), (1, 5.0), (1, 5.5), (1, 3.9), (2, 3.0)]
+    assert logic.excess_power(quarters, [4.0, 4.0, 4.0, 4.0, 4.0]) == [2.12, 0.0, 0.0, 0.0, 0.0]
