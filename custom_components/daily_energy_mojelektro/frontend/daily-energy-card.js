@@ -306,6 +306,8 @@
     'Moj Elektro has no agreed power for this meter yet.': 'Moj Elektro za to merilno mesto še nima dogovorjene moči.',
     '{0} % of agreed': '{0} % dogovorjene',
     'Nov – Feb only': 'samo nov – feb',
+    'Choose a month': 'Izberite mesec',
+    'Moj Elektro has no agreed power for this month.': 'Moj Elektro za ta mesec nima dogovorjene moči.',
     "Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.": 'Obračunska moč na vašem omrežnem računu temelji na 15-minutnih konicah, kot so te, za vsak omrežninski blok. Barve prikazujejo, v kateri blok spada posamezen 15-minutni interval.',
     '{0} · energy sent to the grid': '{0} · energija, oddana v omrežje',
     'No grid-out 15-minute data yet': 'Še ni 15-minutnih podatkov o oddaji',
@@ -1265,6 +1267,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 .ag-ft .lo{width:10px;height:10px;border-radius:3px;background:color-mix(in srgb,#ff8c42 70%,#fff)}
 .ag-ft .lb{display:inline-flex;gap:3px}.ag-ft .lb i{width:8px;height:8px;border-radius:50%}
 .ag-ft em{font-style:normal;color:var(--dim);flex:1 1 320px;text-align:right}
+.cal-g.ag-mg{grid-template-columns:repeat(4,1fr)}
+.ag-cap.r{left:auto;right:0}
 @media (max-width:1280px){.ag-top{grid-template-columns:repeat(5,minmax(0,1fr))}.ag-v{grid-column:1 / -1;flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 14px}.ag-v .ag-vv{margin-top:0;font-size:22px}.ag-v>span{margin-top:0}}
 @media (max-width:860px){.ag-ft em{text-align:left}}
 @media (max-width:640px){.ag-top{grid-template-columns:1fr;gap:8px}.ag-k{display:grid;grid-template-columns:62px auto 1fr;grid-template-areas:'h v m' 'h v s';align-items:center;column-gap:12px;padding:9px 14px;border-top:1px solid rgba(255,255,255,.06);border-left:3px solid var(--c)}.ag-kh{grid-area:h;flex-direction:column;align-items:flex-start;gap:3px}.ag-kv{grid-area:v;margin:0;font-size:21px}.ag-m{grid-area:m;margin:0}.ag-ks{grid-area:s;margin-top:4px}.ag-v{flex-direction:column;align-items:flex-start}.agp .ch{height:220px}.agp .ch-b{--g:6px}.agp .ch-b.dense{--g:2px}.ag-c .ag-ov{display:none}.agp .ch-b.dense .ag-c:nth-child(even) .xl{visibility:hidden}}
@@ -1409,7 +1413,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       if (id === this._entry) { this._renderMM(); this._renderHdr(); return; }
       LS.set('daily-energy-meter', id);
       this._ui.editDay = null; this._ui.blEdit = null; this._ui.pin = false; this._dirty = false; this._pinOk = '';
-      this._pday = this._nday = this._pcalM = this._ncalM = this._nrecY = null; this._pcal = this._ncal = false;
+      this._pday = this._nday = this._pcalM = this._ncalM = this._nrecY = this._agcalY = this._ui.agM = null; this._pcal = this._ncal = this._agcal = false;
       if (this._dwOpen) this._drawer(false);
       this._renderMM();
       const g = this.shadowRoot.querySelector('.grid');
@@ -2464,6 +2468,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
     _closeCals() {
       if (this._pcal) { this._pcal = false; this._pcalM = null; this._renderProf(); }
       if (this._ncal) { this._ncal = false; this._ncalM = null; if (this._isNet()) this._nDay(); }
+      if (this._agcal) { this._agcal = false; this._agcalY = null; this._renderAgp(); }
     }
     _renderProf() {
       const el = this.$('prof'); if (!this._me || !el || !this._built) return;
@@ -2540,11 +2545,23 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       if (!M || !this._agreed.length) { el.style.display = 'none'; return; }
       el.style.display = '';
       const r = this._ui.agrange || 'day', T = this._c.today, keys = [...M.keys()].sort(), last = keys[keys.length - 1];
-      const head = `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t('Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${this._tabs(r, 'agrange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div>`;
-      const cur = (last && this._agOn(last)) || this._agOn(addD(T, -1));
-      if (!cur) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<span>${t('Moj Elektro has no agreed power for this meter yet.')}</span></div>`; return; }
-      const bk = this._buckets(r), S = this._agSpan(bk[0].from, T);
-      // the five blocks: today's agreed power, and how much of it the highest quarter hour of the period used
+      // Dnevno: one calendar month at a time with [<] [month] [>] (the newest month unless another one is picked);
+      // Tedensko and Mesečno: the last 12 weeks / months, no navigation
+      const am = r === 'day' ? this._agMonth() : null;
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t('Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${am ? this._agNav(am) : ''}${this._tabs(r, 'agrange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div>`;
+      let bk;
+      if (am) {
+        const [yy, mm] = am.split('-').map(Number), n = new Date(yy, mm, 0).getDate();
+        bk = [];
+        for (let d = 1; d <= n; d++) { const k = `${am}-${pad(d)}`; bk.push({ label: String(d), sub: DOW2[pd(k).getDay()], title: fdate(k), from: k, to: k, now: k === T }); }
+      } else bk = this._buckets(r);
+      // the tiles and the excess power cover the shown days up to today; the agreed power is the one of the newest day
+      // with data in them
+      const end = bk[bk.length - 1].to < T ? bk[bk.length - 1].to : T, shown = keys.filter(d => d >= bk[0].from && d <= end);
+      const cur = this._agOn(shown[shown.length - 1] || end) || (!am && this._agOn(addD(T, -1)));
+      if (!cur) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<span>${t(am ? 'Moj Elektro has no agreed power for this month.' : 'Moj Elektro has no agreed power for this meter yet.')}</span></div>`; return; }
+      const S = this._agSpan(bk[0].from, end);
+      // the five blocks: the agreed power, and how much of it the highest quarter hour of the shown days used
       const tiles = cur.map((a, b) => {
         const k = S.blk[b], ag = k && k.ag || a, u = k ? k.kw / ag : 0, over = k && k.kw > ag;
         return `<div class="ag-k${over ? ' over' : ''}${k ? '' : ' nd'}" style="--c:${BLK[b]}"${k ? ` data-tip="${esc(`<b>Blok ${b + 1}</b><div class="r">${t('Highest power')}<span class="v">${fk(k.kw)} kW</span></div><div class="r">${t('Agreed power')}<span class="v">${fk(ag)} kW</span></div><div class="m">${fdate(iso(k.t))} ${pd(iso(k.t)).getFullYear()} · ${hm(k.t)}</div>`)}"` : ''}>
@@ -2553,8 +2570,8 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
 <div class="ag-m"><i style="width:${Math.min(100, u * 100)}%"></i></div>
 <div class="ag-ks">${k ? `${t('peak {0} kW', `<b>${fk(k.kw)}</b>`)} · ${Math.round(u * 100)} %` : t(b === 0 ? 'Nov – Feb only' : 'no data')}</div></div>`;
       }).join('');
-      // the month of the newest day: excess power as on the bill, yes or no
-      const ym = (last || T).slice(0, 7), X = this._agSpan(ym + '-01', ym + '-31'), xs = X.x.map((v, b) => ({ v, b })).filter(o => +o.v.toFixed(1) > 0);
+      // the month shown in Dnevno, else the month of the newest day: excess power as on the bill, yes or no
+      const ym = am || (last || T).slice(0, 7), X = this._agSpan(ym + '-01', ym + '-31'), xs = X.x.map((v, b) => ({ v, b })).filter(o => +o.v.toFixed(1) > 0);
       const verdict = `<div class="ag-v${xs.length ? ' over' : ''}" data-tip="${esc(t('Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.'))}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
 <div class="ag-vv">${ic(xs.length ? 'warn' : 'ok')}${t(xs.length ? 'Yes' : 'No')}</div>
 <span>${xs.length ? xs.map(o => `<i style="color:${BLK[o.b]}">Blok ${o.b + 1}</i> <b>${o.v.toFixed(1)} kW</b>`).join(' · ') : t('Every day below the agreed power')}</span></div>`;
@@ -2562,8 +2579,10 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       const cols = bk.map(b => ({ b, s: this._agSpan(b.from, b.to) }));
       const mx = nice(Math.max(...cur, ...cols.map(c => c.s.bar ? c.s.bar.kw : 0)) * 1.08), y = v => v / mx * 100, ticks = [1, .75, .5, .25, 0];
       let lastAg = null;
+      // a period without data still gets its agreed power line (the highest block's), so the line runs across the chart
+      const agTop = d => { const a = this._agOn(d); return a ? Math.max(...a) : null; };
       const bars = cols.map(({ b, s }, i) => {
-        const w = s.bar, ag = w && w.ag, over = w && ag && w.kw > ag;
+        const w = s.bar, ag = w ? w.ag : agTop(b.to), over = w && ag && w.kw > ag;
         if (ag) lastAg = ag;
         // the month view marks every month under its name: ✓ none, or its highest excess power
         const xm = r === 'month' && s.days ? Math.max(...s.x) : null;
@@ -2581,9 +2600,41 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
           : `<div class="ag-b" style="height:${y(over ? ag : w.kw)}%;--i:${i}"></div>${over ? `<div class="ag-o" style="bottom:${y(ag)}%;height:${y(w.kw - ag)}%;--i:${i}"></div><span class="ag-ov" style="bottom:${y(w.kw)}%;--i:${i}">+${(w.kw - ag).toFixed(1)}</span>` : ''}`;
         return `<div class="ag-c${b.now ? ' now' : ''}${over ? ' over' : ''}" style="--c:${w ? BLK[w.b] : 'transparent'}" data-tip="${esc(tip)}">${ag ? `<i class="ag-cl" style="bottom:${y(ag)}%"></i>` : ''}${bar}<span class="xl">${b.label}${sub}</span></div>`;
       }).join('');
-      const chart = `<div class="ch"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>${lastAg ? `<div class="ag-cap" style="bottom:${y(lastAg)}%">${t('agreed {0} kW', fk(lastAg))}</div>` : ''}<div class="ch-b${bk.length > 20 ? ' dense' : ''}">${bars}</div></div></div>`;
+      // the agreed power's label sits at the end of the chart with the lower first / last bar
+      const endKw = c => c && c.s.bar ? c.s.bar.kw : 0, capR = endKw(cols[cols.length - 1]) < endKw(cols[0]);
+      const chart = `<div class="ch"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>${lastAg ? `<div class="ag-cap${capR ? ' r' : ''}" style="bottom:${y(lastAg)}%">${t('agreed {0} kW', fk(lastAg))}</div>` : ''}<div class="ch-b${bk.length > 20 ? ' dense' : ''}">${bars}</div></div></div>`;
       const foot = `<div class="ag-ft"><span><i class="ld"></i>${t('Agreed power')}</span><span><i class="lo"></i>${t('Above the agreed power')}</span><span><span class="lb">${BLK.map(c => `<i style="background:${c}"></i>`).join('')}</span>${t('Colour = tariff block')}</span><em>${t("Each bar is the period's highest 15-minute power, in the block closest to its agreed power.")}</em></div>`;
       el.innerHTML = head + `<div class="ag-top">${tiles}${verdict}</div>` + chart + foot;
+    }
+    // Dnevno's months: every month with data, and the current one
+    _agMonths() { return [...new Set([...this._agDays().keys()].map(d => d.slice(0, 7)).concat(this._c.today.slice(0, 7)))].sort(); }
+    // the month Dnevno shows: the picked one while it has data, else the newest
+    _agMonth() { const K = this._agMonths(); return this._ui.agM && K.includes(this._ui.agM) ? this._ui.agM : K[K.length - 1]; }
+    // [<] [month] [>]: the arrows step to the month before / after with data; the month opens a month picker
+    _agNav(m) {
+      const K = this._agMonths(), i = K.indexOf(m), name = MONL[+m.slice(5) - 1];
+      const label = name.charAt(0).toUpperCase() + name.slice(1) + (m.slice(0, 4) === this._c.today.slice(0, 4) ? '' : ' ' + m.slice(0, 4));
+      const arrow = (v, off, l, cls) => `<button class="pn-a${cls}" data-act="agm" data-v="${v}"${off ? ' disabled' : ''} title="${t(l)}" aria-label="${t(l)}">${ic('back')}</button>`;
+      return `<div class="pnav">${arrow('prev', i <= 0, 'Previous month', '')}<button class="pn-d${this._agcal ? ' open' : ''}" data-act="agm" data-v="cal" title="${t('Choose a month')}">${ic('month')}<span>${label}</span>${ic('chev', 'cv')}</button>${arrow('next', i >= K.length - 1, 'Next month', ' nx')}${this._agcal ? this._agCal(m) : ''}</div>`;
+    }
+    // the month picker: one year, only months with data can be picked
+    _agCal(m) {
+      const K = this._agMonths(), has = new Set(K), y = this._agcalY || +m.slice(0, 4);
+      let g = '';
+      for (let i = 1; i <= 12; i++) { const k = `${y}-${pad(i)}`; g += has.has(k) ? `<button class="cal-d${k === m ? ' on' : ''}" data-act="agm" data-v="${k}">${MON[i - 1]}</button>` : `<span class="cal-x">${MON[i - 1]}</span>`; }
+      return `<div class="pcal"><div class="cal-h"><button class="pn-a" data-act="agm" data-v="y-"${+K[0].slice(0, 4) < y ? '' : ' disabled'} aria-label="${t('Previous year')}">${ic('back')}</button><span>${y}</span><button class="pn-a nx" data-act="agm" data-v="y+"${+K[K.length - 1].slice(0, 4) > y ? '' : ' disabled'} aria-label="${t('Next year')}">${ic('back')}</button></div><div class="cal-g ag-mg">${g}</div></div>`;
+    }
+    _agmAct(v) {
+      const K = this._agMonths(), cur = this._agMonth(), i = K.indexOf(cur);
+      if (v === 'cal') { this._agcal = !this._agcal; this._agcalY = null; }
+      else if (v === 'y-' || v === 'y+') this._agcalY = (this._agcalY || +cur.slice(0, 4)) + (v === 'y+' ? 1 : -1);
+      else {
+        const k = v === 'prev' ? K[i - 1] : v === 'next' ? K[i + 1] : v;
+        if (!k || !K.includes(k)) return;
+        // the newest month is kept as "the newest", so the next month's first day replaces it by itself
+        this._ui.agM = k === K[K.length - 1] ? null : k; this._agcal = false; this._agcalY = null;
+      }
+      this._renderAgp();
     }
     // Grid out: the newest complete day of energy sent to the grid, what that day sent out, the net against
     // grid in and the hours it was exporting.
@@ -2876,7 +2927,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       if (this._mm && !e.composedPath().some(n => n.id === 'mdd' || (n.dataset && n.dataset.act === 'mm'))) this._closeMM();
       // a click or tap on something with an info box (a bar, a square…) pins that box; anywhere else unpins it
       // the 15-minute calendar closes with a click anywhere outside the date navigation
-      if ((this._pcal || this._ncal) && !e.composedPath().some(n => n.classList && n.classList.contains('pnav'))) this._closeCals();
+      if ((this._pcal || this._ncal || this._agcal) && !e.composedPath().some(n => n.classList && n.classList.contains('pnav'))) this._closeCals();
       const tipEl = e.composedPath().find(n => n.dataset && n.dataset.tip != null);
       if (tipEl && !e.target.closest('[data-act]')) { this._tipPin = false; this._tipMove(e); this._tipPin = true; this._tipWatch(); this._tipPinY = this._tipScrollY(); return; }
       if (this._tipPin) this._tipUnpin();
@@ -2884,7 +2935,8 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       const a = t.dataset.act;
       if (a === 'mm' || a.startsWith('mm-')) { this._mmAct(a, t.dataset.v); return; }
       if (a === 'range') { this._ui.range = t.dataset.v; this._renderChart(); }
-      else if (a === 'agrange') { this._ui.agrange = t.dataset.v; this._renderAgp(); }
+      else if (a === 'agrange') { this._ui.agrange = t.dataset.v; this._agcal = false; this._renderAgp(); }
+      else if (a === 'agm') this._agmAct(t.dataset.v);
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'bill-m') { this._ui.billM = t.dataset.v; this._renderBill(); }
