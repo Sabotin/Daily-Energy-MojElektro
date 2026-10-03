@@ -332,6 +332,19 @@
     'Nov – Feb only': 'samo nov – feb',
     'Choose a month': 'Izberite mesec',
     'Moj Elektro has no agreed power for this month.': 'Moj Elektro za ta mesec nima dogovorjene moči.',
+    // new users (Moj Elektro 0 kW, novUporabnik): the month's highest 15-minute power is billed
+    'New user: the billed power for {0} is the highest 15-minute power of the month, so far {1} kW ({2}).': 'Nov uporabnik: obračunska moč za {0} je najvišja 15-minutna moč v mesecu, do zdaj {1} kW ({2}).',
+    'New user: the billed power for {0} is the highest 15-minute power of the month: {1} kW ({2}).': 'Nov uporabnik: obračunska moč za {0} je najvišja 15-minutna moč v mesecu: {1} kW ({2}).',
+    'New user · the billed power is the highest 15-minute power of the month': 'Nov uporabnik · obračunska moč je najvišja 15-minutna moč v mesecu',
+    'Billed power (new user)': 'Obračunska moč (nov uporabnik)',
+    'Agreed / billed power (new user)': 'Dogovorjena / obračunska moč (nov uporabnik)',
+    'billed {0} kW': 'obračunska {0} kW',
+    'New user': 'Nov uporabnik',
+    "Moj Elektro has no agreed power for you yet. Until it has, the bill charges the month's highest 15-minute power (one value for every block) and no excess power.": 'Moj Elektro za vas še nima dogovorjene moči. Do takrat je na računu obračunska moč najvišja 15-minutna moč v mesecu (enaka za vse bloke), presežne moči ni.',
+    'As a new user you pay no excess power.': 'Kot nov uporabnik presežne moči ne plačujete.',
+    'New user: billed power {0} kW, the highest 15-minute power of {1} so far.': 'Nov uporabnik: obračunska moč {0} kW, najvišja 15-minutna moč za {1} do zdaj.',
+    'New user: billed power {0} kW, the highest 15-minute power of {1}.': 'Nov uporabnik: obračunska moč {0} kW, najvišja 15-minutna moč za {1}.',
+    "The user changed this month: the estimate covers the whole month, the first bill only the new user's days.": 'Uporabnik se je ta mesec zamenjal: ocena zajema cel mesec, prvi račun pa le dni novega uporabnika.',
     "Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.": 'Obračunska moč na vašem omrežnem računu temelji na 15-minutnih konicah, kot so te, za vsak omrežninski blok. Barve prikazujejo, v kateri blok spada posamezen 15-minutni interval.',
     '{0} · energy sent to the grid': '{0} · energija, oddana v omrežje',
     'No grid-out 15-minute data yet': 'Še ni 15-minutnih podatkov o oddaji',
@@ -1309,6 +1322,8 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 .ag-v.over{border-color:rgba(255,107,129,.28);background:rgba(255,107,129,.06)}
 .ag-v.over .ag-vv{color:#ff6b81}
 .ag-v.over>span b{color:var(--txt);font-size:inherit;letter-spacing:0;text-transform:none;font-weight:600}
+.ag-v.nu{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.03)}
+.ag-v.nu .ag-vv{color:var(--txt)}
 .agp .ch{height:270px}
 .agp .ch-b{--g:10px;gap:var(--g)}.agp .ch-b.dense{--g:5px}
 .ag-cl{position:absolute;left:calc(var(--g) / -2);right:calc(var(--g) / -2);height:0;border-top:1.5px dashed rgba(255,255,255,.5);pointer-events:none;z-index:2}
@@ -1324,6 +1339,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 .ag-none{position:absolute;bottom:0;width:100%;max-width:46px;height:3px;border-radius:3px;background:rgba(255,255,255,.07)}
 .ag-c .xl small.ag-xo{color:#ff6b81;opacity:1;font-weight:700}
 .ag-c .xl small.ag-xk{color:var(--ok);opacity:.8}
+.ag-c .xl small.ag-xn{color:var(--mut);opacity:1}
 .ag-ft{display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
 .ag-ft>span{display:inline-flex;align-items:center;gap:7px}
 .ag-ft .ld{width:18px;border-top:1.5px dashed rgba(255,255,255,.6)}
@@ -1800,9 +1816,13 @@ ${this._tablet ? '</div>' : ''}<div class="gwrap"><svg class="gauge" viewBox="0 
     /* ----- estimated bill (Ocena računa) ----- */
     // agreed power for the bill: Moj Elektro's on the month's last day with data (or its last day), else the one
     // typed in ⚙ from the bill (blank blocks take the block before, or the first one filled in)
+    // (a new user's month: the month's highest 15-minute power so far, rounded to 0.1 kW as on the bill, for every
+    // block)
     _billKw(day, end) {
       const me = this._agOn(end) || this._agOn(day);
       if (me) return { kw: me, src: 'me' };
+      const nd = this._nuDay(end) ? end : this._nuDay(day) ? day : null, nu = nd && this._nuKw(nd.slice(0, 7));
+      if (nu) return { kw: [nu.billed, nu.billed, nu.billed, nu.billed, nu.billed], src: 'nu', nu };
       const s = this._c.s, v = [1, 2, 3, 4, 5].map(k => +s['kw' + k] || 0);
       const first = v.find(x => x > 0);
       if (!first) return { kw: null, src: null };
@@ -1843,7 +1863,8 @@ ${this._tablet ? '</div>' : ''}<div class="gwrap"><svg class="gauge" viewBox="0 
         const s = c.s, et = s.pET > 0 ? s.pET : DEF_PRICE.et;
         yr = n ? { y, in: i, out: o, ...yearlyNet(ym, i, o, et), approx: !(s.pET > 0) } : { y, noOut: true };
       }
-      return { ym, mi, nd, dim, proj: nd < dim, kwh: r.t * f, kwSrc: ag.src, yr, approx: P.approx, ...res };
+      // nu = a new user's billed power; nuChg = the user changed this month (its 1st is not a new user's day)
+      return { ym, mi, nd, dim, proj: nd < dim, kwh: r.t * f, kwSrc: ag.src, nu: ag.nu || null, nuChg: ag.src === 'nu' && !this._nuDay(ym + '-01'), yr, approx: P.approx, ...res };
     }
     // The meter's tariffs from Moj Elektro (1 = single tariff ET, 2 = VT / MT, 0 = unknown)
     _tariffs() { return +(this._contract && this._contract.tariffs) || 0; }
@@ -1920,6 +1941,9 @@ ${kw}
       const sub = B.proj ? t('{0} · projected from {1} of {2} days', MONL[B.mi], B.nd, B.dim) : t('{0} · whole month', MONL[B.mi]);
       const notes = [];
       if (B.noKw) notes.push(t('No agreed power from Moj Elektro: type it from your bill under the prices.'));
+      // a new user's billed power
+      if (B.nu) notes.push(t(B.proj ? 'New user: billed power {0} kW, the highest 15-minute power of {1} so far.' : 'New user: billed power {0} kW, the highest 15-minute power of {1}.', fk(B.nu.billed), MONL[B.mi]));
+      if (B.nuChg) notes.push(t('The user changed this month: the estimate covers the whole month, the first bill only the new user\'s days.'));
       if (B.guess) notes.push(t('Network prices for {0} are not confirmed yet: the last known ones are used.', MONL[B.mi]));
       const row = (l, v, d, cls = '') => `<div class="bl-r${cls}"><div><b>${l}</b>${d ? `<span>${d}</span>` : ''}</div><em>${v}</em></div>`;
       const yr = B.yr, yl = !yr ? '' : yr.noOut
@@ -2524,6 +2548,37 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
     }
     // the agreed power per block on a day, or null: no period, or not set yet (0 kW, e.g. a new user)
     _agOn(d) { const p = this._agFor(d); return p && Array.isArray(p.kw) && p.kw.length === 5 ? p.kw : null; }
+    // a new user's day: the period that applies has no agreed power set (0 kW) and Moj Elektro marks it novUporabnik.
+    // Until the distributor sets one, the bill charges the month's highest 15-minute power of all blocks as every
+    // block's power, and no excess power (checked against bills, Aug–Sep 2026)
+    _nuDay(d) { const p = this._agFor(d); return !!p && !Array.isArray(p.kw) && p.new === true; }
+    // a new user's billed power for a month ('YYYY-MM'): the highest 15-minute power of the month's new-user days only
+    // (a change of user mid-month leaves the previous user's days out), from the daily peaks. {kw, billed: kw rounded
+    // to 0.1 kW as on the bill, day, at: 'HH:MM', b: block 1-5, days: new-user days with data}, or null
+    _nuKw(ym) {
+      const P = (this._snap && this._snap.peaks) || {};
+      if (!this._nuCache || this._nuCache.p !== P || this._nuCache.a !== this._agreed) this._nuCache = { p: P, a: this._agreed, m: {} };
+      const m = this._nuCache.m;
+      if (!(ym in m)) {
+        let best = null, days = 0;
+        for (const d of Object.keys(P).sort()) {
+          if (d.slice(0, 7) !== ym || !this._nuDay(d)) continue;
+          const r = P[d]; if (!r || !Array.isArray(r.kw)) continue;
+          let any = false;
+          r.kw.forEach((kw, b) => { if (typeof kw !== 'number') return; any = true; if (!best || kw > best.kw) best = { kw, day: d, at: (Array.isArray(r.at) && r.at[b]) || null, b: b + 1 }; });
+          if (any) days++;
+        }
+        m[ym] = best && { ...best, billed: Math.round(best.kw * 10) / 10, days };
+      }
+      return m[ym];
+    }
+    // the reference power of a day: the agreed power, or a new user's billed power of that month (the same for every
+    // block, nu: true); null without either
+    _agRef(d) {
+      const a = this._agOn(d); if (a) return { kw: a, nu: false };
+      const n = this._nuDay(d) && this._nuKw(d.slice(0, 7));
+      return n ? { kw: [n.kw, n.kw, n.kw, n.kw, n.kw], nu: true, n } : null;
+    }
     // excess power of the day's month per block, as on the bill: √(Σ (kW − agreed)²) of every quarter hour above
     // the block's agreed power. Uses the month's days in the browser; an archived month is loaded first.
     _excess(day) {
@@ -2619,6 +2674,8 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       let h = `<div class="ch-h"><div><div class="h-t">${t('15-minute power')}</div><div class="h-s">${L && L.length ? `${fdate(iso(L[0].t))} ${hm(L[0].t)} → ${hm(L[L.length - 1].t)}` : t('Moj Elektro · 24 h delay')}</div></div>${L ? this._pNav(day) : ''}<span class="badge">kW</span></div>`;
       if (!L || !L.length) { el.innerHTML = h + `<div class="empty" style="min-height:240px">${ic('bolt')}<b>${t(P && P.err ? 'Could not read the 15-minute history' : 'Collecting 15-minute data…')}</b><span>${P && P.err ? esc(P.err) : t('Moj Elektro publishes yesterday’s 15-minute data at about 06:00. It appears here by itself, or tap Update.')}</span></div>`; return; }
       const AGF = this._agFor(day), AG = this._agOn(day), pk = L.reduce((a, s) => s.kw > a.kw ? s : a), mx = nice(pk.kw), peaks = [null, null, null, null, null];
+      // a new user's day: the month's billed power (its highest 15-minute power so far) for the note
+      const NU = !AG && this._nuDay(day) ? this._nuKw(day.slice(0, 7)) : null;
       for (const s of L) if (!peaks[s.b - 1] || s.kw > peaks[s.b - 1].kw) peaks[s.b - 1] = s;
       const bars = L.map((s, i) => `<div class="pc${s === pk ? ' top' : ''}" style="--c:${BLK[s.b - 1]}" data-tip="${esc(`<b>${fdate(iso(s.t))} · ${hm(s.t)}</b><div class="r">${t('Power')}<span class="v">${fk(s.kw)} kW</span></div><div class="r">${t('Energy')}<span class="v">${s.kwh.toFixed(3)} kWh</span></div><div class="r"><i class="dot" style="background:${BLK[s.b - 1]}"></i>Blok ${s.b}</div>`)}"><i style="height:${Math.max(1.5, s.kw / mx * 100)}%;background:${BLK[s.b - 1]};--i:${i}"></i></div>`).join('');
       // with the agreed power: the month's excess power
@@ -2635,7 +2692,7 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
 <div class="pch">${bars}</div><div class="pxl">${xl}</div>
 <div class="bsub" style="margin-top:14px">${t('Highest 15-min power per block · {0}', fdate(day))}</div>
 <div class="bpk">${bp}</div>${xs}
-<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` <span class="agn">${t('Agreed power: {0}.', agv)}</span>` : AGF ? ` ${t(AGF.new ? 'Moj Elektro has no agreed power set for this day (new user).' : 'Moj Elektro has no agreed power set for this day.')}` : ''}</div>`;
+<div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` <span class="agn">${t('Agreed power: {0}.', agv)}</span>` : NU ? ` <span class="agn">${t(day.slice(0, 7) === this._c.today.slice(0, 7) ? 'New user: the billed power for {0} is the highest 15-minute power of the month, so far {1} kW ({2}).' : 'New user: the billed power for {0} is the highest 15-minute power of the month: {1} kW ({2}).', MONL[+day.slice(5, 7) - 1], fk(NU.kw), `${fshort(NU.day)} ${NU.at || ''}`.trim())}</span>` : AGF ? ` ${t(AGF.new ? 'Moj Elektro has no agreed power set for this day (new user).' : 'Moj Elektro has no agreed power set for this day.')}` : ''}</div>`;
     }
     /* ----- Dogovorjena moč: the highest 15-minute power against the agreed power, per day / week / month ----- */
     // per day with 15-minute data (also archived days), per block: {kw: highest power, t: start of that quarter hour,
@@ -2644,41 +2701,45 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
     // kept until a new snapshot arrives
     _agDays() {
       const P = (this._snap && this._snap.peaks) || {};
-      if (this._agCache && this._agCache.p === P) return this._agCache.m;
+      if (this._agCache && this._agCache.p === P && this._agCache.a === this._agreed) return this._agCache.m;
       const m = new Map();
       for (const d of Object.keys(P).sort()) {
         const r = P[d]; if (!r || !Array.isArray(r.kw) || r.kw.length !== 5) continue;
         const ag = this._agOn(d), [y, mo, dd] = d.split('-').map(Number);
+        // a new user's day is measured against the month's billed power (nu: no excess power)
+        const nu = !ag && this._nuDay(d) ? this._nuKw(d.slice(0, 7)) : null;
         m.set(d, r.kw.map((kw, b) => {
           if (typeof kw !== 'number') return null;
           const [h, mi] = String((r.at && r.at[b]) || '00:00').split(':').map(Number);
-          return { kw, t: new Date(y, mo - 1, dd, h, mi), ag: ag ? ag[b] : null, sq: ag && Array.isArray(r.x) ? +r.x[b] || 0 : 0 };
+          return { kw, t: new Date(y, mo - 1, dd, h, mi), ag: ag ? ag[b] : nu ? nu.kw : null, sq: ag && Array.isArray(r.x) ? +r.x[b] || 0 : 0, nu: !!nu };
         }));
       }
-      this._agCache = { p: P, m };
+      this._agCache = { p: P, a: this._agreed, m };
       return m;
     }
     // one period: per block its highest power (blk), the excess power as on the bill (x: √Σ overshoot² per block),
     // the days with data and those above the agreed power, and the bar: the quarter hour closest to (or furthest
     // above) its block's agreed power, else the highest one
     _agSpan(from, to) {
-      const blk = [null, null, null, null, null], sq = [0, 0, 0, 0, 0]; let days = 0, over = 0, top = null, hi = null;
+      const blk = [null, null, null, null, null], sq = [0, 0, 0, 0, 0]; let days = 0, over = 0, top = null, hi = null, nu = 0;
       for (const [d, per] of this._agDays()) {
         if (d < from || d > to) continue;
         days++; let o = false;
+        // nu = the new-user days among them
+        if (per.some(p => p && p.nu)) nu++;
         per.forEach((p, b) => {
           if (!p) return;
           const k = blk[b];
-          if (!k || p.kw > k.kw) blk[b] = { kw: p.kw, t: p.t, ag: p.ag };
+          if (!k || p.kw > k.kw) blk[b] = { kw: p.kw, t: p.t, ag: p.ag, nu: p.nu };
           sq[b] += p.sq;
           if (p.ag && p.kw > p.ag) o = true;
           const u = p.ag ? p.kw / p.ag : null;
-          if (u != null && (!top || u > top.u)) top = { u, kw: p.kw, ag: p.ag, b, t: p.t };
+          if (u != null && (!top || u > top.u)) top = { u, kw: p.kw, ag: p.ag, b, t: p.t, nu: p.nu };
           if (!hi || p.kw > hi.kw) hi = { u: null, kw: p.kw, ag: null, b, t: p.t };
         });
         if (o) over++;
       }
-      return { blk, days, over, bar: top || hi, x: sq.map(s => Math.sqrt(s)) };
+      return { blk, days, over, nu, bar: top || hi, x: sq.map(s => Math.sqrt(s)) };
     }
     _renderAgp() {
       const el = this.$('agp'); if (!el || !this._built) return;
@@ -2689,7 +2750,8 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       // Dnevno: one calendar month at a time with [<] [month] [>] (the newest month unless another one is picked);
       // Mesečno: the last 12 months, no navigation
       const am = r === 'day' ? this._agMonth() : null;
-      const head = `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t('Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${am ? this._agNav(am) : ''}${this._tabs(r, 'agrange', [['day', 'Daily'], ['month', 'Monthly']])}</div>`;
+      // a new user's view has its own subtitle
+      const hd = nu => `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t(nu ? 'New user · the billed power is the highest 15-minute power of the month' : 'Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${am ? this._agNav(am) : ''}${this._tabs(r, 'agrange', [['day', 'Daily'], ['month', 'Monthly']])}</div>`;
       let bk;
       if (am) {
         const [yy, mm] = am.split('-').map(Number), n = new Date(yy, mm, 0).getDate();
@@ -2699,47 +2761,63 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       // the tiles and the excess power cover the shown days up to today; the agreed power is the one of the newest day
       // with data in them
       const end = bk[bk.length - 1].to < T ? bk[bk.length - 1].to : T, shown = keys.filter(d => d >= bk[0].from && d <= end);
-      const cur = this._agOn(shown[shown.length - 1] || end) || (!am && this._agOn(addD(T, -1)));
+      // _agRef = the agreed power, or a new user's billed power of that month (the same for every block)
+      const C = this._agRef(shown[shown.length - 1] || end) || (!am && this._agRef(addD(T, -1))) || null, cur = C && C.kw, head = hd(C && C.nu);
       if (!cur) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<span>${t(am ? 'Moj Elektro has no agreed power for this month.' : 'Moj Elektro has no agreed power for this meter yet.')}</span></div>`; return; }
-      const S = this._agSpan(bk[0].from, end);
+      // when the shown days include a new user's, the tiles and the excess power cover only the newest days of the same
+      // kind (agreed power / new user), e.g. 17.–31. Aug after a change of user on the 17th
+      let from = bk[0].from;
+      const kind = d => this._agOn(d) ? 'a' : this._nuDay(d) ? 'n' : '-';
+      if (shown.some(d => kind(d) === 'n')) { const k0 = kind(shown[shown.length - 1]); for (let i = shown.length - 1; i >= 0 && kind(shown[i]) === k0; i--) from = shown[i]; }
+      // (a new user's billed power is per month: in Mesečno the tiles cover the newest month only)
+      if (C.nu && !am && shown.length) { const m1 = shown[shown.length - 1].slice(0, 7) + '-01'; if (m1 > from) from = m1; }
+      const S = this._agSpan(from, end);
       // the five blocks: the agreed power, and how much of it the highest quarter hour of the shown days used
       const tiles = cur.map((a, b) => {
         const k = S.blk[b], ag = k && k.ag || a, u = k ? k.kw / ag : 0, over = k && k.kw > ag;
-        return `<div class="ag-k${over ? ' over' : ''}${k ? '' : ' nd'}" style="--c:${BLK[b]}"${k ? ` data-tip="${esc(`<b>Blok ${b + 1}</b><div class="r">${t('Highest power')}<span class="v">${fk(k.kw)} kW</span></div><div class="r">${t('Agreed power')}<span class="v">${fk(ag)} kW</span></div><div class="m">${fdate(iso(k.t))} ${pd(iso(k.t)).getFullYear()} · ${hm(k.t)}</div>`)}"` : ''}>
+        return `<div class="ag-k${over ? ' over' : ''}${k ? '' : ' nd'}" style="--c:${BLK[b]}"${k ? ` data-tip="${esc(`<b>Blok ${b + 1}</b><div class="r">${t('Highest power')}<span class="v">${fk(k.kw)} kW</span></div><div class="r">${t(k.nu ? 'Billed power (new user)' : 'Agreed power')}<span class="v">${fk(ag)} kW</span></div><div class="m">${fdate(iso(k.t))} ${pd(iso(k.t)).getFullYear()} · ${hm(k.t)}</div>`)}"` : ''}>
 <div class="ag-kh"><b>Blok ${b + 1}</b>${over ? `<em>▲ ${(k.kw - ag).toFixed(1)} kW</em>` : ''}</div>
 <div class="ag-kv">${fk(a)}<small>kW</small></div>
 <div class="ag-m"><i style="width:${Math.min(100, u * 100)}%"></i></div>
 <div class="ag-ks">${k ? `${t('peak {0} kW', `<b>${fk(k.kw)}</b>`)} · ${Math.round(u * 100)} %` : t(b === 0 ? 'Nov – Feb only' : 'no data')}</div></div>`;
       }).join('');
       // the month shown in Dnevno, else the month of the newest day: excess power as on the bill, yes or no
-      const ym = am || (last || T).slice(0, 7), X = this._agSpan(ym + '-01', ym + '-31'), xs = X.x.map((v, b) => ({ v, b })).filter(o => +o.v.toFixed(1) > 0);
+      // (from the first day the tiles cover when that is later, see above)
+      const ym = am || (last || T).slice(0, 7), X = this._agSpan(from > ym + '-01' ? from : ym + '-01', ym + '-31'), xs = X.x.map((v, b) => ({ v, b })).filter(o => +o.v.toFixed(1) > 0);
       // every block that went over: the highest power it reached and how far that was above its agreed power, one line
       // each; the bill's excess power (√Σ overshoot²) is in the info box
       const vtip = (xs.length ? `<b>${t('Excess power on the bill')}</b>` + xs.map(o => `<div class="r"><i class="dot" style="background:${BLK[o.b]}"></i>Blok ${o.b + 1}<span class="v">${o.v.toFixed(1)} kW</span></div>`).join('') : '')
         + `<div class="m">${t('Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.')}</div>`;
       const vline = o => { const k = X.blk[o.b]; return `<i style="color:${BLK[o.b]}">Blok ${o.b + 1}</i> <b>${fk(k.kw)} kW</b>${k.ag && k.kw > k.ag ? ` ${t('(+{0} excess)', (k.kw - k.ag).toFixed(1))}` : ''}`; };
-      const verdict = `<div class="ag-v${xs.length ? ' over' : ''}" data-tip="${esc(vtip)}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
+      // a new user pays no excess power (the bill charges the month's highest 15-minute power)
+      const verdict = C.nu ? `<div class="ag-v nu" data-tip="${esc(`<b>${t('New user')}</b><div class="m">${t("Moj Elektro has no agreed power for you yet. Until it has, the bill charges the month's highest 15-minute power (one value for every block) and no excess power.")}</div>`)}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
+<div class="ag-vv">${ic('bolt')}${t('No')}</div>
+<span>${t('As a new user you pay no excess power.')}</span></div>` : `<div class="ag-v${xs.length ? ' over' : ''}" data-tip="${esc(vtip)}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
 <div class="ag-vv">${ic(xs.length ? 'warn' : 'ok')}${t(xs.length ? 'Yes' : 'No')}</div>
 <span>${xs.length ? xs.map(vline).join('<br>') : t('Every day below the agreed power')}</span></div>`;
       // the chart: y from 0 to a little above the highest bar or agreed power
       const cols = bk.map(b => ({ b, s: this._agSpan(b.from, b.to) }));
       const mx = nice(Math.max(...cur, ...cols.map(c => c.s.bar ? c.s.bar.kw : 0)) * 1.08), y = v => v / mx * 100, ticks = [1, .75, .5, .25, 0];
-      let lastAg = null;
+      let lastAg = null, lastNu = false;
       // a period without data still gets its agreed power line (the highest block's), so the line runs across the chart
-      const agTop = d => { const a = this._agOn(d); return a ? Math.max(...a) : null; };
+      // (or a new user's billed power of that month)
+      const agTop = d => { const a = this._agRef(d); return a ? Math.max(...a.kw) : null; };
       const bars = cols.map(({ b, s }, i) => {
         const w = s.bar, ag = w ? w.ag : agTop(b.to), over = w && ag && w.kw > ag;
-        if (ag) lastAg = ag;
-        // the month view marks every month under its name: ✓ none, or its highest excess power
+        // nuB = the line is a new user's billed power; allNu = every day of the period is a new user's
+        const nuB = w ? !!w.nu : this._nuDay(b.to), allNu = s.days > 0 && s.nu === s.days;
+        if (ag) { lastAg = ag; lastNu = nuB; }
+        // the month view marks every month under its name: ✓ none, or its highest excess power ("—" for a new user's
+        // month, which has no excess power)
         const xm = r === 'month' && s.days ? Math.max(...s.x) : null;
-        const sub = r === 'month' ? (xm == null ? '' : +xm.toFixed(1) > 0 ? `<small class="ag-xo">▲ ${xm.toFixed(1)}</small>` : '<small class="ag-xk">✓</small>') : b.sub ? `<small>${b.sub}</small>` : '';
+        const sub = r === 'month' ? (xm == null ? '' : allNu ? '<small class="ag-xn">—</small>' : +xm.toFixed(1) > 0 ? `<small class="ag-xo">▲ ${xm.toFixed(1)}</small>` : '<small class="ag-xk">✓</small>') : b.sub ? `<small>${b.sub}</small>` : '';
         let tip = `<b>${b.title}</b>`;
         if (w) {
           tip += `<div class="r"><i class="dot" style="background:${BLK[w.b]}"></i>${t('Highest power')} · Blok ${w.b + 1}<span class="v">${fk(w.kw)} kW</span></div>`;
-          if (ag) tip += `<div class="r">${t('Agreed power')}<span class="v">${fk(ag)} kW · ${t('{0} % of agreed', Math.round(w.kw / ag * 100))}</span></div>`;
+          if (ag) tip += nuB ? `<div class="r">${t('Billed power (new user)')}<span class="v">${fk(ag)} kW · ${Math.round(w.kw / ag * 100)} %</span></div>` : `<div class="r">${t('Agreed power')}<span class="v">${fk(ag)} kW · ${t('{0} % of agreed', Math.round(w.kw / ag * 100))}</span></div>`;
           if (over) tip += `<div class="r" style="color:#ff6b81">${t('Over by {0} kW', (w.kw - ag).toFixed(1))}</div>`;
           tip += `<div class="m">${fdate(iso(w.t))} · ${hm(w.t)}</div>`;
-          if (r !== 'day') tip += `<div class="m">${t('Days above the agreed power: {0}', s.over)}</div>`;
+          if (r !== 'day' && !allNu) tip += `<div class="m">${t('Days above the agreed power: {0}', s.over)}</div>`;
           if (r === 'month' && xm > 0.05) tip += `<div class="r">${t('Excess power (bill)')}</div>` + s.x.map((v, j) => +v.toFixed(1) > 0 ? `<div class="r"><i class="dot" style="background:${BLK[j]}"></i>Blok ${j + 1}<span class="v">${v.toFixed(1)} kW</span></div>` : '').join('');
         } else tip += `<div class="m">${t('No data')}</div>`;
         const bar = !w ? '<div class="ag-none"></div>'
@@ -2748,8 +2826,10 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       }).join('');
       // the agreed power's label sits at the end of the chart with the lower first / last bar
       const endKw = c => c && c.s.bar ? c.s.bar.kw : 0, capR = endKw(cols[cols.length - 1]) < endKw(cols[0]);
-      const chart = `<div class="ch"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>${lastAg ? `<div class="ag-cap${capR ? ' r' : ''}" style="bottom:${y(lastAg)}%">${t('agreed {0} kW', fk(lastAg))}</div>` : ''}<div class="ch-b${bk.length > 20 ? ' dense' : ''}">${bars}</div></div></div>`;
-      const foot = `<div class="ag-ft"><span><i class="ld"></i>${t('Agreed power')}</span><span><i class="lo"></i>${t('Above the agreed power')}</span><span><span class="lb">${BLK.map(c => `<i style="background:${c}"></i>`).join('')}</span>${t('Colour = tariff block')}</span><em>${t("Each bar is the period's highest 15-minute power, in the block closest to its agreed power.")}</em></div>`;
+      const chart = `<div class="ch"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>${lastAg ? `<div class="ag-cap${capR ? ' r' : ''}" style="bottom:${y(lastAg)}%">${t(lastNu ? 'billed {0} kW' : 'agreed {0} kW', fk(lastAg))}</div>` : ''}<div class="ch-b${bk.length > 20 ? ' dense' : ''}">${bars}</div></div></div>`;
+      // the dashed line's name when the chart shows a new user's days (and agreed-power days too)
+      const anyN = cols.some(c => c.s.nu > 0), anyA = cols.some(c => c.s.days > c.s.nu);
+      const foot = `<div class="ag-ft"><span><i class="ld"></i>${t(anyN ? (anyA ? 'Agreed / billed power (new user)' : 'Billed power (new user)') : 'Agreed power')}</span><span><i class="lo"></i>${t('Above the agreed power')}</span><span><span class="lb">${BLK.map(c => `<i style="background:${c}"></i>`).join('')}</span>${t('Colour = tariff block')}</span><em>${t("Each bar is the period's highest 15-minute power, in the block closest to its agreed power.")}</em></div>`;
       el.innerHTML = head + `<div class="ag-top">${tiles}${verdict}</div>` + chart + foot;
     }
     // Dnevno's months: every month with data, and the current one
