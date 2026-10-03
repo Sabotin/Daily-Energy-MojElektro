@@ -2548,9 +2548,9 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       el.style.display = '';
       const r = this._ui.agrange || 'day', T = this._c.today, keys = [...M.keys()].sort(), last = keys[keys.length - 1];
       // Dnevno: one calendar month at a time with [<] [month] [>] (the newest month unless another one is picked);
-      // Tedensko and Mesečno: the last 12 weeks / months, no navigation
+      // Mesečno: the last 12 months, no navigation
       const am = r === 'day' ? this._agMonth() : null;
-      const head = `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t('Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${am ? this._agNav(am) : ''}${this._tabs(r, 'agrange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div>`;
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t('Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${am ? this._agNav(am) : ''}${this._tabs(r, 'agrange', [['day', 'Daily'], ['month', 'Monthly']])}</div>`;
       let bk;
       if (am) {
         const [yy, mm] = am.split('-').map(Number), n = new Date(yy, mm, 0).getDate();

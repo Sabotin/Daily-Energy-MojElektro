@@ -15,7 +15,7 @@ Pregled porabe energije za Home Assistant, neposredno iz API-ja Moj Elektro.
 - Ločen prikaz VT / MT
 - Tarifni bloki 1–5
 - Moč v 15-minutnih intervalih z najvišjo vrednostjo za posamezen blok
-- Dogovorjena moč: najvišja 15-minutna moč po dnevih, tednih in mesecih glede na dogovorjeno, s presežno močjo po blokih, izračunano kot na računu
+- Dogovorjena moč: najvišja 15-minutna moč po dnevih in mesecih glede na dogovorjeno, s presežno močjo po blokih, izračunano kot na računu
 - Ocena računa za prejšnji in tekoči mesec: energija, omrežnina, prispevki in DDV (tudi samooskrba z letnim obračunom); okvirne cene energije ali vaše cene, vpisane kar na kartici
 - Toplotni zemljevid vzorca porabe
 - Celotna zgodovina podatkov iz Moj Elektro za poljubno časovno obdobje
@@ -89,7 +89,7 @@ Energy dashboard for Home Assistant, straight from the Moj Elektro API.
 - VT / MT split
 - Tariff blocks 1–5
 - 15-minute power with the peak per block
-- Agreed power: the highest 15-minute power per day, week and month against the agreed power, with excess power per block worked out like on the bill
+- Agreed power: the highest 15-minute power per day and month against the agreed power, with excess power per block worked out like on the bill
 - Estimated bill for last month and this month: energy, network charge, levies and VAT (also yearly-netted self-supply); typical energy prices, or your own typed right on the card
 - Energy rhythm heat map
 - Full history from Moj Elektro, any date range
