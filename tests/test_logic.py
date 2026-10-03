@@ -285,6 +285,28 @@ def test_excess_power_as_on_the_bill():
     assert logic.excess_power(quarters, [4.0, 4.0, 4.0, 4.0, 4.0]) == [2.12, 0.0, 0.0, 0.0, 0.0]
 
 
+def test_day_peaks_per_block_and_excess():
+    # Thursday 1 Oct 2026, lower season: 2 kW all day, 8.4 kW at 19:00 (block 2) and 8.0 kW at 22:30 (block 4)
+    values = [0.5] * 96
+    values[76] = 2.1
+    values[90] = 2.0
+    out = logic.day_peaks(date(2026, 10, 1), values, [7.6, 7.7, 7.7, 7.7, 7.7])
+    assert out["kw"] == [None, 8.4, 2.0, 8.0, None]  # no block 1 or 5 on a summer working day
+    assert out["at"] == [None, "19:00", "06:00", "22:30", None]  # the first quarter hour with the peak
+    assert out["x"] == [0.0, 0.49, 0.0, 0.09, 0.0]  # (8.4 - 7.7)², (8.0 - 7.7)²
+    assert logic.day_peaks(date(2026, 10, 1), values, None)["x"] == [0.0] * 5  # no agreed power, no excess
+    assert logic.day_peaks(date(2026, 10, 1), [], None) is None
+
+
+def test_day_peaks_on_the_clock_change_day():
+    # Sunday 25 Oct 2026 has 100 quarter hours (02:00-03:00 twice): the last one still starts at 23:45
+    values = [0.25] * 100
+    values[99] = 1.0
+    out = logic.day_peaks(date(2026, 10, 25), values, None)
+    assert out["kw"] == [None, None, 1.0, 1.0, 4.0]  # a free day: blocks 3-5 only
+    assert out["at"][4] == "23:45"
+
+
 def test_contract_info_yearly_self_supply():
     point = {"pogodbeniPodatki": {"mesecObracuna": 12}}
     tocka = {"obracunskaVezalnaShema": "OS.3A.1 Individualna samooskrba po EZ-1", "steviloTarifMerjenja": 1}

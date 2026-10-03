@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import csv
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 
@@ -349,6 +349,38 @@ def blocks_from_quarters(day: date, values: list[float]) -> list[float] | None:
     for i, value in enumerate(values):
         blocks[block_of(start + timedelta(minutes=15 * i)) - 1] += value
     return [round(b, 3) for b in blocks]
+
+
+# ---------------------------------------------------------------- daily peaks against the agreed power
+
+LJUBLJANA = ZoneInfo("Europe/Ljubljana")
+
+
+def day_peaks(day: date, values: list[float], agreed: list[float] | None) -> dict | None:
+    """Per tariff block, the highest 15-minute power of one day and when its quarter hour started, and how far the day
+    went above the agreed power (the Dogovorjena moč card): {"kw": [kW or None] x5, "at": ["HH:MM" or None] x5,
+    "x": [Σ (kW − agreed)² of every quarter hour above the block's agreed power] x5}.
+
+    values: kWh per quarter hour from 00:00 local time (92 / 100 on clock-change days); agreed: the agreed kW per
+    block that day, or None (x is then all 0). None for a day without 15-minute data.
+    """
+    if not values:
+        return None
+    start = datetime(day.year, day.month, day.day, tzinfo=LJUBLJANA).astimezone(timezone.utc)
+    kw: list[float | None] = [None] * 5
+    at: list[str | None] = [None] * 5
+    x = [0.0] * 5
+    for i, value in enumerate(values):
+        if value is None:
+            continue
+        local = (start + timedelta(minutes=15 * i)).astimezone(LJUBLJANA)
+        b = block_of(local.replace(tzinfo=None)) - 1
+        power = float(value) * 4
+        if kw[b] is None or power > kw[b]:
+            kw[b], at[b] = power, local.strftime("%H:%M")
+        if agreed and power > agreed[b]:
+            x[b] += (power - agreed[b]) ** 2
+    return {"kw": [None if v is None else round(v, 3) for v in kw], "at": at, "x": [round(v, 4) for v in x]}
 
 
 # ---------------------------------------------------------------- CSV import

@@ -34,6 +34,7 @@ from .const import (
     DOMAIN,
     KEEP_Q15_DAYS,
     MAX_IMPORT_DAYS,
+    PEAKS_VERSION,
     REFRESHES_PER_DAY,
     SETTINGS_KEYS,
     STORAGE_VERSION,
@@ -85,10 +86,12 @@ class DailyEnergyManager:
         # refresh: {"day": date, "count": fetches a person started that day},
         # meta: {"grid_out_tried": 1 once "Grid in & Grid out" was switched on the first time (the only switch that fetches)},
         # agreed: {"v": 3, "day": date it was last fetched, "periods": logic.agreed_powers() the agreed power per
-        # tariff block, "contract": logic.contract_info() how the metering point is billed}
+        # tariff block, "contract": logic.contract_info() how the metering point is billed},
+        # peaks: {date: logic.day_peaks()} grid in, every day with 15-minute data (also archived ones): the highest
+        # power per block and how far it went above the agreed power, for the Dogovorjena moč card
         self.data: dict = {
             "days": {}, "manual": {}, "edits": {}, "settings": {}, "q15": {}, "q15_miss": {}, "q15o": {}, "q15o_miss": {},
-            "refresh": {}, "meta": {}, "agreed": {},
+            "refresh": {}, "meta": {}, "agreed": {}, "peaks": {},
         }
         # 15-minute days older than KEEP_Q15_DAYS, kept for good in a file of their own:
         # {"q15"|"q15o": {"YYYY-MM": {date: [kWh]}}}; the card gets only their dates and loads a month when needed
@@ -113,6 +116,11 @@ class DailyEnergyManager:
             for key in self.archive:
                 if isinstance(stored.get(key), dict):
                     self.archive[key] = stored[key]
+        # meters stored before the Dogovorjena moč card: work out the peaks of every stored 15-minute day once
+        if self.data["meta"].get("peaks_v") != PEAKS_VERSION:
+            self._rebuild_peaks()
+            self.data["meta"]["peaks_v"] = PEAKS_VERSION
+            self._save()
 
     @callback
     def _save(self) -> None:
@@ -153,6 +161,24 @@ class DailyEnergyManager:
     def archive_month(self, month: str) -> dict:
         """One archived month of both grids, for the card: {"q15": {date: [kWh]}, "q15o": {...}}."""
         return {key: dict(self.archive[key].get(month, {})) for key in ("q15", "q15o")}
+
+    def _update_peaks(self, days) -> None:
+        """Work out the peaks (logic.day_peaks) of these grid-in days again from their stored 15-minute data, with the
+        agreed power that applies on each; a day without 15-minute data loses its peaks."""
+        periods = self.data["agreed"].get("periods", [])
+        for d in days:
+            values = self.data["q15"].get(d) or self.archive["q15"].get(d[:7], {}).get(d)
+            period = logic.agreed_on(periods, d) if values else None
+            peaks = logic.day_peaks(date.fromisoformat(d), values, period["kw"] if period else None) if values else None
+            if peaks:
+                self.data["peaks"][d] = peaks
+            else:
+                self.data["peaks"].pop(d, None)
+
+    def _rebuild_peaks(self) -> None:
+        """The peaks of every stored 15-minute day (the last days and the archive), e.g. after the agreed power changed."""
+        self.data["peaks"] = {}
+        self._update_peaks(set(self.data["q15"]) | {d for month in self.archive["q15"].values() for d in month})
 
     # ------------------------------------------------------------ options
 
@@ -248,9 +274,12 @@ class DailyEnergyManager:
         gsrn = logic.omto_gsrn(point)
         if not gsrn:
             # Moj Elektro answered without a grid-in point: try again tomorrow, not at every check
+            had = bool(self.data["agreed"].get("periods"))
             self.data["agreed"] = {
                 "v": 3, "day": today.isoformat(), "periods": [], "contract": logic.contract_info(point, {}),
             }
+            if had:
+                self._rebuild_peaks()
             self._save()
             return False
         await asyncio.sleep(API_PAUSE)
@@ -259,8 +288,12 @@ class DailyEnergyManager:
             return False
         periods = logic.agreed_powers(payload)
         contract = logic.contract_info(point, payload)
-        changed = periods != self.data["agreed"].get("periods", []) or contract != self.data["agreed"].get("contract", {})
+        periods_changed = periods != self.data["agreed"].get("periods", [])
+        changed = periods_changed or contract != self.data["agreed"].get("contract", {})
         self.data["agreed"] = {"v": 3, "day": today.isoformat(), "periods": periods, "contract": contract}
+        if periods_changed:
+            # how far every day went above the agreed power depends on it
+            self._rebuild_peaks()
         self._save()
         return changed
 
@@ -296,7 +329,10 @@ class DailyEnergyManager:
                 self.data[q_key][d] = values
                 self.data[miss_key][d] = flagged
         changed |= self._archive_days(q_key, {d: v for d, v in days.items() if d < cutoff and not missing.get(d, 0)})
-        return changed | self._trim_quarters(q_key, miss_key, cutoff)
+        changed |= self._trim_quarters(q_key, miss_key, cutoff)
+        if q_key == "q15":
+            self._update_peaks(changed)
+        return changed
 
     async def async_check_updates(self, force: bool = True) -> dict:
         """Fetch everything the dashboard shows straight from the Moj Elektro API and save what is new.
@@ -518,6 +554,7 @@ class DailyEnergyManager:
             "has_pin": bool(self.pin),
             "agreed": self.data["agreed"].get("periods", []),
             "contract": self.data["agreed"].get("contract", {}),
+            "peaks": self.data["peaks"],
         }
 
     @callback
@@ -561,7 +598,7 @@ class DailyEnergyManager:
     @callback
     def clear_all(self) -> None:
         """Settings > Delete all data: every Moj Elektro day, 15-minute day and manual reading. Settings stay."""
-        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss", "agreed"):
+        for key in ("days", "manual", "edits", "q15", "q15_miss", "q15o", "q15o_miss", "agreed", "peaks"):
             self.data[key] = {}
         self.archive = {"q15": {}, "q15o": {}}
         self._save_archive()
@@ -591,6 +628,8 @@ class DailyEnergyManager:
             self.data["days"].pop(day, None)
         self.data[q_key].pop(day, None)
         self.data[miss_key].pop(day, None)
+        if not grid_out:
+            self.data["peaks"].pop(day, None)
         if found:
             self._changed()
         return found
@@ -647,7 +686,8 @@ class DailyEnergyManager:
         self._archive_days(
             "q15", {d: v for d, v in parsed.get("q15", {}).items() if d < cutoff and not (missing or {}).get(d, 0)}
         )
-        self._trim_quarters("q15", "q15_miss", cutoff)
+        archived = self._trim_quarters("q15", "q15_miss", cutoff)
+        self._update_peaks(set(parsed.get("q15", {})) | archived)
         self._changed()
         return count
 

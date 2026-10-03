@@ -287,6 +287,25 @@
     'Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.': 'Presežna moč kot na računu: po blokih, koren vsote kvadratov vseh presežkov v mesecu.',
     'kW peak': 'kW konica',
     'Highest 15-min power per block · {0}': 'Najvišja 15-min moč po blokih · {0}',
+    // Dogovorjena moč card
+    'Agreed power': 'Dogovorjena moč',
+    'Highest 15-minute power against the agreed power · Moj Elektro': 'Najvišja 15-minutna moč glede na dogovorjeno · Moj Elektro',
+    'Excess power · {0}': 'Presežna moč · {0}',
+    'Yes': 'Da',
+    'No': 'Ne',
+    'Every day below the agreed power': 'Vsi dnevi pod dogovorjeno močjo',
+    'peak {0} kW': 'najvišja {0} kW',
+    'agreed {0} kW': 'dogovorjena {0} kW',
+    'Highest power': 'Najvišja moč',
+    'Above the agreed power': 'Nad dogovorjeno močjo',
+    'Colour = tariff block': 'Barva = časovni blok',
+    'Over by {0} kW': 'Presežek {0} kW',
+    'Days above the agreed power: {0}': 'Dni nad dogovorjeno močjo: {0}',
+    'Excess power (bill)': 'Presežna moč (račun)',
+    "Each bar is the period's highest 15-minute power, in the block closest to its agreed power.": 'Stolpec je najvišja 15-minutna moč obdobja, v bloku, ki je najbližje svoji dogovorjeni moči.',
+    'Moj Elektro has no agreed power for this meter yet.': 'Moj Elektro za to merilno mesto še nima dogovorjene moči.',
+    '{0} % of agreed': '{0} % dogovorjene',
+    'Nov – Feb only': 'samo nov – feb',
     "Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.": 'Obračunska moč na vašem omrežnem računu temelji na 15-minutnih konicah, kot so te, za vsak omrežninski blok. Barve prikazujejo, v kateri blok spada posamezen 15-minutni interval.',
     '{0} · energy sent to the grid': '{0} · energija, oddana v omrežje',
     'No grid-out 15-minute data yet': 'Še ni 15-minutnih podatkov o oddaji',
@@ -1199,6 +1218,56 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 .h-t .go{color:#c4ff6a}
 .bpk.o3{grid-template-columns:repeat(3,1fr)}
 .bpk.o3 span{font-size:18px}
+/* Dogovorjena moč: five block tiles (agreed kW, how much of it the period used) + the month's excess power, then one
+   wide chart: every bar is a period's highest 15-minute power in its block's colour, the dashed line the agreed power */
+.ag-top{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(230px,1.3fr);gap:12px;margin-bottom:26px}
+.ag-k{position:relative;padding:12px 14px 13px;border-radius:14px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.06);border-top:3px solid var(--c);min-width:0;overflow:hidden}
+.ag-kh{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10.5px;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.ag-kh b{font-weight:600;color:var(--c)}
+.ag-kh em{font-style:normal;color:#ff6b81;font-weight:700;letter-spacing:0;text-transform:none;white-space:nowrap}
+.ag-kv{font-size:28px;font-weight:700;letter-spacing:-.03em;margin-top:7px;line-height:1;font-variant-numeric:tabular-nums}
+.ag-kv small{font-size:12px;color:var(--mut);font-weight:500;margin-left:4px;letter-spacing:0}
+.ag-m{position:relative;height:6px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:12px}
+.ag-m i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--c);opacity:.85;transform-origin:left;animation:agm 1.1s cubic-bezier(.2,.8,.2,1) both}
+.ag-k.over .ag-m i{opacity:1}
+.ag-k.over .ag-m:after{content:'';position:absolute;right:-1px;top:-3px;width:2px;height:12px;border-radius:2px;background:rgba(255,255,255,.7)}
+@keyframes agm{from{transform:scaleX(0)}}
+.ag-ks{font-size:11.5px;color:var(--dim);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-ks b{color:var(--txt);font-weight:600}
+.ag-k.nd .ag-kv,.ag-k.nd .ag-m{opacity:.35}
+.ag-v{position:relative;padding:12px 16px 13px;border-radius:14px;border:1px solid rgba(62,240,168,.2);background:rgba(62,240,168,.05);display:flex;flex-direction:column;justify-content:center;min-width:0;overflow:hidden}
+.ag-v b{font-size:10.5px;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.ag-vv{display:flex;align-items:center;gap:9px;font-size:28px;font-weight:700;letter-spacing:-.02em;margin-top:7px;line-height:1;color:var(--ok)}
+.ag-vv .ic{width:22px;height:22px}
+.ag-v>span{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.45}
+.ag-v>span i{font-style:normal;font-weight:700}
+.ag-v.over{border-color:rgba(255,107,129,.28);background:rgba(255,107,129,.06)}
+.ag-v.over .ag-vv{color:#ff6b81}
+.ag-v.over>span b{color:var(--txt);font-size:inherit;letter-spacing:0;text-transform:none;font-weight:600}
+.agp .ch{height:270px}
+.agp .ch-b{--g:10px;gap:var(--g)}.agp .ch-b.dense{--g:5px}
+.ag-cl{position:absolute;left:calc(var(--g) / -2);right:calc(var(--g) / -2);height:0;border-top:1.5px dashed rgba(255,255,255,.5);pointer-events:none;z-index:2}
+.ag-cap{position:absolute;left:0;z-index:3;margin-bottom:6px;font-size:11px;color:var(--txt);background:rgba(5,8,17,.82);padding:2px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.22);white-space:nowrap;pointer-events:none}
+.ag-c{flex:1;height:100%;position:relative;display:flex;justify-content:center;cursor:pointer;border-radius:8px 8px 0 0;transition:background .2s}
+.ag-c:hover{background:linear-gradient(180deg,transparent,rgba(255,255,255,.04))}
+.ag-b{position:absolute;bottom:0;width:100%;max-width:46px;border-radius:4px 4px 1px 1px;background:var(--c);opacity:.78;transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*22ms)}
+.ag-c.over .ag-b{opacity:.9;border-radius:1px}
+.ag-c:hover .ag-b{opacity:.95}
+.ag-o{position:absolute;width:100%;max-width:46px;min-height:3px;border-radius:4px 4px 0 0;background:color-mix(in srgb,var(--c) 70%,#fff);z-index:3;animation:ago .5s ease-out both;animation-delay:calc(var(--i)*22ms + .75s)}
+@keyframes ago{from{opacity:0;transform:translateY(6px)}}
+.ag-ov{position:absolute;z-index:4;margin-bottom:6px;font-size:10.5px;font-weight:700;color:#fff;background:rgba(5,8,17,.85);border:1px solid var(--c);padding:1px 6px;border-radius:7px;white-space:nowrap;font-variant-numeric:tabular-nums;animation:ago .5s ease-out both;animation-delay:calc(var(--i)*22ms + .85s)}
+.ag-none{position:absolute;bottom:0;width:100%;max-width:46px;height:3px;border-radius:3px;background:rgba(255,255,255,.07)}
+.ag-c .xl small.ag-xo{color:#ff6b81;opacity:1;font-weight:700}
+.ag-c .xl small.ag-xk{color:var(--ok);opacity:.8}
+.ag-ft{display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
+.ag-ft>span{display:inline-flex;align-items:center;gap:7px}
+.ag-ft .ld{width:18px;border-top:1.5px dashed rgba(255,255,255,.6)}
+.ag-ft .lo{width:10px;height:10px;border-radius:3px;background:color-mix(in srgb,#ff8c42 70%,#fff)}
+.ag-ft .lb{display:inline-flex;gap:3px}.ag-ft .lb i{width:8px;height:8px;border-radius:50%}
+.ag-ft em{font-style:normal;color:var(--dim);flex:1 1 320px;text-align:right}
+@media (max-width:1280px){.ag-top{grid-template-columns:repeat(5,minmax(0,1fr))}.ag-v{grid-column:1 / -1;flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 14px}.ag-v .ag-vv{margin-top:0;font-size:22px}.ag-v>span{margin-top:0}}
+@media (max-width:860px){.ag-ft em{text-align:left}}
+@media (max-width:640px){.ag-top{grid-template-columns:1fr;gap:8px}.ag-k{display:grid;grid-template-columns:62px auto 1fr;grid-template-areas:'h v m' 'h v s';align-items:center;column-gap:12px;padding:9px 14px;border-top:1px solid rgba(255,255,255,.06);border-left:3px solid var(--c)}.ag-kh{grid-area:h;flex-direction:column;align-items:flex-start;gap:3px}.ag-kv{grid-area:v;margin:0;font-size:21px}.ag-m{grid-area:m;margin:0}.ag-ks{grid-area:s;margin-top:4px}.ag-v{flex-direction:column;align-items:flex-start}.agp .ch{height:220px}.agp .ch-b{--g:6px}.agp .ch-b.dense{--g:2px}.ag-c .ag-ov{display:none}.agp .ch-b.dense .ag-c:nth-child(even) .xl{visibility:hidden}}
 .pnote i.sq{display:inline-block;width:9px;height:9px;border-radius:2px;background:#3ef0a8;margin-right:6px}
 /* lite mode (slow devices): no blur, no animation, no glow, system fonts */
 :host([lite]){font-family:ui-sans-serif,system-ui,Roboto,'Segoe UI',sans-serif}
@@ -1225,7 +1294,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
   /* ---------- Net view helpers ---------- */
   const NP = '#3ef0a8', NN = '#ff7a4d'; // plus (more grid out) / minus (more grid in)
   const NET_IDS = ['n-hero', 'n-day', 'n-kpis', 'n-chart', 'n-clock', 'n-year', 'n-rec', 'n-cal', 'n-log'];
-  const NORM_IDS = ['hero', 'prof', 'kpis', 'chart', 'heat', 'tariff', 'blocks', 'log', 'form'];
+  const NORM_IDS = ['hero', 'prof', 'agp', 'kpis', 'chart', 'heat', 'tariff', 'blocks', 'log', 'form'];
   const nsg = v => { const r = Math.abs(v) < 0.005 ? 0 : v; return (r > 0 ? '+' : '') + fk(r); };
   const ncl = v => v >= 0 ? 'np' : 'nn';
   // a tooltip: bold title, then rows [label, value, colour dot]
@@ -1515,6 +1584,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 <div class="grid">
  <section class="card hero s7" id="hero"></section>
  <section class="card s5" id="prof"></section>
+ <section class="card agp s12" id="agp"></section>
  <div class="kpis s12" id="kpis"></div>
  <section class="card chart s8" id="chart"></section>
  <section class="card heat s4" id="heat"></section>
@@ -1578,7 +1648,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
       fm.style.display = this._me ? '' : 'none';
       this.$('blocks').style.display = this._me && !out ? '' : 'none';
       this.$('tariff').style.display = out ? 'none' : '';
-      this._renderHdr(); this._renderBanner(); this._renderHero(); if (!(remote && this._dirty)) this._renderForm(); this._renderKpis();
+      this._renderHdr(); this._renderBanner(); this._renderHero(); if (!(remote && this._dirty)) this._renderForm(); this._renderAgp(); this._renderKpis();
       this._renderChart(); this._renderHeat(); this._renderTariff(); this._renderBlocks(); this._renderLog(); this._renderProf(); if (!(remote && this._dwOpen)) this._renderDrawer();
     }
     _hdrHtml() {
@@ -2421,6 +2491,100 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
 <div class="bpk">${bp}</div>${xs}
 <div class="pnote">${t("Your network bill's billed power (obračunska moč) is based on 15-minute peaks like these, per tariff block. Colours show which block each quarter hour falls in.")}${AG ? ` <span class="agn">${t('Agreed power: {0}.', agv)}</span>` : AGF ? ` ${t(AGF.new ? 'Moj Elektro has no agreed power set for this day (new user).' : 'Moj Elektro has no agreed power set for this day.')}` : ''}</div>`;
     }
+    /* ----- Dogovorjena moč: the highest 15-minute power against the agreed power, per day / week / month ----- */
+    // per day with 15-minute data (also archived days), per block: {kw: highest power, t: start of that quarter hour,
+    // ag: the block's agreed kW that day (null when Moj Elektro has none), sq: Σ (kW − agreed)² of every quarter hour
+    // above it}. The integration works them out for every day (snapshot peaks: {date: {kw, at, x}}, logic.day_peaks);
+    // kept until a new snapshot arrives
+    _agDays() {
+      const P = (this._snap && this._snap.peaks) || {};
+      if (this._agCache && this._agCache.p === P) return this._agCache.m;
+      const m = new Map();
+      for (const d of Object.keys(P).sort()) {
+        const r = P[d]; if (!r || !Array.isArray(r.kw) || r.kw.length !== 5) continue;
+        const ag = this._agOn(d), [y, mo, dd] = d.split('-').map(Number);
+        m.set(d, r.kw.map((kw, b) => {
+          if (typeof kw !== 'number') return null;
+          const [h, mi] = String((r.at && r.at[b]) || '00:00').split(':').map(Number);
+          return { kw, t: new Date(y, mo - 1, dd, h, mi), ag: ag ? ag[b] : null, sq: ag && Array.isArray(r.x) ? +r.x[b] || 0 : 0 };
+        }));
+      }
+      this._agCache = { p: P, m };
+      return m;
+    }
+    // one period: per block its highest power (blk), the excess power as on the bill (x: √Σ overshoot² per block),
+    // the days with data and those above the agreed power, and the bar: the quarter hour closest to (or furthest
+    // above) its block's agreed power, else the highest one
+    _agSpan(from, to) {
+      const blk = [null, null, null, null, null], sq = [0, 0, 0, 0, 0]; let days = 0, over = 0, top = null, hi = null;
+      for (const [d, per] of this._agDays()) {
+        if (d < from || d > to) continue;
+        days++; let o = false;
+        per.forEach((p, b) => {
+          if (!p) return;
+          const k = blk[b];
+          if (!k || p.kw > k.kw) blk[b] = { kw: p.kw, t: p.t, ag: p.ag };
+          sq[b] += p.sq;
+          if (p.ag && p.kw > p.ag) o = true;
+          const u = p.ag ? p.kw / p.ag : null;
+          if (u != null && (!top || u > top.u)) top = { u, kw: p.kw, ag: p.ag, b, t: p.t };
+          if (!hi || p.kw > hi.kw) hi = { u: null, kw: p.kw, ag: null, b, t: p.t };
+        });
+        if (o) over++;
+      }
+      return { blk, days, over, bar: top || hi, x: sq.map(s => Math.sqrt(s)) };
+    }
+    _renderAgp() {
+      const el = this.$('agp'); if (!el || !this._built) return;
+      const M = this._me && !this._demo && !this._c.out ? this._agDays() : null;
+      if (!M || !this._agreed.length) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      const r = this._ui.agrange || 'day', T = this._c.today, keys = [...M.keys()].sort(), last = keys[keys.length - 1];
+      const head = `<div class="ch-h"><div><div class="h-t">${t('Agreed power')}</div><div class="h-s">${t('Highest 15-minute power against the agreed power · Moj Elektro')}</div></div>${this._tabs(r, 'agrange', [['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']])}</div>`;
+      const cur = (last && this._agOn(last)) || this._agOn(addD(T, -1));
+      if (!cur) { el.innerHTML = head + `<div class="empty" style="min-height:160px">${ic('bolt')}<span>${t('Moj Elektro has no agreed power for this meter yet.')}</span></div>`; return; }
+      const bk = this._buckets(r), S = this._agSpan(bk[0].from, T);
+      // the five blocks: today's agreed power, and how much of it the highest quarter hour of the period used
+      const tiles = cur.map((a, b) => {
+        const k = S.blk[b], ag = k && k.ag || a, u = k ? k.kw / ag : 0, over = k && k.kw > ag;
+        return `<div class="ag-k${over ? ' over' : ''}${k ? '' : ' nd'}" style="--c:${BLK[b]}"${k ? ` data-tip="${esc(`<b>Blok ${b + 1}</b><div class="r">${t('Highest power')}<span class="v">${fk(k.kw)} kW</span></div><div class="r">${t('Agreed power')}<span class="v">${fk(ag)} kW</span></div><div class="m">${fdate(iso(k.t))} ${pd(iso(k.t)).getFullYear()} · ${hm(k.t)}</div>`)}"` : ''}>
+<div class="ag-kh"><b>Blok ${b + 1}</b>${over ? `<em>▲ ${(k.kw - ag).toFixed(1)} kW</em>` : ''}</div>
+<div class="ag-kv">${fk(a)}<small>kW</small></div>
+<div class="ag-m"><i style="width:${Math.min(100, u * 100)}%"></i></div>
+<div class="ag-ks">${k ? `${t('peak {0} kW', `<b>${fk(k.kw)}</b>`)} · ${Math.round(u * 100)} %` : t(b === 0 ? 'Nov – Feb only' : 'no data')}</div></div>`;
+      }).join('');
+      // the month of the newest day: excess power as on the bill, yes or no
+      const ym = (last || T).slice(0, 7), X = this._agSpan(ym + '-01', ym + '-31'), xs = X.x.map((v, b) => ({ v, b })).filter(o => +o.v.toFixed(1) > 0);
+      const verdict = `<div class="ag-v${xs.length ? ' over' : ''}" data-tip="${esc(t('Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.'))}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
+<div class="ag-vv">${ic(xs.length ? 'warn' : 'ok')}${t(xs.length ? 'Yes' : 'No')}</div>
+<span>${xs.length ? xs.map(o => `<i style="color:${BLK[o.b]}">Blok ${o.b + 1}</i> <b>${o.v.toFixed(1)} kW</b>`).join(' · ') : t('Every day below the agreed power')}</span></div>`;
+      // the chart: y from 0 to a little above the highest bar or agreed power
+      const cols = bk.map(b => ({ b, s: this._agSpan(b.from, b.to) }));
+      const mx = nice(Math.max(...cur, ...cols.map(c => c.s.bar ? c.s.bar.kw : 0)) * 1.08), y = v => v / mx * 100, ticks = [1, .75, .5, .25, 0];
+      let lastAg = null;
+      const bars = cols.map(({ b, s }, i) => {
+        const w = s.bar, ag = w && w.ag, over = w && ag && w.kw > ag;
+        if (ag) lastAg = ag;
+        // the month view marks every month under its name: ✓ none, or its highest excess power
+        const xm = r === 'month' && s.days ? Math.max(...s.x) : null;
+        const sub = r === 'month' ? (xm == null ? '' : +xm.toFixed(1) > 0 ? `<small class="ag-xo">▲ ${xm.toFixed(1)}</small>` : '<small class="ag-xk">✓</small>') : b.sub ? `<small>${b.sub}</small>` : '';
+        let tip = `<b>${b.title}</b>`;
+        if (w) {
+          tip += `<div class="r"><i class="dot" style="background:${BLK[w.b]}"></i>${t('Highest power')} · Blok ${w.b + 1}<span class="v">${fk(w.kw)} kW</span></div>`;
+          if (ag) tip += `<div class="r">${t('Agreed power')}<span class="v">${fk(ag)} kW · ${t('{0} % of agreed', Math.round(w.kw / ag * 100))}</span></div>`;
+          if (over) tip += `<div class="r" style="color:#ff6b81">${t('Over by {0} kW', (w.kw - ag).toFixed(1))}</div>`;
+          tip += `<div class="m">${fdate(iso(w.t))} · ${hm(w.t)}</div>`;
+          if (r !== 'day') tip += `<div class="m">${t('Days above the agreed power: {0}', s.over)}</div>`;
+          if (r === 'month' && xm > 0.05) tip += `<div class="r">${t('Excess power (bill)')}</div>` + s.x.map((v, j) => +v.toFixed(1) > 0 ? `<div class="r"><i class="dot" style="background:${BLK[j]}"></i>Blok ${j + 1}<span class="v">${v.toFixed(1)} kW</span></div>` : '').join('');
+        } else tip += `<div class="m">${t('No data')}</div>`;
+        const bar = !w ? '<div class="ag-none"></div>'
+          : `<div class="ag-b" style="height:${y(over ? ag : w.kw)}%;--i:${i}"></div>${over ? `<div class="ag-o" style="bottom:${y(ag)}%;height:${y(w.kw - ag)}%;--i:${i}"></div><span class="ag-ov" style="bottom:${y(w.kw)}%;--i:${i}">+${(w.kw - ag).toFixed(1)}</span>` : ''}`;
+        return `<div class="ag-c${b.now ? ' now' : ''}${over ? ' over' : ''}" style="--c:${w ? BLK[w.b] : 'transparent'}" data-tip="${esc(tip)}">${ag ? `<i class="ag-cl" style="bottom:${y(ag)}%"></i>` : ''}${bar}<span class="xl">${b.label}${sub}</span></div>`;
+      }).join('');
+      const chart = `<div class="ch"><div class="ch-y">${ticks.map(f => `<span>${fax(mx * f)}</span>`).join('')}</div><div class="ch-p"><div class="ch-g">${ticks.map(() => '<i></i>').join('')}</div>${lastAg ? `<div class="ag-cap" style="bottom:${y(lastAg)}%">${t('agreed {0} kW', fk(lastAg))}</div>` : ''}<div class="ch-b${bk.length > 20 ? ' dense' : ''}">${bars}</div></div></div>`;
+      const foot = `<div class="ag-ft"><span><i class="ld"></i>${t('Agreed power')}</span><span><i class="lo"></i>${t('Above the agreed power')}</span><span><span class="lb">${BLK.map(c => `<i style="background:${c}"></i>`).join('')}</span>${t('Colour = tariff block')}</span><em>${t("Each bar is the period's highest 15-minute power, in the block closest to its agreed power.")}</em></div>`;
+      el.innerHTML = head + `<div class="ag-top">${tiles}${verdict}</div>` + chart + foot;
+    }
     // Grid out: the newest complete day of energy sent to the grid, what that day sent out, the net against
     // grid in and the hours it was exporting.
     _renderProfOut(el) {
@@ -2720,6 +2884,7 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       const a = t.dataset.act;
       if (a === 'mm' || a.startsWith('mm-')) { this._mmAct(a, t.dataset.v); return; }
       if (a === 'range') { this._ui.range = t.dataset.v; this._renderChart(); }
+      else if (a === 'agrange') { this._ui.agrange = t.dataset.v; this._renderAgp(); }
       else if (a === 'avgline') { const k = t.dataset.v; LS.set('daily-energy-avg-' + k, this._avgOn(k) ? '0' : '1'); if (k === 'use') this._renderChart(); else if (k === 'vtmt') this._renderTariff(); else this._renderBlocks(); }
       else if (a === 'trange') { this._ui.trange = t.dataset.v; this._renderTariff(); }
       else if (a === 'bill-m') { this._ui.billM = t.dataset.v; this._renderBill(); }

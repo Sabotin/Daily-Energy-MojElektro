@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "0.9.51"
+VERSION = "0.9.52"
 
 # Moj Elektro API access, entered at setup.
 CONF_TOKEN = "token"
@@ -40,3 +40,5 @@ KEEP_Q15_DAYS = 35
 SETTINGS_KEYS = ("mult", "tmode", "pVT", "pMT", "cur", "grid", "pET", "kw1", "kw2", "kw3", "kw4", "kw5")
 # Import from Moj Elektro (Settings): the longest range fetched in one call; the card asks month by month.
 MAX_IMPORT_DAYS = 400
+# The Dogovorjena moč card's daily peaks (manager.data["peaks"]): stored meters work them out again once when it changes.
+PEAKS_VERSION = 1
