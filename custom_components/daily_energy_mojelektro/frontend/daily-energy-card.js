@@ -218,6 +218,28 @@
     'Projected {0} kWh': 'Predvidena poraba {0} kWh',
     'Projected sent out {0} kWh': 'Predvidena oddaja {0} kWh',
     'Year {0}': 'Leto {0}',
+    // the four tiles under the 15-minute charts
+    '≈ same': '≈ enako',
+    'Always-on use': 'Stalna poraba',
+    'Average power': 'Povprečna moč',
+    'of which always on': 'od tega stalno',
+    'average of the last 7 days': 'povprečje zadnjih 7 dni',
+    '4 weeks earlier': '4 tedne prej',
+    'a year': 'na leto',
+    'A year': 'Na leto',
+    'Cost a year': 'Strošek na leto',
+    '≈ {0} kWh a day · {1} % of your use': '≈ {0} kWh na dan · {1} % vaše porabe',
+    'The power that never switches off (fridge, router, pumps, standby): each day the lowest tenth of its 15-minute powers, the middle value of the last 7 days.': 'Moč, ki nikoli ne ugasne (hladilnik, usmerjevalnik, črpalke, stanje pripravljenosti): vsak dan najnižja desetina njegovih 15-minutnih moči, srednja vrednost zadnjih 7 dni.',
+    'Typical prices with network charge and VAT': 'Okvirne cene z omrežnino in DDV',
+    'Your prices with network charge and VAT': 'Vaše cene z omrežnino in DDV',
+    'Daily average': 'Dnevno povprečje',
+    'Last week': 'Prejšnji teden',
+    'same days': 'isti dnevi',
+    '(same days)': '(isti dnevi)',
+    '{0} / {1} days': '{0} / {1} dni',
+    'Projection': 'Napoved',
+    'Projection from day 3': 'Napoved od 3. dne',
+    'last year to {0}': 'lani do {0}',
     // charts
     'avg {0}': 'povpr. {0}',
     'Total': 'Skupaj',
@@ -839,17 +861,56 @@ input.in.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:28px
 .btn:disabled{opacity:.5;cursor:default;pointer-events:none}
 .btn.warn{background:rgba(255,93,122,.12);border:1px solid rgba(255,93,122,.3);color:#ffb3c0}
 input.in.pin{width:110px;padding:9px 12px;font-size:16px;letter-spacing:.3em;text-align:center}
-/* kpis */
+/* kpis: the newest period with data against a fair reference (matte: solid colours, no glow) */
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
-.kpi{overflow:hidden;padding:22px 22px 0;display:flex;flex-direction:column;min-height:196px}
-.kpi-t{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mut);font-weight:500;letter-spacing:.03em}
-.kpi-i{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,var(--a),var(--b));color:#061022;box-shadow:0 8px 24px -8px var(--a)}
-.kpi-i .ic{width:18px;height:18px}
-.kpi-v{font-size:40px;font-weight:700;letter-spacing:-.035em;margin-top:14px;line-height:1;font-variant-numeric:tabular-nums}
-.kpi-v small{font-size:15px;color:var(--mut);font-weight:500;margin-left:6px;letter-spacing:0}
-.kpi-s{font-size:13px;color:var(--mut);margin-top:8px}
-.kpi-s b{color:var(--txt);font-weight:600}
-.spark{margin:auto -22px 0;width:calc(100% + 44px);height:62px;display:block}
+.kp{display:flex;flex-direction:column;padding:20px 20px 16px;min-height:218px;min-width:0}
+.kp-h{display:flex;align-items:center;gap:10px;min-height:30px}
+.kp-i{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;color:var(--a);background:color-mix(in srgb,var(--a) 15%,transparent)}
+.kp-i .ic{width:16px;height:16px}
+.kp-l{flex:1;min-width:0;font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kp-d{flex:none;font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;border:1px solid;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kp-d.up{color:#ffb2a0;background:rgba(255,93,122,.10);border-color:rgba(255,93,122,.25)}
+.kp-d.down{color:#98ffd6;background:rgba(62,240,168,.08);border-color:rgba(62,240,168,.25)}
+.kp-d.eq{color:var(--mut);background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}
+.kp-v{display:flex;align-items:baseline;gap:6px;margin-top:14px;line-height:1;min-width:0}
+.kp-v b{font-size:38px;font-weight:700;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.kp-v small{font-size:14px;color:var(--mut);font-weight:500}
+.kp-v em{margin-left:auto;font-style:normal;font-size:13px;font-weight:600;color:var(--txt);opacity:.8;white-space:nowrap;font-variant-numeric:tabular-nums}
+.kp-s{font-size:12.5px;color:var(--mut);margin-top:9px;line-height:1.4}
+.kp-s b{color:var(--txt);font-weight:600}
+.kp-gl{display:inline-block;width:9px;height:9px;border:1.5px dashed rgba(255,255,255,.5);border-bottom:0;border-radius:2px 2px 0 0;margin-right:6px;vertical-align:-1px}
+.kp-c{margin-top:auto;padding-top:16px}
+.kp-g{position:relative;display:flex;align-items:flex-end;gap:4px;height:58px}
+.kp-g>i{position:relative;flex:1;min-width:0;height:100%;display:flex;align-items:flex-end}
+.kp-g .kb{position:relative;display:block;width:100%;border-radius:3px 3px 1px 1px;background:var(--a);opacity:.78;transform-origin:bottom;animation:kpg .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--j,0) * 22ms)}
+.kp-g>i.on .kb,.kp-g>i:hover .kb{opacity:1}
+.kp-g .kg{position:absolute;left:0;right:0;bottom:0;z-index:1;border:1.5px dashed rgba(255,255,255,.42);border-bottom:0;border-radius:3px 3px 0 0;pointer-events:none}
+.kp-av{position:absolute;left:0;right:0;z-index:1;border-top:1px dashed rgba(255,255,255,.45);pointer-events:none}
+.kp-x{display:flex;gap:4px;margin-top:6px;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.kp-x span{flex:1;min-width:0;text-align:center;white-space:nowrap}
+.kp-x span.on{color:var(--txt);font-weight:600}
+.kp-x.kp-h24{justify-content:space-between}
+.kp-x.kp-h24 span{flex:none}
+/* always-on use: the average day by the hour, the always-on part solid at the bottom of every hour */
+.kp-g.kp-bl{gap:2px}
+.kp-g.kp-bl .kb{opacity:1;background:color-mix(in srgb,var(--a) 30%,transparent)}
+.kp-g.kp-bl>i:hover .kb{background:color-mix(in srgb,var(--a) 45%,transparent)}
+.kp-g .ks{position:absolute;left:0;right:0;bottom:0;border-radius:1px;background:var(--a);opacity:.85}
+/* the month: so far, the projection, and last month's total as a marker */
+.kp-tr{display:flex;flex-direction:column;justify-content:flex-end;height:78px}
+.kp-tb{position:relative;height:12px;border-radius:999px;background:rgba(255,255,255,.06)}
+.kp-tb .f{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--a);opacity:.85;transform-origin:left;animation:kpt .9s cubic-bezier(.2,.8,.2,1) both}
+.kp-tb .p{position:absolute;top:0;bottom:0;border-radius:0 999px 999px 0;background:color-mix(in srgb,var(--a) 28%,transparent)}
+.kp-tk{position:absolute;top:-6px;bottom:-6px;width:2px;margin-left:-1px;border-radius:2px;background:rgba(255,255,255,.8);z-index:1}
+.kp-tk:before{content:'';position:absolute;inset:0 -8px}
+.kp-tk em{position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+.kp-tk em.r{left:auto;right:-1px;transform:none}
+.kp-tk em.l{left:-1px;transform:none}
+.kp-tl{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+.kp-tl b{color:var(--txt);font-weight:600}
+@keyframes kpg{from{transform:scaleY(0)}}
+@keyframes kpt{from{transform:scaleX(0)}}
+@media (max-width:640px){.kp{min-height:0;padding:18px}.kp-v b{font-size:34px}.kp-g{height:52px}}
 /* chart */
 .chart{display:flex;flex-direction:column}
 .ch{display:flex;gap:10px;height:300px;padding-bottom:30px}
@@ -1282,7 +1343,7 @@ background:radial-gradient(circle at 50% 0%,rgba(62,230,255,.22),transparent 70%
 :host([lite]) .card{backdrop-filter:none;-webkit-backdrop-filter:none;background:#0e1428;box-shadow:none}
 :host([lite]) .tip,:host([lite]) .dw-bg{backdrop-filter:none;-webkit-backdrop-filter:none}
 :host([lite]) .bignum,:host([lite]) .g-val,:host([lite]) .dn circle{filter:none!important}
-:host([lite]) .pc.top i,:host([lite]) .logo,:host([lite]) .chip i,:host([lite]) .dot,:host([lite]) .btn.pri,:host([lite]) .kpi-i,:host([lite]) .bar.tot,:host([lite]) .seg.vt,:host([lite]) .cell.l4,:host([lite]) .seg-tabs button.on,:host([lite]) .toast,:host([lite]) .odo,:host([lite]) .dw{box-shadow:none!important}
+:host([lite]) .pc.top i,:host([lite]) .logo,:host([lite]) .chip i,:host([lite]) .dot,:host([lite]) .btn.pri,:host([lite]) .bar.tot,:host([lite]) .seg.vt,:host([lite]) .cell.l4,:host([lite]) .seg-tabs button.on,:host([lite]) .toast,:host([lite]) .odo,:host([lite]) .dw{box-shadow:none!important}
 :host([lite]) .od,:host([lite]) .od-sep,:host([lite]) input.in.mono,:host([lite]) .fld.vt input.in,:host([lite]) .fld.mt input.in,:host([lite]) .tbl .mono{font-family:ui-monospace,'Roboto Mono',monospace}
 /* Popolno Test: the full look without what makes phones hot and slow. The glow blobs stay where they are but as soft
    gradients instead of a live blur, and they do not drift; the cards keep their glass tint without blurring what is
@@ -1965,37 +2026,115 @@ ${yl}</div>` : '';
       this._toast(dt != null && dt >= 0 ? t('Saved · +{0} kWh since {1}', fk(dt), fshort(prev.d)) : t('Reading saved'));
     }
 
-    /* ----- kpis ----- */
+    /* ----- kpis -----
+       Four tiles, each the newest period with data set against a fair reference: the always-on use (from the 15-minute
+       data) against four weeks earlier, the week day by day against the same days of the week before, the month on
+       its way to a projection against last month's total, the year month by month against last year up to the same
+       day. Without 15-minute data (demo, meter readings, the grid-out view) the first tile is the month's daily
+       average instead. */
     _renderKpis() {
-      const { today, days } = this._c;
-      const ws = weekStart(today), wk = this._sum(ws, today), lw = this._sum(addD(ws, -7), addD(ws, -1));
-      const d = pd(today), mo = this._monthVal(d.getFullYear(), d.getMonth());
-      const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      const proj = mo.n >= 3 ? mo.t / mo.n * dim : null;
-      const yr = { t: 0, vt: 0, mt: 0, n: 0, has: false };
-      for (let mi = 0; mi <= d.getMonth(); mi++) { const r = this._monthVal(d.getFullYear(), mi); yr.t += r.t; yr.vt += r.vt; yr.mt += r.mt; yr.n += r.n; yr.has = yr.has || r.has; }
-      // daily average of this month = the month's total over the days it covers (same numbers as the month tile)
-      const dm = []; let peak = null;
-      for (let k = iso(new Date(d.getFullYear(), d.getMonth(), 1)); k <= today; k = addD(k, 1)) { const o = days.get(k); dm.push(o && o.n ? o.t : null); if (o && o.n && (!peak || o.t > peak.v)) peak = { v: o.t, k }; }
-      const avg = mo.n ? mo.t / mo.n : null;
-      const wks = this._buckets('week').slice(-8).map(b => b.n ? b.t : null);
-      const mos = this._buckets('month').map(b => b.n ? b.t : null);
-      const cost = o => { const c = this._cost(o); return c != null ? ` · <b>${this._money(c)}</b>` : ''; };
-      const tile = (i, a, b, lab, v, sub, sp, id) => `<section class="card kpi" style="--a:${a};--b:${b};animation-delay:${i * 70}ms"><div class="kpi-t"><span class="kpi-i">${ic(id)}</span>${lab}</div><div class="kpi-v">${v == null ? '—' : fk(v)}<small>kWh</small></div><div class="kpi-s">${sub}</div>${this._spark(sp, a, b, 'sp' + i)}</section>`;
-      this.$('kpis').innerHTML =
-        tile(0, '#3ef0a8', '#3ee6ff', t('Daily average · this month'), avg, peak ? t(this._c.out ? 'Peak sent out {0} kWh on {1}' : 'Peak {0} kWh on {1}', `<b>${fk(peak.v)}</b>`, fshort(peak.k)) : MONL[d.getMonth()], dm, 'avg') +
-        tile(1, '#3ee6ff', '#5b8cff', t('This week'), wk.n ? wk.t : null, `${t('Last week {0} kWh', `<b>${lw.n ? fk(lw.t) : '—'}</b>`)}${cost(wk)}`, wks, 'week') +
-        tile(2, '#8f7dff', '#c07bff', MONL[d.getMonth()], mo.n ? mo.t : null, `${t(this._c.out ? 'Projected sent out {0} kWh' : 'Projected {0} kWh', `<b>${proj == null ? '—' : fk(proj)}</b>`)}${cost(mo)}`, mos, 'month') +
-        tile(3, '#ffc857', '#ff7a3d', t('Year {0}', d.getFullYear()), yr.n ? yr.t : null, `${MON[0]} – ${MON[d.getMonth()]}${cost(yr)}`, mos.slice(-(d.getMonth() + 1)), 'year');
-    }
-    _spark(vals, a, b, id) {
-      const pts = vals.map((v, i) => [i, v]).filter(p => p[1] != null);
-      if (pts.length < 2) return `<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none"></svg>`;
-      const mx = Math.max(...pts.map(p => p[1])) || 1, mn = Math.min(...pts.map(p => p[1])), n = Math.max(1, vals.length - 1);
-      const xy = pts.map(([i, v]) => [i / n * 100, 36 - ((v - mn) / ((mx - mn) || 1)) * 26]);
-      let d = `M${xy[0][0]},${xy[0][1]}`;
-      for (let i = 1; i < xy.length; i++) { const [x0, y0] = xy[i - 1], [x1, y1] = xy[i], cx = (x0 + x1) / 2; d += ` C${cx},${y0} ${cx},${y1} ${x1},${y1}`; }
-      return `<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none"><defs><linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}" stop-opacity=".35"/><stop offset="1" stop-color="${a}" stop-opacity="0"/></linearGradient><linearGradient id="${id}s" x1="0" x2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><path d="${d} L${xy[xy.length - 1][0]},40 L${xy[0][0]},40Z" fill="url(#${id}f)"/><path d="${d}" fill="none" stroke="url(#${id}s)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+      const { days, out, today } = this._c;
+      const has = k => { const o = days.get(k); return !!(o && o.n); };
+      const L = [...days.keys()].filter(k => k <= today && has(k)).sort().pop();
+      if (!L) { this.$('kpis').innerHTML = ''; return; }
+      const Ld = pd(L), y = Ld.getFullYear(), m = Ld.getMonth();
+      const money = o => { const c = this._cost(o); return c != null ? `≈ ${this._money(c)}` : ''; };
+      // the comparison chip: more used is red, more sent out is green; within ±2 % it reads "about the same"
+      const chip = (cur, ref, tip) => {
+        if (!(ref > 0) || cur == null || !isFinite(cur)) return '';
+        const p = (cur / ref - 1) * 100, q = Math.abs(p) < 2 ? 'eq' : (p > 0) !== out ? 'up' : 'down';
+        return `<span class="kp-d ${q}" data-tip="${esc(tip)}">${q === 'eq' ? t('≈ same') : `${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(0)} %`}</span>`;
+      };
+      const row = (l, v) => `<div class="r">${l}<span class="v">${v}</span></div>`;
+      const tile = (i, a, icon, lab, ch, v, unit, side, sub, graph, vtip) => `<section class="card kp" style="--a:${a};animation-delay:${i * 70}ms">
+<div class="kp-h"><span class="kp-i">${ic(icon)}</span><span class="kp-l">${lab}</span>${ch}</div>
+<div class="kp-v"${vtip ? ` data-tip="${esc(vtip)}"` : ''}><b>${v}</b><small>${unit}</small>${side ? `<em>${side}</em>` : ''}</div>
+<div class="kp-s">${sub}</div><div class="kp-c">${graph}</div></section>`;
+      // columns, the period before as a dashed outline behind each one
+      const cols = (cs, line) => {
+        const mx = Math.max(0.001, line || 0, ...cs.map(c => Math.max(c.v || 0, c.g || 0)));
+        return `<div class="kp-g">${line ? `<span class="kp-av" style="bottom:${(line / mx * 100).toFixed(1)}%"></span>` : ''}${cs.map((c, j) => `<i data-tip="${esc(c.tip)}"${c.cl ? ` class="${c.cl}"` : ''}>${c.g ? `<span class="kg" style="height:${(c.g / mx * 100).toFixed(1)}%"></span>` : ''}${c.v ? `<span class="kb" style="height:${Math.max(3, c.v / mx * 100).toFixed(1)}%;--j:${j}"></span>` : ''}</i>`).join('')}</div>
+<div class="kp-x">${cs.map(c => `<span${c.cl ? ` class="${c.cl}"` : ''}>${c.l}</span>`).join('')}</div>`;
+      };
+      const gl = l => `<i class="kp-gl"></i>${l}`;
+
+      // 1 — always-on use: each day the lowest tenth of its 15-minute powers, the middle of the last 7 days
+      let A = null;
+      const q15 = out || this._demo ? {} : this._q15 || {};
+      const qk = Object.keys(q15).filter(k => k <= today && q15[k].filter(x => isFinite(x)).length >= 88).sort();
+      const win = end => qk.filter(k => k <= end && k > addD(end, -7));
+      const low = k => { const s = q15[k].filter(x => isFinite(x)).map(x => x * 4).sort((a, b) => a - b); return s[Math.floor(s.length * .1)]; };
+      const mid = a => { const s = [...a].sort((p, q) => p - q), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+      const W = qk.length ? win(qk[qk.length - 1]) : [];
+      if (W.length >= 3) {
+        const base = mid(W.map(low)), W0 = win(addD(W[W.length - 1], -28)), base0 = W0.length >= 3 ? mid(W0.map(low)) : null;
+        // the average day by the hour: each hour's kWh = its average power in kW
+        const H = Array(24).fill(0);
+        for (const k of W) { const t0 = pd(k).getTime(); q15[k].forEach((v, i) => { if (isFinite(v)) H[new Date(t0 + i * 9e5).getHours()] += v; }); }
+        H.forEach((v, h) => H[h] = v / W.length);
+        const dayAvg = H.reduce((s, v) => s + v, 0), share = dayAvg > 0 ? Math.min(1, base * 24 / dayAvg) : 0;
+        // what a kWh that runs all day costs: the supplier's price (VT on weekdays 6–22, 80 of the week's 168 hours),
+        // the network's energy charge and the levies, with VAT
+        const P = this._billPrices(true), sup = P.et != null ? P.et : P.vt * 80 / 168 + P.mt * 88 / 168;
+        const en = netRow(today.slice(0, 7)).row.en.filter(x => x > 0), kwhP = (sup + en.reduce((s, x) => s + x, 0) / en.length + LEVY.reduce((s, x) => s + x, 0)) * (1 + VAT);
+        const yr = base * 24 * 365, w = v => v < 1 ? `${Math.round(v * 100) * 10} W` : `${fk(v)} kW`;
+        const mx = Math.max(...H, base) || 1;
+        const bars = H.map((v, h) => `<i data-tip="${esc(`<b>${pad(h)}:00 – ${pad((h + 1) % 24)}:00</b>${row(t('Average power'), `${fk(v)} kW`)}${row(t('of which always on'), w(Math.min(base, v)))}<div class="m">${t('average of the last 7 days')}</div>`)}"><span class="kb" style="height:${Math.max(3, v / mx * 100).toFixed(1)}%;--j:${h}"><span class="ks" style="height:${Math.min(100, base / (v || base) * 100).toFixed(1)}%"></span></span></i>`).join('');
+        A = tile(0, '#3ee6ff', 'moon', t('Always-on use'),
+          base0 ? chip(base, base0, `<b>${t('4 weeks earlier')}</b>${row(`${fshort(W0[0])} – ${fshort(W0[W0.length - 1])}`, w(base0))}`) : '',
+          base < 1 ? String(Math.round(base * 100) * 10) : fk(base), base < 1 ? 'W' : 'kW', `≈ ${this._c.s.cur}${Math.round(yr * kwhP)} ${t('a year')}`,
+          t('≈ {0} kWh a day · {1} % of your use', `<b>${fk(base * 24)}</b>`, `<b>${Math.round(share * 100)}</b>`),
+          `<div class="kp-g kp-bl">${bars}</div><div class="kp-x kp-h24"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>`,
+          `<b>${t('Always-on use')}</b><div class="m">${t('The power that never switches off (fridge, router, pumps, standby): each day the lowest tenth of its 15-minute powers, the middle value of the last 7 days.')}</div>${row(t('A year'), `${grp(String(Math.round(yr)))} kWh`)}${row(t('Cost a year'), `≈ ${this._c.s.cur}${Math.round(yr * kwhP)}`)}<div class="m">${t(P.approx ? 'Typical prices with network charge and VAT' : 'Your prices with network charge and VAT')}</div>`);
+      } else {
+        // the month's daily average: its days as columns, the average as a dashed line, the highest day brighter
+        const dim = new Date(y, m + 1, 0).getDate(), mo = this._monthVal(y, m), avg = mo.n ? mo.t / mo.n : null;
+        const pm = this._monthVal(y, m - 1), pavg = pm.n ? pm.t / pm.n : null;
+        let pk = null; const cs = [];
+        for (let d = 1; d <= dim; d++) { const k = iso(new Date(y, m, d)), o = days.get(k); if (o && o.n && (!pk || o.t > pk.v)) pk = { v: o.t, k }; cs.push({ k, v: o && o.n ? o.t : 0 }); }
+        A = tile(0, '#3ee6ff', 'avg', t('Daily average'),
+          chip(avg, pavg, `<b>${MONL[(m + 11) % 12]}</b>${row(t('Daily average'), `${fk(pavg)} kWh`)}`),
+          fk(avg), 'kWh', '', pk ? t(out ? 'Peak sent out {0} kWh on {1}' : 'Peak {0} kWh on {1}', `<b>${fk(pk.v)}</b>`, fshort(pk.k)) : '',
+          cols(cs.map((c, j) => ({ v: c.v, l: (j + 1) % 5 === 1 || j + 1 === dim ? String(j + 1) : '', cl: pk && c.k === pk.k ? 'on' : '', tip: `<b>${fdate(c.k)}</b>${c.v ? row(t(out ? 'Sent out' : 'Used'), `${fk(c.v)} kWh`) : `<div class="m">${t('No data')}</div>`}` })), avg));
+      }
+
+      // 2 — the week of the newest day, day by day against the same days of the week before
+      const ws = weekStart(L), cw = ws === weekStart(today);
+      let wc = 0, wo = 0, wr = 0, wn = 0; const wcs = [];
+      for (let j = 0; j < 7; j++) {
+        const k = addD(ws, j), kp = addD(k, -7), a = has(k) ? days.get(k).t : null, b = has(kp) ? days.get(kp).t : null;
+        if (a != null) { wc += a; wn++; if (b != null) { wo += a; wr += b; } }
+        wcs.push({ v: a, g: b, l: DOW2[pd(k).getDay()], cl: k === L ? 'on' : '', tip: `<b>${fdate(k)}</b>${row(t(out ? 'Sent out' : 'Used'), a != null ? `${fk(a)} kWh` : '—')}${row(`${t('week before')} · ${fshort(kp)}`, b != null ? `${fk(b)} kWh` : '—')}` });
+      }
+      const wsum = this._sum(ws, addD(ws, 6)), whole = wn === 7;
+      const B = tile(1, '#6f8cff', 'week', t(cw ? 'This week' : 'Last week'),
+        chip(wo, wr, `<b>${t('week before')}</b>${row(whole ? `${fshort(addD(ws, -7))} – ${fshort(addD(ws, -1))}` : t('same days'), `${fk(wr)} kWh`)}`),
+        fk(wc), 'kWh', money(wsum), `${gl(t('week before'))} <b>${fk(wr)}</b> kWh${whole ? '' : ` ${t('(same days)')}`}`, cols(wcs));
+
+      // 3 — the month of the newest day on its way to the projection; the marker is last month's total
+      const dim = new Date(y, m + 1, 0).getDate(), mo = this._monthVal(y, m), pmv = this._monthVal(y, m - 1);
+      const nd = Math.min(dim, mo.n), proj = nd >= 3 && nd < dim ? mo.t / nd * dim : nd >= dim ? mo.t : null;
+      const pt = pmv.n ? pmv.t : null, mx = Math.max(mo.t, proj || 0, pt || 0) * 1.04 || 1, x = v => (v / mx * 100).toFixed(1);
+      const pl = MON[(m + 11) % 12], pos = pt != null ? +x(pt) : 0;
+      const track = `<div class="kp-tr"><div class="kp-tb">
+<span class="f" style="width:${x(mo.t)}%"></span>${proj && proj > mo.t ? `<span class="p" style="left:${x(mo.t)}%;width:${x(proj - mo.t)}%"></span>` : ''}
+${pt != null ? `<span class="kp-tk" style="left:${pos}%" data-tip="${esc(`<b>${MONL[(m + 11) % 12]}</b>${row(t(out ? 'Sent out' : 'Used'), `${fk(pt)} kWh`)}`)}"><em class="${pos > 82 ? 'r' : pos < 18 ? 'l' : ''}">${pl} ${fk(pt)}</em></span>` : ''}</div>
+<div class="kp-tl"><span>${t('{0} / {1} days', nd, dim)}</span><span>${proj ? t(out ? 'Projected sent out {0} kWh' : 'Projected {0} kWh', `<b>${fk(proj)}</b>`) : t('Projection from day 3')}</span></div></div>`;
+      const C = tile(2, '#a18bff', 'month', `${MONL[m]}${y !== pd(today).getFullYear() ? ' ' + y : ''}`,
+        proj && pt ? chip(proj, pt, `<b>${MONL[m]}</b>${row(t('Projection'), `${fk(proj)} kWh`)}${row(MONL[(m + 11) % 12], `${fk(pt)} kWh`)}`) : '',
+        fk(mo.t), 'kWh', money(mo), mo.n ? t('avg {0} kWh/day', `<b>${fk(mo.t / mo.n)}</b>`) : '', track);
+
+      // 4 — the year month by month, last year's months as outlines; the chip compares up to the same day
+      const yv = [...Array(12)].map((_, i) => i <= m ? this._monthVal(y, i) : null), lv = [...Array(12)].map((_, i) => this._monthVal(y - 1, i));
+      const ytd = yv.reduce((s, r) => s + (r && r.n ? r.t : 0), 0);
+      const full = [...days.keys()].some(k => k <= `${y - 1}-01-07` && has(k));
+      const ly = full ? lv.slice(0, m).reduce((s, r) => s + r.t, 0) + this._sum(`${y - 1}-${pad(m + 1)}-01`, `${y - 1}${L.slice(4)}`).t : null;
+      const yc = { t: 0, vt: 0, mt: 0 }; yv.forEach(r => { if (r) { yc.t += r.t; yc.vt += r.vt; yc.mt += r.mt; } }); yc.has = yv.some(r => r && r.has);
+      const D = tile(3, '#ffb547', 'year', t('Year {0}', y),
+        ly ? chip(ytd, ly, `<b>${t('last year')}</b>${row(`1. ${MON[0]} – ${fshort(L)} ${y - 1}`, `${fk(ly)} kWh`)}`) : '',
+        fk(ytd), 'kWh', money(yc), ly ? `${gl(t('last year to {0}', fshort(L)))} <b>${fk(ly)}</b> kWh` : `${MON[0]} – ${MON[m]}`,
+        cols(yv.map((r, i) => ({ v: r && r.n ? r.t : 0, g: lv[i].n ? lv[i].t : 0, l: MON[i], cl: i === m ? 'on' : '', tip: `<b>${MONL[i]}</b>${row(String(y), r && r.n ? `${fk(r.t)} kWh` : '—')}${row(String(y - 1), lv[i].n ? `${fk(lv[i].t)} kWh` : '—')}` }))));
+      this.$('kpis').innerHTML = A + B + C + D;
     }
 
     /* ----- charts ----- */
