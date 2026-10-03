@@ -294,6 +294,8 @@
     'Yes': 'Da',
     'No': 'Ne',
     'Every day below the agreed power': 'Vsi dnevi pod dogovorjeno močjo',
+    '(+{0} excess)': '(+{0} presežek)',
+    'Excess power on the bill': 'Presežna moč na računu',
     'peak {0} kW': 'najvišja {0} kW',
     'agreed {0} kW': 'dogovorjena {0} kW',
     'Highest power': 'Najvišja moč',
@@ -2572,9 +2574,14 @@ ${ks.length > 14 ? `<div class="more"><button class="btn sm gh" data-act="nlog">
       }).join('');
       // the month shown in Dnevno, else the month of the newest day: excess power as on the bill, yes or no
       const ym = am || (last || T).slice(0, 7), X = this._agSpan(ym + '-01', ym + '-31'), xs = X.x.map((v, b) => ({ v, b })).filter(o => +o.v.toFixed(1) > 0);
-      const verdict = `<div class="ag-v${xs.length ? ' over' : ''}" data-tip="${esc(t('Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.'))}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
+      // every block that went over: the highest power it reached and how far that was above its agreed power, one line
+      // each; the bill's excess power (√Σ overshoot²) is in the info box
+      const vtip = (xs.length ? `<b>${t('Excess power on the bill')}</b>` + xs.map(o => `<div class="r"><i class="dot" style="background:${BLK[o.b]}"></i>Blok ${o.b + 1}<span class="v">${o.v.toFixed(1)} kW</span></div>`).join('') : '')
+        + `<div class="m">${t('Excess power as on the bill: per block, the square root of the sum of the squared overshoots in the month.')}</div>`;
+      const vline = o => { const k = X.blk[o.b]; return `<i style="color:${BLK[o.b]}">Blok ${o.b + 1}</i> <b>${fk(k.kw)} kW</b>${k.ag && k.kw > k.ag ? ` ${t('(+{0} excess)', (k.kw - k.ag).toFixed(1))}` : ''}`; };
+      const verdict = `<div class="ag-v${xs.length ? ' over' : ''}" data-tip="${esc(vtip)}"><b>${t('Excess power · {0}', MONL[+ym.slice(5) - 1])}</b>
 <div class="ag-vv">${ic(xs.length ? 'warn' : 'ok')}${t(xs.length ? 'Yes' : 'No')}</div>
-<span>${xs.length ? xs.map(o => `<i style="color:${BLK[o.b]}">Blok ${o.b + 1}</i> <b>${o.v.toFixed(1)} kW</b>`).join(' · ') : t('Every day below the agreed power')}</span></div>`;
+<span>${xs.length ? xs.map(vline).join('<br>') : t('Every day below the agreed power')}</span></div>`;
       // the chart: y from 0 to a little above the highest bar or agreed power
       const cols = bk.map(b => ({ b, s: this._agSpan(b.from, b.to) }));
       const mx = nice(Math.max(...cur, ...cols.map(c => c.s.bar ? c.s.bar.kw : 0)) * 1.08), y = v => v / mx * 100, ticks = [1, .75, .5, .25, 0];
