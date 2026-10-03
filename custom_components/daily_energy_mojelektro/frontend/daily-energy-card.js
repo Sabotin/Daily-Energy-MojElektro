@@ -2587,7 +2587,9 @@ ${this._isAdmin() && this._sync === 'shared' ? `<div class="row" style="align-it
       if (a > b) { this._toast(t('Pick days before today')); return; }
       const spans = [];
       for (let s = a; s <= b;) { const d = pd(s), e = iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)), end = e < b ? e : b; spans.push([s, end]); s = addD(end, 1); }
-      this._importing = true; this._renderDrawer();
+      this._importing = true;
+      // phones: Settings covers the whole screen, so it slides away and the dashboard shows the import's progress
+      if (isPhone()) this._drawer(false); else this._renderDrawer();
       let days = 0, noTotal = 0, err = null;
       for (let i = 0; i < spans.length && !err; i++) {
         const d = pd(spans[i][0]);
