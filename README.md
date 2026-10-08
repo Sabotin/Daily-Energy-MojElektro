@@ -71,7 +71,7 @@ type: custom:daily-energy-card
 
 ## Licenca
 
-MIT – glejte [LICENSE](LICENSE). Projekt ni povezan z Elektro Slovenije ali katerim koli distribucijskim podjetjem.
+Vse pravice pridržane – glejte [LICENSE](LICENSE). Projekt ni povezan z Elektro Slovenije ali katerim koli distribucijskim podjetjem.
 
 ---
 
@@ -144,4 +144,4 @@ type: custom:daily-energy-card
 
 ## Licence
 
-MIT – see [LICENSE](LICENSE). Not affiliated with Elektro Slovenije or any distribution company.
+All rights reserved – see [LICENSE](LICENSE). Not affiliated with Elektro Slovenije or any distribution company.
