@@ -20,7 +20,7 @@ class DailyEnergyConfigFlow(ConfigFlow,domain=DOMAIN):
 		if A is not _A:
 			C=str(A[CONF_METER]).strip();E=str(A[CONF_TOKEN]).strip();await B.async_set_unique_id(C);B._abort_if_unique_id_configured();F=await async_test_access(B.hass,C,E)
 			if F:D['base']=F
-			else:return B.async_create_entry(title=f"Daily Energy · {C}",data={CONF_METER:C,CONF_TOKEN:E},options={CONF_PIN:A.get(CONF_PIN,''),CONF_SIDEBAR:True})
+			else:return B.async_create_entry(title=f"Daily Energy Â· {C}",data={CONF_METER:C,CONF_TOKEN:E},options={CONF_PIN:A.get(CONF_PIN,''),CONF_SIDEBAR:True})
 		G=vol.Schema({vol.Required(CONF_METER,default=(A or{}).get(CONF_METER,'')):str,vol.Required(CONF_TOKEN):PASSWORD,vol.Optional(CONF_PIN,default=(A or{}).get(CONF_PIN,'')):str});return B.async_show_form(step_id='user',data_schema=G,errors=D)
 	@staticmethod
 	@callback

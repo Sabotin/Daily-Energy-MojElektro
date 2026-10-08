@@ -4,7 +4,7 @@
 # any part of this file without written permission is not allowed. See LICENSE.
 'Constants for Daily Energy for Moj Elektro.'
 DOMAIN='daily_energy_mojelektro'
-VERSION='1.0.5'
+VERSION='1.0.6'
 CONF_TOKEN='token'
 CONF_METER='meter_id'
 CONF_PIN='pin'
