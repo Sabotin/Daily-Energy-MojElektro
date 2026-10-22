@@ -10,8 +10,9 @@
       }
     },
     "abort": {
+      "add_in_panel": "Daily Energy is already set up. Add more meters in the Daily Energy panel with + next to the meter switcher (up to 3).",
       "already_configured": "This porabim.com account is already connected.",
-      "wrong_account": "This is a different porabim.com account. Connect with the meter this entry was set up with, or add a new entry.",
+      "wrong_account": "This is a different porabim.com account. Connect with the meter this entry was set up with first.",
       "reauth_successful": "Connected to porabim.com again.",
       "missing_configuration": "The porabim.com sign-in is not set up. Restart Home Assistant and try again.",
       "authorize_url_timeout": "porabim.com did not answer in time. Try again later.",
