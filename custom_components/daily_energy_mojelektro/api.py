@@ -43,6 +43,22 @@ def valid_path(path: str) -> bool:
     return bool(PATH.match(path)) and path.split("?", 1)[0].split("/", 1)[0] not in BLOCKED
 
 
+def meter_title(snapshot: Any) -> str:
+    """Porabim · <meter name, else its EIMM>, from /api/snapshot: `meter` is porabim's own meter id (not for
+    people), `meters` lists [{id, name, eimm}]. Just Porabim when neither is there."""
+    label = None
+    if isinstance(snapshot, dict) and isinstance(snapshot.get("meters"), list):
+        meters = [m for m in snapshot["meters"] if isinstance(m, dict)]
+        shown = next((m for m in meters if m.get("id") == snapshot.get("meter")), meters[0] if meters else {})
+        label = shown.get("name") or shown.get("eimm")
+    return f"Porabim · {label}" if isinstance(label, str) and label else "Porabim"
+
+
+def auto_title(title: str) -> bool:
+    """A title this integration made and may still correct: plain Porabim, or 2.0.x's Porabim · ha:<account>."""
+    return title == "Porabim" or title.startswith("Porabim · ha:")
+
+
 def timeout_for(path: str) -> int:
     """Osveži and Uvozi wait in porabim's queue; everything else answers in seconds."""
     return LONG_TIMEOUT if path.split("?", 1)[0] in LONG_PATHS else TIMEOUT
