@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import API_URL, LONG_PATHS, LONG_TIMEOUT, TIMEOUT, VERSION
+from .const import API_URL, LONG_PATHS, LONG_TIMEOUT, REVOKE_URL, TIMEOUT, VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,6 +62,17 @@ def auto_title(title: str) -> bool:
 def timeout_for(path: str) -> int:
     """Osveži and Uvozi wait in porabim's queue; everything else answers in seconds."""
     return LONG_TIMEOUT if path.split("?", 1)[0] in LONG_PATHS else TIMEOUT
+
+
+async def async_revoke(hass: HomeAssistant, access_token: str) -> None:
+    """End the porabim link of this key (POST /ha/revoke). Errors are ignored: the key expires on its own."""
+    try:
+        async with asyncio.timeout(TIMEOUT):
+            await async_get_clientsession(hass).post(
+                REVOKE_URL, headers={"authorization": f"Bearer {access_token}", "x-porabim-client": f"ha/{VERSION}"}
+            )
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("porabim.com did not take the revoke; the link ends when its key expires")
 
 
 async def _async_send(

@@ -5,7 +5,6 @@
 """Daily Energy for Moj Elektro: porabim.com's dashboard in Home Assistant. The data lives on porabim.com."""
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import aiohttp
@@ -15,7 +14,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv, issue_registry as ir
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
@@ -28,9 +26,7 @@ from .const import (
     PANEL_ELEMENT,
     PANEL_ICON,
     PANEL_TITLE,
-    REVOKE_URL,
     STORAGE_VERSION,
-    TIMEOUT,
     VERSION,
 )
 
@@ -111,11 +107,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             token = entry.data["token"]
             if not config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation).valid_token:
                 token = await implementation.async_refresh_token(token)
-            async with asyncio.timeout(TIMEOUT):
-                await async_get_clientsession(hass).post(
-                    REVOKE_URL,
-                    headers={"authorization": f"Bearer {token['access_token']}", "x-porabim-client": f"ha/{VERSION}"},
-                )
+            await api.async_revoke(hass, token["access_token"])
         except Exception:  # noqa: BLE001
             _LOGGER.debug("porabim.com did not take the revoke; the link ends when its key expires")
     ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_CONNECT}_{entry.entry_id}")
