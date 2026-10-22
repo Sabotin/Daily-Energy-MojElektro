@@ -33,7 +33,7 @@ async def test_migration_v2_to_v3_asks_to_connect(hass):
     await _old_store(hass, entry).async_save(OLD_LOG)
 
     assert not await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.version == 3
     assert entry.data == {}  # the Moj Elektro token is gone from Home Assistant
@@ -52,7 +52,7 @@ async def test_first_link_uploads_the_old_log_once(hass, linked_entry, aioclient
     aioclient_mock.post(f"{API_URL}/import-backup", json={"ok": True})
 
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/import-backup"]
     assert len(calls) == 1
@@ -74,7 +74,7 @@ async def test_old_log_kept_when_porabim_refuses(hass, linked_entry, aioclient_m
     aioclient_mock.post(f"{API_URL}/import-backup", status=500, json={"error": "x"})
 
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     assert await _old_store(hass, linked_entry).async_load() == OLD_LOG
 
@@ -87,21 +87,21 @@ async def test_account_id_title_becomes_the_meter(hass, linked_entry, aioclient_
         json={"meter": "ha:abc123", "meters": [{"id": "ha:abc123", "name": None, "eimm": "4-123456"}]},
     )
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert linked_entry.title == "Porabim · 4-123456"
 
 
 async def test_renamed_entry_keeps_its_title(hass, linked_entry, aioclient_mock):
     hass.config_entries.async_update_entry(linked_entry, title="Hiša")
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert linked_entry.title == "Hiša"
     assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/snapshot"]
 
 
 async def test_panel_loads_porabims_card(hass, linked_entry):
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     panel = hass.data["frontend_panels"]["daily-energy"]
     custom = panel.config["_panel_custom"]
     assert custom["name"] == "porabim-panel"
@@ -114,10 +114,10 @@ async def test_panel_loads_porabims_card(hass, linked_entry):
 async def test_remove_revokes_the_link(hass, linked_entry, aioclient_mock):
     aioclient_mock.post(REVOKE_URL, json={})
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     await hass.config_entries.async_remove(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
     calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == REVOKE_URL]
     assert len(calls) == 1
@@ -128,7 +128,7 @@ async def test_remove_revokes_the_link(hass, linked_entry, aioclient_mock):
 async def test_remove_ignores_revoke_errors(hass, linked_entry, aioclient_mock):
     aioclient_mock.post(REVOKE_URL, status=500)
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     await hass.config_entries.async_remove(linked_entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.config_entries.async_get_entry(linked_entry.entry_id) is None
