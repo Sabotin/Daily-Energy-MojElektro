@@ -1,0 +1,13 @@
+{
+  "domain": "daily_energy_mojelektro",
+  "name": "Daily Energy for Moj Elektro",
+  "codeowners": ["@Sabotin"],
+  "config_flow": true,
+  "dependencies": ["auth", "frontend", "http", "panel_custom", "websocket_api"],
+  "documentation": "https://github.com/Sabotin/Daily-Energy-MojElektro",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Sabotin/Daily-Energy-MojElektro/issues",
+  "requirements": [],
+  "version": "2.0.1"
+}

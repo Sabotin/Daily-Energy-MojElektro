@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "pick_implementation": {
+        "title": "Poveži s porabim.com"
+      },
+      "reauth_confirm": {
+        "title": "Ponovno poveži s porabim.com",
+        "description": "Daily Energy zdaj teče na porabim.com: vaši podatki in žeton Moj Elektro so shranjeni tam, Home Assistant hrani samo ključ. Nadaljujte na porabim.com, vnesite merilno mesto (EIMM) in žeton Moj Elektro, nato se vrnete sem. Dnevnik iz različice 1 se po prvi povezavi enkrat naloži na porabim.com."
+      }
+    },
+    "abort": {
+      "already_configured": "Ta račun porabim.com je že povezan.",
+      "wrong_account": "To je drug račun porabim.com. Povežite se z merilnim mestom, s katerim je bil ta vnos nastavljen, ali dodajte nov vnos.",
+      "reauth_successful": "Ponovno povezano s porabim.com.",
+      "missing_configuration": "Prijava s porabim.com ni nastavljena. Ponovno zaženite Home Assistant in poskusite znova.",
+      "authorize_url_timeout": "porabim.com ni odgovoril pravočasno. Poskusite znova pozneje.",
+      "no_url_available": "Naslov porabim.com ni na voljo.",
+      "oauth_error": "porabim.com ni vrnil veljavnega ključa. Poskusite znova.",
+      "oauth_timeout": "porabim.com ni odgovoril pravočasno. Poskusite znova pozneje.",
+      "oauth_unauthorized": "porabim.com je zavrnil povezavo. Poskusite znova.",
+      "oauth_failed": "Ključa s porabim.com ni bilo mogoče dobiti. Poskusite znova.",
+      "user_rejected_authorize": "Povezava je bila na porabim.com preklicana."
+    },
+    "create_entry": {
+      "default": "Povezano s porabim.com."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Možnosti Daily Energy",
+        "description": "PIN, merilno mesto in žeton Moj Elektro nastavite na porabim.com.",
+        "data": {
+          "sidebar": "Prikaži Daily Energy v stranski vrstici"
+        }
+      }
+    }
+  },
+  "issues": {
+    "connect_porabim": {
+      "title": "Poveži s porabim.com",
+      "description": "Daily Energy zdaj teče na porabim.com, ki hrani vaše podatke in jih vsako jutro prenese iz Moj Elektro. Pojdite v Nastavitve › Naprave in storitve › {title} › Ponovno konfiguriraj in na porabim.com vnesite merilno mesto in žeton Moj Elektro. Vaš dnevnik se tja naloži enkrat; do takrat ostane v Home Assistantu."
+    }
+  }
+}
