@@ -41,7 +41,10 @@ async def _through_porabim(hass: HomeAssistant, result, hass_client_no_auth, aio
 
 async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock):
     assert await async_setup_component(hass, DOMAIN, {})
-    aioclient_mock.get(f"{API_URL}/snapshot", json={"meter": "4-123456"})
+    aioclient_mock.get(
+        f"{API_URL}/snapshot",
+        json={"meter": ACCOUNT, "meters": [{"id": ACCOUNT, "name": None, "eimm": "4-123456", "tg": 0, "denied": False}]},
+    )
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     query = await _through_porabim(hass, result, hass_client_no_auth, aioclient_mock)
     assert query["response_type"] == "code"

@@ -79,6 +79,26 @@ async def test_old_log_kept_when_porabim_refuses(hass, linked_entry, aioclient_m
     assert await _old_store(hass, linked_entry).async_load() == OLD_LOG
 
 
+async def test_account_id_title_becomes_the_meter(hass, linked_entry, aioclient_mock):
+    """2.0.0 / 2.0.1 titled entries Porabim · ha:<account>; the next start puts the meter there."""
+    hass.config_entries.async_update_entry(linked_entry, title="Porabim · ha:abc123")
+    aioclient_mock.get(
+        f"{API_URL}/snapshot",
+        json={"meter": "ha:abc123", "meters": [{"id": "ha:abc123", "name": None, "eimm": "4-123456"}]},
+    )
+    assert await hass.config_entries.async_setup(linked_entry.entry_id)
+    await hass.async_block_till_done()
+    assert linked_entry.title == "Porabim · 4-123456"
+
+
+async def test_renamed_entry_keeps_its_title(hass, linked_entry, aioclient_mock):
+    hass.config_entries.async_update_entry(linked_entry, title="Hiša")
+    assert await hass.config_entries.async_setup(linked_entry.entry_id)
+    await hass.async_block_till_done()
+    assert linked_entry.title == "Hiša"
+    assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/snapshot"]
+
+
 async def test_panel_loads_porabims_card(hass, linked_entry):
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
     await hass.async_block_till_done()
