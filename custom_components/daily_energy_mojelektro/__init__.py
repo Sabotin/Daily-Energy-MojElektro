@@ -39,6 +39,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
     oauth.async_register(hass)
     websocket.async_register(hass)
+    # read once here, so requests later never wait for Home Assistant's storage
+    await api.async_instance_hash(hass)
     return True
 
 
