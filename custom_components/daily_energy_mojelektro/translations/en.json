@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "pick_implementation": {
+        "title": "Connect to porabim.com"
+      },
+      "reauth_confirm": {
+        "title": "Connect to porabim.com again",
+        "description": "Daily Energy now runs on porabim.com: your data and your Moj Elektro token are kept there, and Home Assistant only keeps a key. Continue to porabim.com, enter your meter ID (EIMM) and Moj Elektro token, and you come back here. A day log from version 1 is uploaded to porabim.com once, after the first connection."
+      }
+    },
+    "abort": {
+      "already_configured": "This porabim.com account is already connected.",
+      "wrong_account": "This is a different porabim.com account. Connect with the meter this entry was set up with, or add a new entry.",
+      "reauth_successful": "Connected to porabim.com again.",
+      "missing_configuration": "The porabim.com sign-in is not set up. Restart Home Assistant and try again.",
+      "authorize_url_timeout": "porabim.com did not answer in time. Try again later.",
+      "no_url_available": "No address for porabim.com is available.",
+      "oauth_error": "porabim.com sent back something that is not a valid key. Try again.",
+      "oauth_timeout": "porabim.com did not answer in time. Try again later.",
+      "oauth_unauthorized": "porabim.com refused the connection. Try again.",
+      "oauth_failed": "Could not get a key from porabim.com. Try again.",
+      "user_rejected_authorize": "The connection was cancelled on porabim.com."
+    },
+    "create_entry": {
+      "default": "Connected to porabim.com."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Daily Energy options",
+        "description": "PIN, meter and Moj Elektro token are set on porabim.com.",
+        "data": {
+          "sidebar": "Show Daily Energy in the sidebar"
+        }
+      }
+    }
+  },
+  "issues": {
+    "connect_porabim": {
+      "title": "Connect to porabim.com",
+      "description": "Daily Energy now runs on porabim.com, which keeps your data and fetches it from Moj Elektro every morning. Go to Settings › Devices & services › {title} › Reconfigure, and enter your meter ID and Moj Elektro token on porabim.com. Your day log is uploaded there once; until then it stays in Home Assistant."
+    }
+  }
+}
