@@ -18,7 +18,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from . import oauth
+from . import api, oauth
 from .const import API_URL, CONF_SIDEBAR, DOMAIN, ISSUE_CONNECT, TIMEOUT, VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,14 +35,7 @@ async def _async_meter_title(hass, access_token: str) -> str:
             data = await resp.json(content_type=None) if resp.status == 200 else None
     except (aiohttp.ClientError, TimeoutError, ValueError):
         data = None
-    meter = None
-    if isinstance(data, dict):
-        meter = data.get("meter")
-        meters = data.get("meters")
-        if not meter and isinstance(meters, list) and meters:
-            first = meters[0]
-            meter = first.get("label") or first.get("id") if isinstance(first, dict) else first
-    return f"Porabim · {meter}" if isinstance(meter, str) and meter else "Porabim"
+    return api.meter_title(data)
 
 
 class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN):

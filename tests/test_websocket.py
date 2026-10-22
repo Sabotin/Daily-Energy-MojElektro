@@ -39,6 +39,33 @@ def test_rejected_paths(path):
     assert not api.valid_path(path)
 
 
+@pytest.mark.parametrize(
+    ("snapshot", "title"),
+    [
+        ({"meter": "ha:x", "meters": [{"id": "ha:x", "name": None, "eimm": "4-123456"}]}, "Porabim · 4-123456"),
+        ({"meter": "ha:x", "meters": [{"id": "ha:x", "name": "Hiša", "eimm": "4-123456"}]}, "Porabim · Hiša"),
+        (
+            {"meter": "m2", "meters": [{"id": "m1", "eimm": "4-1"}, {"id": "m2", "name": None, "eimm": "4-2"}]},
+            "Porabim · 4-2",
+        ),
+        ({"meter": "ha:x", "meters": []}, "Porabim"),
+        ({"meter": "ha:x"}, "Porabim"),
+        ({"onboarded": False}, "Porabim"),
+        (None, "Porabim"),
+    ],
+)
+def test_meter_title(snapshot, title):
+    assert api.meter_title(snapshot) == title
+
+
+@pytest.mark.parametrize(
+    ("title", "auto"),
+    [("Porabim", True), ("Porabim · ha:CVRQ=", True), ("Porabim · 4-123456", False), ("Hiša", False)],
+)
+def test_auto_title(title, auto):
+    assert api.auto_title(title) is auto
+
+
 def test_timeouts():
     assert api.timeout_for("refresh") == LONG_TIMEOUT
     assert api.timeout_for("import-range?from=2025-01-01&to=2025-02-01") == LONG_TIMEOUT

@@ -90,6 +90,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     entry.async_create_background_task(hass, _async_upload_old_log(hass, link), f"{DOMAIN} old log upload")
+    if api.auto_title(entry.title):
+        entry.async_create_background_task(hass, _async_fix_title(hass, link), f"{DOMAIN} title")
     return True
 
 
@@ -139,6 +141,17 @@ def _panel_url(hass: HomeAssistant, entry: ConfigEntry) -> str:
     entries = hass.config_entries.async_entries(DOMAIN)
     index = next((i for i, e in enumerate(entries) if e.entry_id == entry.entry_id), 0)
     return "daily-energy" if index == 0 else f"daily-energy-{index + 1}"
+
+
+async def _async_fix_title(hass: HomeAssistant, link: api.PorabimLink) -> None:
+    """2.0.0 and 2.0.1 titled the entry with the account id: the meter's name or EIMM instead (a renamed entry stays)."""
+    try:
+        status, data = await api.async_call(hass, link, "GET", "snapshot")
+    except (aiohttp.ClientError, TimeoutError):
+        return
+    title = api.meter_title(data) if status == 200 else "Porabim"
+    if title != "Porabim" and title != link.entry.title:
+        hass.config_entries.async_update_entry(link.entry, title=title)
 
 
 def _old_store(hass: HomeAssistant, entry: ConfigEntry) -> Store:
