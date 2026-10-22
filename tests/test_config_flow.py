@@ -11,6 +11,7 @@ from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.daily_energy_mojelektro.const import API_URL, AUTHORIZE_URL, DOMAIN, REDIRECT_URI, REVOKE_URL, TOKEN_URL
+from custom_components.daily_energy_mojelektro import api
 from custom_components.daily_energy_mojelektro.oauth import code_challenge
 
 from .conftest import ACCOUNT, token
@@ -56,6 +57,9 @@ async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock
     assert query["redirect_uri"] == REDIRECT_URI
     assert query["code_challenge_method"] == "S256"
     assert len(query["code_challenge"]) == 43
+    # the same lasting id for this Home Assistant on every connect: sha256, the instance id itself never sent
+    assert query["ha_instance"] == await api.async_instance_hash(hass)
+    assert len(query["ha_instance"]) == 64
 
     with patch("custom_components.daily_energy_mojelektro.async_setup_entry", return_value=True):
         result = await hass.config_entries.flow.async_configure(result["flow_id"])
@@ -79,14 +83,48 @@ async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock
     assert _revoked(aioclient_mock) == []
 
 
-async def test_second_add_points_to_the_panel(hass, aioclient_mock, linked_entry):
-    """One entry per Home Assistant: a second Add integration stops before porabim (no link is made there)."""
+async def test_second_add_adds_the_meter_to_the_same_account(hass, aioclient_mock, linked_entry):
+    """Add integration again: the meter goes into the account this Home Assistant has (porabim's + route), no second
+    entry and no trip to porabim's connect page."""
+    assert await hass.config_entries.async_setup(linked_entry.entry_id)
+    await hass.async_block_till_done()
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "add_meter"
+
+    aioclient_mock.post(f"{API_URL}/meters/add", json={"ok": True, "id": "ha:abc123#0a0b0c0d0e0f"})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"meter": " 4-67936 ", "token": " moj-elektro-token "}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "meter_added"
+    assert result["description_placeholders"] == {"meter": "4-67936"}
+    method, url, body, headers = next(c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/meters/add")
+    assert body == {"meter": "4-67936", "token": "moj-elektro-token"}
+    assert headers["authorization"] == "Bearer access-1"
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 1
+    assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == TOKEN_URL]
+
+
+async def test_second_add_shows_porabims_error(hass, aioclient_mock, linked_entry):
+    assert await hass.config_entries.async_setup(linked_entry.entry_id)
+    await hass.async_block_till_done()
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    aioclient_mock.post(f"{API_URL}/meters/add", status=400, json={"ok": False, "error": "duplicate_meter"})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"meter": "4-123456", "token": "t"})
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "duplicate_meter"}
+
+
+async def test_second_add_before_connecting(hass):
+    """A 1.x entry still waiting to be connected: connect it first."""
+    entry = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-123456", data={}, options={"sidebar": True})
+    entry.add_to_hass(hass)
     assert await async_setup_component(hass, DOMAIN, {})
     await hass.async_block_till_done()
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "add_in_panel"
-    assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == TOKEN_URL]
+    assert result["reason"] == "connect_first"
 
 
 async def test_reauth_into_another_entrys_account_aborts(hass, hass_client_no_auth, aioclient_mock, linked_entry):

@@ -7,10 +7,34 @@
       "reauth_confirm": {
         "title": "Ponovno poveži s porabim.com",
         "description": "Daily Energy zdaj teče na porabim.com: vaši podatki in žeton Moj Elektro so shranjeni tam, Home Assistant hrani samo ključ. Nadaljujte na porabim.com, vnesite merilno mesto (EIMM) in žeton Moj Elektro, nato se vrnete sem. Dnevnik iz različice 1 se po prvi povezavi enkrat naloži na porabim.com."
+      },
+      "add_meter": {
+        "title": "Dodaj merilno mesto v Daily Energy",
+        "description": "Daily Energy je že povezan s porabim.com. To merilno mesto gre v isti račun, kot z gumbom + v plošči: en vnos v stranski vrstici, merilna mesta v njegovi izbiri (največ 3). Žeton se pošlje na porabim.com in ne ostane v Home Assistantu.",
+        "data": {
+          "meter": "Merilno mesto (EIMM)",
+          "token": "API žeton Moj Elektro"
+        },
+        "data_description": {
+          "meter": "Na primer 4-123456.",
+          "token": "mojelektro.si › Moj profil › Kreiraj žeton. Deluje tudi žeton že dodanega merilnega mesta, če velja tudi za to."
+        }
       }
     },
+    "error": {
+      "invalid_auth": "Moj Elektro ni sprejel tega API žetona.",
+      "invalid_meter": "Moj Elektro je zavrnil zahtevo. Preverite merilno mesto (EIMM) in da žeton pripada njemu.",
+      "cannot_connect": "API Moj Elektro ni dosegljiv. Poskusite znova pozneje.",
+      "invalid_format": "Preverite merilno mesto (EIMM).",
+      "duplicate_meter": "To merilno mesto je že dodano.",
+      "too_many_meters": "Ta račun že ima največ merilnih mest, kar jih lahko ima.",
+      "meter_blocked": "Tega merilnega mesta ni mogoče dodati.",
+      "too_many": "Preveč poskusov, počakajte eno uro.",
+      "unknown": "Prišlo je do napake. Poskusite znova."
+    },
     "abort": {
-      "add_in_panel": "Daily Energy je že nastavljen. Dodatna merilna mesta dodajte v plošči Daily Energy z gumbom + ob izbiri merilnega mesta (največ 3).",
+      "meter_added": "Merilno mesto {meter} je dodano v Daily Energy. Odprite ploščo Daily Energy in ga izberite v izbiri merilnih mest.",
+      "connect_first": "Daily Energy še ni povezan s porabim.com. Najprej ga povežite (Nastavitve › Naprave in storitve › Daily Energy › Ponovno konfiguriraj), nato dodajte druga merilna mesta.",
       "already_configured": "Ta račun porabim.com je že povezan.",
       "wrong_account": "To je drug račun porabim.com. Povežite se z merilnim mestom, s katerim je bil ta vnos prvič nastavljen.",
       "reauth_successful": "Ponovno povezano s porabim.com.",

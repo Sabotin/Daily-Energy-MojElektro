@@ -7,10 +7,34 @@
       "reauth_confirm": {
         "title": "Connect to porabim.com again",
         "description": "Daily Energy now runs on porabim.com: your data and your Moj Elektro token are kept there, and Home Assistant only keeps a key. Continue to porabim.com, enter your meter ID (EIMM) and Moj Elektro token, and you come back here. A day log from version 1 is uploaded to porabim.com once, after the first connection."
+      },
+      "add_meter": {
+        "title": "Add a meter to Daily Energy",
+        "description": "Daily Energy is already connected to porabim.com. This meter goes into the same account, as + in the panel does: one sidebar item, the meters in its switcher (up to 3). The token is sent to porabim.com and not kept in Home Assistant.",
+        "data": {
+          "meter": "Meter ID (EIMM)",
+          "token": "Moj Elektro API token"
+        },
+        "data_description": {
+          "meter": "For example 4-123456.",
+          "token": "mojelektro.si › Moj profil › Kreiraj žeton. The token of a meter already added works too if it covers this one."
+        }
       }
     },
+    "error": {
+      "invalid_auth": "Moj Elektro did not accept this API token.",
+      "invalid_meter": "Moj Elektro refused the request. Check the meter ID (EIMM) and that the token belongs to it.",
+      "cannot_connect": "Could not reach the Moj Elektro API. Try again later.",
+      "invalid_format": "Check the meter ID (EIMM).",
+      "duplicate_meter": "This meter is already added.",
+      "too_many_meters": "This account already has the most meters it can have.",
+      "meter_blocked": "This meter cannot be added.",
+      "too_many": "Too many tries, wait an hour.",
+      "unknown": "Something went wrong. Try again."
+    },
     "abort": {
-      "add_in_panel": "Daily Energy is already set up. Add more meters in the Daily Energy panel with + next to the meter switcher (up to 3).",
+      "meter_added": "Meter {meter} is added to Daily Energy. Open the Daily Energy panel and pick it in the meter switcher.",
+      "connect_first": "Daily Energy is not connected to porabim.com yet. Connect it first (Settings › Devices & services › Daily Energy › Reconfigure), then add more meters.",
       "already_configured": "This porabim.com account is already connected.",
       "wrong_account": "This is a different porabim.com account. Connect with the meter this entry was set up with first.",
       "reauth_successful": "Connected to porabim.com again.",

@@ -15,6 +15,7 @@ from yarl import URL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_entry_oauth2_flow
 
+from . import api
 from .const import AUTHORIZE_URL, CLIENT_ID, DOMAIN, REDIRECT_URI, TOKEN_URL
 
 
@@ -44,7 +45,14 @@ class PorabimImplementation(config_entry_oauth2_flow.LocalOAuth2Implementation):
         verifier = secrets.token_urlsafe(64)
         self._verifiers[flow_id] = verifier
         url = await super().async_generate_authorize_url(flow_id)
-        return str(URL(url).update_query(code_challenge=code_challenge(verifier), code_challenge_method="S256"))
+        return str(
+            URL(url).update_query(
+                code_challenge=code_challenge(verifier),
+                code_challenge_method="S256",
+                # porabim keeps one account per Home Assistant, also after this integration is deleted and added again
+                ha_instance=await api.async_instance_hash(self.hass),
+            )
+        )
 
     async def async_resolve_external_data(self, external_data: Any) -> dict:
         """Swap the code for tokens; porabim checks the verifier against the challenge."""
