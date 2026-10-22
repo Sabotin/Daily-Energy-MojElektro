@@ -13,7 +13,7 @@ from typing import Any
 import aiohttp
 import voluptuous as vol
 
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER, ConfigEntry, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -49,6 +49,9 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         return _LOGGER
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if self.source == SOURCE_USER and self._async_current_entries(include_ignore=False):
+            # One entry per Home Assistant: more meters go into the same account with + in the panel's switcher
+            return self.async_abort(reason="add_in_panel")
         oauth.async_register(self.hass)
         return await super().async_step_user(user_input)
 
@@ -61,28 +64,38 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             return self.async_show_form(step_id="reauth_confirm")
         return await self.async_step_user()
 
+    async def _async_abort_and_revoke(self, data: dict[str, Any], reason: str) -> ConfigFlowResult:
+        """porabim already made a link for this key: end it, so no unused link is left there."""
+        await api.async_revoke(self.hass, data["token"]["access_token"])
+        return self.async_abort(reason=reason)
+
     async def async_oauth_create_entry(self, data: dict[str, Any]) -> ConfigFlowResult:
         account = str(data["token"].get("account") or "")
         if not account:
-            return self.async_abort(reason="oauth_error")
+            return await self._async_abort_and_revoke(data, "oauth_error")
         if self.source == SOURCE_REAUTH:
             entry = self._get_reauth_entry()
             if "token" in entry.data and entry.unique_id != account:
                 # A linked entry must come back to the same porabim account
-                return self.async_abort(reason="wrong_account")
+                return await self._async_abort_and_revoke(data, "wrong_account")
             other = next(
                 (e for e in self._async_current_entries(include_ignore=False) if e.unique_id == account and e.entry_id != entry.entry_id),
                 None,
             )
             if other is not None:
-                return self.async_abort(reason="already_configured")
+                return await self._async_abort_and_revoke(data, "already_configured")
+            old = entry.data.get("token")
             # A 1.x entry had the meter as its unique id; from now on it is the porabim account
             self.hass.config_entries.async_update_entry(entry, unique_id=account, data=data)
             ir.async_delete_issue(self.hass, DOMAIN, f"{ISSUE_CONNECT}_{entry.entry_id}")
+            if old and old.get("access_token"):
+                # The new link replaces the old one; end the old one too (it may already be dead)
+                await api.async_revoke(self.hass, old["access_token"])
             self.hass.config_entries.async_schedule_reload(entry.entry_id)
             return self.async_abort(reason="reauth_successful")
         await self.async_set_unique_id(account)
-        self._abort_if_unique_id_configured()
+        if any(e.unique_id == account for e in self._async_current_entries(include_ignore=False)):
+            return await self._async_abort_and_revoke(data, "already_configured")
         title = await _async_meter_title(self.hass, data["token"]["access_token"])
         return self.async_create_entry(title=title, data=data, options={CONF_SIDEBAR: True})
 

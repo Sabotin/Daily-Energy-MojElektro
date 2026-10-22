@@ -10,8 +10,9 @@
       }
     },
     "abort": {
+      "add_in_panel": "Daily Energy je že nastavljen. Dodatna merilna mesta dodajte v plošči Daily Energy z gumbom + ob izbiri merilnega mesta (največ 3).",
       "already_configured": "Ta račun porabim.com je že povezan.",
-      "wrong_account": "To je drug račun porabim.com. Povežite se z merilnim mestom, s katerim je bil ta vnos nastavljen, ali dodajte nov vnos.",
+      "wrong_account": "To je drug račun porabim.com. Povežite se z merilnim mestom, s katerim je bil ta vnos prvič nastavljen.",
       "reauth_successful": "Ponovno povezano s porabim.com.",
       "missing_configuration": "Prijava s porabim.com ni nastavljena. Ponovno zaženite Home Assistant in poskusite znova.",
       "authorize_url_timeout": "porabim.com ni odgovoril pravočasno. Poskusite znova pozneje.",
