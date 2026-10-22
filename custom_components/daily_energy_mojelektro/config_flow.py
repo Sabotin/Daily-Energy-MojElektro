@@ -17,11 +17,26 @@ from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER, ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 from . import api, oauth
 from .const import API_URL, CONF_SIDEBAR, DOMAIN, ISSUE_CONNECT, TIMEOUT, VERSION
 
 _LOGGER = logging.getLogger(__name__)
+
+CONF_METER = "meter"
+CONF_TOKEN = "token"
+# porabim's POST /api/meters/add errors → this form's (translations: config.error)
+ADD_ERRORS = {
+    "invalid_auth": "invalid_auth",
+    "invalid_meter": "invalid_meter",
+    "cannot_connect": "cannot_connect",
+    "invalid_format": "invalid_format",
+    "duplicate_meter": "duplicate_meter",
+    "too_many_meters": "too_many_meters",
+    "meter_blocked": "meter_blocked",
+    "too_many": "too_many",
+}
 
 
 async def _async_meter_title(hass, access_token: str) -> str:
@@ -50,10 +65,46 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if self.source == SOURCE_USER and self._async_current_entries(include_ignore=False):
-            # One entry per Home Assistant: more meters go into the same account with + in the panel's switcher
-            return self.async_abort(reason="add_in_panel")
+            # One entry, one porabim account per Home Assistant: another meter goes into it, as + in the panel does
+            if self._link() is None:
+                return self.async_abort(reason="connect_first")
+            return await self.async_step_add_meter()
         oauth.async_register(self.hass)
         return await super().async_step_user(user_input)
+
+    def _link(self) -> api.PorabimLink | None:
+        """The first connected entry's link (none while every entry still waits to be connected)."""
+        links = self.hass.data.get(DOMAIN, {})
+        return next((links[e.entry_id] for e in self._async_current_entries(include_ignore=False) if e.entry_id in links), None)
+
+    async def async_step_add_meter(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Add integration again: the meter goes into the account Home Assistant already has, with porabim's own
+        POST /api/meters/add (the panel's +). No second entry, sidebar or account; the token is not kept here."""
+        errors: dict[str, str] = {}
+        meter = ""
+        if user_input is not None:
+            meter = str(user_input[CONF_METER]).strip()
+            body = {"meter": meter, "token": str(user_input[CONF_TOKEN]).strip()}
+            link = self._link()
+            if link is None:
+                return self.async_abort(reason="connect_first")
+            try:
+                status, data = await api.async_call(self.hass, link, "POST", "meters/add", body)
+            except (aiohttp.ClientError, TimeoutError):
+                status, data = 0, None
+            if 200 <= status < 300 and isinstance(data, dict) and data.get("ok"):
+                return self.async_abort(reason="meter_added", description_placeholders={"meter": meter})
+            if status == 401:
+                return self.async_abort(reason="connect_first")
+            error = data.get("error") if isinstance(data, dict) else None
+            errors["base"] = ADD_ERRORS.get(error, "too_many" if status == 429 else "cannot_connect" if status == 0 else "unknown")
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_METER, default=meter): str,
+                vol.Required(CONF_TOKEN): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
+            }
+        )
+        return self.async_show_form(step_id="add_meter", data_schema=schema, errors=errors)
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
         """The key stopped working (porabim refused the refresh), or a 1.x entry is not linked yet."""

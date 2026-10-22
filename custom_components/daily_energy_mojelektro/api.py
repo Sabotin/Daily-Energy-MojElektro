@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+import hashlib
 import logging
 import re
 from typing import Any
@@ -15,10 +16,10 @@ import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_entry_oauth2_flow
+from homeassistant.helpers import config_entry_oauth2_flow, instance_id
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import API_URL, LONG_PATHS, LONG_TIMEOUT, REVOKE_URL, TIMEOUT, VERSION
+from .const import API_URL, DOMAIN, LONG_PATHS, LONG_TIMEOUT, REVOKE_URL, TIMEOUT, VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +37,16 @@ class PorabimLink:
     session: config_entry_oauth2_flow.OAuth2Session
     panel_url: str | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+
+async def async_instance_hash(hass: HomeAssistant) -> str:
+    """This Home Assistant's lasting id for porabim: sha256 of its instance id (made at its first start, kept across
+    updates, backups and deleting this integration) and the domain. The instance id itself never leaves Home Assistant."""
+    key = f"{DOMAIN}_instance"
+    if key not in hass.data:
+        uuid = await instance_id.async_get(hass)
+        hass.data[key] = hashlib.sha256(f"{uuid}:{DOMAIN}".encode()).hexdigest()
+    return hass.data[key]
 
 
 def valid_path(path: str) -> bool:
@@ -78,7 +89,11 @@ async def async_revoke(hass: HomeAssistant, access_token: str) -> None:
 async def _async_send(
     hass: HomeAssistant, token: str, method: str, path: str, body: Any, meter: str | None
 ) -> tuple[int, Any]:
-    headers = {"authorization": f"Bearer {token}", "x-porabim-client": f"ha/{VERSION}"}
+    headers = {
+        "authorization": f"Bearer {token}",
+        "x-porabim-client": f"ha/{VERSION}",
+        "x-ha-instance": await async_instance_hash(hass),
+    }
     if meter:
         headers["x-meter"] = meter
     async with asyncio.timeout(timeout_for(path)):
