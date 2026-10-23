@@ -23,7 +23,7 @@ from .const import API_URL, DOMAIN, LONG_PATHS, LONG_TIMEOUT, REVOKE_URL, TIMEOU
 
 _LOGGER = logging.getLogger(__name__)
 
-PATH = re.compile(r"^[a-z0-9-]+(/[a-z0-9-]+)*(\?[A-Za-z0-9=&,._-]*)?$")
+PATH = re.compile(r"^[a-z0-9-]+(/[a-z0-9-]+)*(\?[A-Za-z0-9=&,._%-]*)?$")
 # Never forwarded: porabim's own sign-in routes
 BLOCKED = frozenset({"ha", "auth"})
 SIGNED_OUT = {"error": "signed_out"}
@@ -52,7 +52,8 @@ async def async_instance_hash(hass: HomeAssistant) -> str:
 
 
 def valid_path(path: str) -> bool:
-    """A path under /api only: lowercase segments and a plain query, no dots, no ha/ or auth/."""
+    """A path under /api only: lowercase segments and a plain query (URL-encoded, so % only there), no dots, no ha/ or
+    auth/."""
     return bool(PATH.match(path)) and path.split("?", 1)[0].split("/", 1)[0] not in BLOCKED
 
 

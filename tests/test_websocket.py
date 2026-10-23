@@ -13,7 +13,8 @@ from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, LON
 
 @pytest.mark.parametrize(
     "path",
-    ["snapshot", "refresh", "import-range", "day/2026-10-01", "days?from=2026-01-01&to=2026-02-01", "import-backup"],
+    ["snapshot", "refresh", "import-range", "day/2026-10-01", "days?from=2026-01-01&to=2026-02-01", "import-backup",
+     "geo?q=Nova%20Gorica", "geo?q=%C5%A0empeter"],
 )
 def test_valid_paths(path):
     assert api.valid_path(path)
@@ -28,6 +29,9 @@ def test_valid_paths(path):
         "ha/revoke",
         "ha/token",
         "auth/logout",
+        "auth/x",
+        "../x",
+        "a/%2e%2e",
         "auth",
         "/snapshot",
         "Snapshot",
