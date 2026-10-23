@@ -13,7 +13,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
-from . import api
+from . import api, meters
 from .const import DOMAIN
 
 
@@ -63,4 +63,7 @@ async def ws_api(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     except aiohttp.ClientError:
         connection.send_error(msg["id"], "cannot_connect", "Could not reach porabim.com")
         return
+    if status == 200 and msg["method"] == "GET" and msg["path"].split("?", 1)[0] == "snapshot":
+        # Every snapshot the panel loads lists the account's meters: the devices follow it without another request
+        meters.async_apply(hass, link, data)
     connection.send_result(msg["id"], {"status": status, "data": data})

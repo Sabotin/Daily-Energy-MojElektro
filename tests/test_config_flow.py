@@ -2,11 +2,14 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from yarl import URL
 
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import device_registry as dr
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -46,10 +49,6 @@ def _revoked(aioclient_mock):
 
 async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock):
     assert await async_setup_component(hass, DOMAIN, {})
-    aioclient_mock.get(
-        f"{API_URL}/snapshot",
-        json={"meter": ACCOUNT, "meters": [{"id": ACCOUNT, "name": None, "eimm": "4-123456", "tg": 0, "denied": False}]},
-    )
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     query = await _through_porabim(hass, result, hass_client_no_auth, aioclient_mock)
     assert query["response_type"] == "code"
@@ -66,7 +65,7 @@ async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock
         await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Porabim · 4-123456"
+    assert result["title"] == "Porabim"
     entry = result["result"]
     assert entry.unique_id == ACCOUNT
     assert entry.version == 3
@@ -104,6 +103,24 @@ async def test_second_add_adds_the_meter_to_the_same_account(hass, aioclient_moc
     assert headers["authorization"] == "Bearer access-1"
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
     assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == TOKEN_URL]
+
+
+@pytest.mark.meters
+async def test_added_meter_shows_as_a_device(hass, aioclient_mock, linked_entry):
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-123456"}]})
+    assert await hass.config_entries.async_setup(linked_entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(
+        f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-123456"}, {"id": "m2", "eimm": "4-67936"}]}
+    )
+    aioclient_mock.post(f"{API_URL}/meters/add", json={"ok": True, "id": "m2"})
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"meter": "4-67936", "token": "t"})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert result["reason"] == "meter_added"
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id)
+    assert sorted(d.name for d in devices) == ["4-123456", "4-67936"]
 
 
 async def test_second_add_shows_porabims_error(hass, aioclient_mock, linked_entry):

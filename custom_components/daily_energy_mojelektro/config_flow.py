@@ -5,7 +5,6 @@
 """Config and options flow: connect Home Assistant to porabim.com."""
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Mapping
 import logging
 from typing import Any
@@ -16,11 +15,10 @@ import voluptuous as vol
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER, ConfigEntry, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
-from . import api, oauth
-from .const import API_URL, CONF_SIDEBAR, DOMAIN, ISSUE_CONNECT, TIMEOUT, VERSION
+from . import api, meters, oauth
+from .const import CONF_SIDEBAR, DOMAIN, ISSUE_CONNECT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,20 +35,6 @@ ADD_ERRORS = {
     "meter_blocked": "meter_blocked",
     "too_many": "too_many",
 }
-
-
-async def _async_meter_title(hass, access_token: str) -> str:
-    """Porabim · <meter>, from porabim's own snapshot; just Porabim if that does not work."""
-    try:
-        async with asyncio.timeout(TIMEOUT):
-            resp = await async_get_clientsession(hass).get(
-                f"{API_URL}/snapshot",
-                headers={"authorization": f"Bearer {access_token}", "x-porabim-client": f"ha/{VERSION}"},
-            )
-            data = await resp.json(content_type=None) if resp.status == 200 else None
-    except (aiohttp.ClientError, TimeoutError, ValueError):
-        data = None
-    return api.meter_title(data)
 
 
 class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN):
@@ -93,6 +77,7 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             except (aiohttp.ClientError, TimeoutError):
                 status, data = 0, None
             if 200 <= status < 300 and isinstance(data, dict) and data.get("ok"):
+                link.entry.async_create_background_task(self.hass, meters.async_sync(self.hass, link), f"{DOMAIN} meters")
                 return self.async_abort(reason="meter_added", description_placeholders={"meter": meter})
             if status == 401:
                 return self.async_abort(reason="connect_first")
@@ -147,8 +132,8 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         await self.async_set_unique_id(account)
         if any(e.unique_id == account for e in self._async_current_entries(include_ignore=False)):
             return await self._async_abort_and_revoke(data, "already_configured")
-        title = await _async_meter_title(self.hass, data["token"]["access_token"])
-        return self.async_create_entry(title=title, data=data, options={CONF_SIDEBAR: True})
+        # The account can hold several meters: they show as its devices, the entry itself is just Porabim
+        return self.async_create_entry(title=api.TITLE, data=data, options={CONF_SIDEBAR: True})
 
     @staticmethod
     @callback

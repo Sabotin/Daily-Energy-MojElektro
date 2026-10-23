@@ -5,6 +5,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from custom_components.daily_energy_mojelektro import api
 from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, LONG_TIMEOUT, TIMEOUT, TOKEN_URL, VERSION
@@ -40,30 +41,42 @@ def test_rejected_paths(path):
 
 
 @pytest.mark.parametrize(
-    ("snapshot", "title"),
+    ("snapshot", "found"),
     [
-        ({"meter": "ha:x", "meters": [{"id": "ha:x", "name": None, "eimm": "4-123456"}]}, "Porabim · 4-123456"),
-        ({"meter": "ha:x", "meters": [{"id": "ha:x", "name": "Hiša", "eimm": "4-123456"}]}, "Porabim · Hiša"),
         (
-            {"meter": "m2", "meters": [{"id": "m1", "eimm": "4-1"}, {"id": "m2", "name": None, "eimm": "4-2"}]},
-            "Porabim · 4-2",
+            {"meter": "ha:x", "meters": [{"id": "ha:x", "name": None, "eimm": "4-123456"}]},
+            [{"id": "ha:x", "label": "4-123456", "eimm": "4-123456"}],
         ),
-        ({"meter": "ha:x", "meters": []}, "Porabim"),
-        ({"meter": "ha:x"}, "Porabim"),
-        ({"onboarded": False}, "Porabim"),
-        (None, "Porabim"),
+        (
+            {"meter": "m2", "meters": [{"id": "m1", "name": "Hiša", "eimm": "4-1"}, {"id": "m2", "eimm": "4-2"}]},
+            [{"id": "m1", "label": "Hiša", "eimm": "4-1"}, {"id": "m2", "label": "4-2", "eimm": "4-2"}],
+        ),
+        ({"meters": [{"id": "m1"}, {"name": "no id"}, "x", {"id": ""}]}, [{"id": "m1", "label": "m1", "eimm": ""}]),
+        ({"meter": "ha:x", "meters": []}, []),
+        ({"meter": "ha:x"}, None),
+        ({"onboarded": False}, None),
+        (None, None),
     ],
 )
-def test_meter_title(snapshot, title):
-    assert api.meter_title(snapshot) == title
+def test_meters(snapshot, found):
+    assert api.meters(snapshot) == found
 
 
 @pytest.mark.parametrize(
     ("title", "auto"),
-    [("Porabim", True), ("Porabim · ha:CVRQ=", True), ("Porabim · 4-123456", False), ("Hiša", False)],
+    [
+        ("Porabim", True),
+        ("Porabim · ha:CVRQ=", True),
+        ("Porabim · 4-123456", True),
+        ("Porabim · 4-999999", True),
+        ("Porabim · Hiša", True),
+        ("Porabim · Vikend", False),
+        ("Hiša", False),
+        ("Daily Energy · 4-123456", False),
+    ],
 )
 def test_auto_title(title, auto):
-    assert api.auto_title(title) is auto
+    assert api.auto_title(title, ["4-123456", "Hiša"]) is auto
 
 
 def test_timeouts():
@@ -189,3 +202,22 @@ async def test_entries(hass, linked_entry, hass_ws_client, aioclient_mock):
     await client.send_json_auto_id({"type": f"{DOMAIN}/entries"})
     msg = await client.receive_json()
     assert msg["result"] == [{"entry_id": linked_entry.entry_id, "title": linked_entry.title, "panel": "daily-energy"}]
+
+
+@pytest.mark.meters
+async def test_panel_snapshot_updates_the_devices(hass, linked_entry, hass_ws_client, aioclient_mock):
+    """The meter list in every snapshot the panel loads: a meter added on porabim shows up without a restart."""
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-1"}]})
+    await _setup(hass, linked_entry)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(
+        f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-1"}, {"id": "m2", "name": "Vikend", "eimm": "4-2"}]}
+    )
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/api", "entry_id": linked_entry.entry_id, "method": "GET", "path": "snapshot", "meter": "m1"}
+    )
+    assert (await client.receive_json())["success"]
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id)
+    assert sorted(d.name for d in devices) == ["4-1", "Vikend"]
