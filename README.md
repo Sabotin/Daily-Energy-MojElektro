@@ -145,6 +145,7 @@ restart → Settings → Devices & services → **Add integration** → **Daily 
 - Home Assistant has one account on porabim.com. It stays the same when you delete the integration and add it again.
 - Deleting the integration ends its link on porabim.com. To connect again, use one of the meters in the account.
 - **Delete account** in the panel settings deletes the porabim.com account and the integration in Devices & services with it. If the account was deleted elsewhere, reconnecting moves the entry to the new account.
+- If porabim.com refuses the key (e.g. the account was deleted), Home Assistant asks you once to connect again (Devices & services → Daily Energy → **Reconfigure**) and does not ask porabim.com again until you do; until then the panel and entities show as signed out.
 
 ## Licence
 

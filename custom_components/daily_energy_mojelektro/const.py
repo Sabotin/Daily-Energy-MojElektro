@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "2.0.8"
+VERSION = "2.0.9"
 
 PORABIM = "https://porabim.com"
 CLIENT_ID = DOMAIN

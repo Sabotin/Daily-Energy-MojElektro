@@ -39,6 +39,9 @@ class PorabimLink:
     # sensor.SensorsCoordinator, set when the sensor platform starts
     sensors: Any = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    # porabim refused the refresh key: no more refreshes until the user connects again (the reauth reloads the entry,
+    # so a new link starts with False)
+    refused: bool = False
 
 
 async def async_instance_hash(hass: HomeAssistant) -> str:
@@ -126,11 +129,14 @@ async def _async_send(
 async def _async_valid_token(hass: HomeAssistant, link: PorabimLink, stale: str | None = None) -> str | None:
     """The access token, refreshed when it expired (or when porabim refused `stale`).
 
-    None when porabim refused the refresh too: then Home Assistant asks the user to connect again.
+    None when porabim refused the refresh too: then Home Assistant asks the user to connect again, once, and every
+    later call is signed out without asking porabim (the dead key would only be refused again).
     One refresh at a time, because porabim rotates the refresh token on every use.
     """
     session = link.session
     async with link.lock:
+        if link.refused:
+            return None
         try:
             if stale is not None and session.token["access_token"] == stale:
                 token = await session.implementation.async_refresh_token(session.token)
@@ -139,6 +145,7 @@ async def _async_valid_token(hass: HomeAssistant, link: PorabimLink, stale: str 
                 await session.async_ensure_token_valid()
         except aiohttp.ClientResponseError as err:
             if 400 <= err.status < 500:
+                link.refused = True
                 link.entry.async_start_reauth(hass)
                 return None
             raise
