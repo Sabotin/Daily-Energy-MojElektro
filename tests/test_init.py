@@ -1,7 +1,9 @@
-"""Migration 1.x → 3, the one-time upload of the old day log, the panel, and revoke on delete."""
+"""Migration 1.x → 3, the one-time upload of the old day log, the meters as devices, the panel, and revoke on delete."""
+
+import pytest
 
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
-from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.storage import Store
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -79,24 +81,88 @@ async def test_old_log_kept_when_porabim_refuses(hass, linked_entry, aioclient_m
     assert await _old_store(hass, linked_entry).async_load() == OLD_LOG
 
 
-async def test_account_id_title_becomes_the_meter(hass, linked_entry, aioclient_mock):
-    """2.0.0 / 2.0.1 titled entries Porabim · ha:<account>; the next start puts the meter there."""
-    hass.config_entries.async_update_entry(linked_entry, title="Porabim · ha:abc123")
-    aioclient_mock.get(
-        f"{API_URL}/snapshot",
-        json={"meter": "ha:abc123", "meters": [{"id": "ha:abc123", "name": None, "eimm": "4-123456"}]},
+THREE = {
+    "meter": "m2",
+    "meters": [
+        {"id": "m1", "name": None, "eimm": "4-67936"},
+        {"id": "m2", "name": None, "eimm": "4-211708"},
+        {"id": "m3", "name": "Vikend", "eimm": "4-138044"},
+    ],
+}
+
+
+def _devices(hass, entry):
+    return sorted(
+        (d.name, d.serial_number, next(iter(d.identifiers))[1])
+        for d in dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
     )
-    assert await hass.config_entries.async_setup(linked_entry.entry_id)
+
+
+async def _start(hass, entry):
+    assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
-    assert linked_entry.title == "Porabim · 4-123456"
 
 
+@pytest.mark.meters
+async def test_every_meter_is_a_device(hass, linked_entry, aioclient_mock):
+    """The entry is the account: Porabim, with one device per meter (its name, else its EIMM)."""
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, linked_entry)
+    assert linked_entry.title == "Porabim"
+    assert _devices(hass, linked_entry) == [
+        ("4-211708", "4-211708", "m2"),
+        ("4-67936", "4-67936", "m1"),
+        ("Vikend", "4-138044", "m3"),
+    ]
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id)
+    assert {d.manufacturer for d in devices} == {"porabim.com"}
+    assert {d.entry_type for d in devices} == {dr.DeviceEntryType.SERVICE}
+
+
+@pytest.mark.meters
+@pytest.mark.parametrize("title", ["Porabim · ha:abc123", "Porabim · 4-67936", "Porabim · 4-555555", "Porabim · Vikend"])
+async def test_titles_from_2_0_x_become_porabim(hass, linked_entry, aioclient_mock, title):
+    """2.0.0 / 2.0.1 had the account id, 2.0.2 / 2.0.3 one meter's EIMM or name."""
+    hass.config_entries.async_update_entry(linked_entry, title=title)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, linked_entry)
+    assert linked_entry.title == "Porabim"
+
+
+@pytest.mark.meters
 async def test_renamed_entry_keeps_its_title(hass, linked_entry, aioclient_mock):
     hass.config_entries.async_update_entry(linked_entry, title="Hiša")
-    assert await hass.config_entries.async_setup(linked_entry.entry_id)
-    await hass.async_block_till_done(wait_background_tasks=True)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, linked_entry)
     assert linked_entry.title == "Hiša"
-    assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/snapshot"]
+    assert len(_devices(hass, linked_entry)) == 3
+
+
+@pytest.mark.meters
+async def test_devices_follow_the_account(hass, linked_entry, aioclient_mock):
+    """A meter removed on porabim loses its device; a renamed one gets the new name."""
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, linked_entry)
+    await hass.config_entries.async_unload(linked_entry.entry_id)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(
+        f"{API_URL}/snapshot",
+        json={"meters": [{"id": "m1", "name": "Hiša", "eimm": "4-67936"}, {"id": "m3", "name": "Vikend", "eimm": "4-138044"}]},
+    )
+    await _start(hass, linked_entry)
+    assert _devices(hass, linked_entry) == [("Hiša", "4-67936", "m1"), ("Vikend", "4-138044", "m3")]
+
+
+@pytest.mark.meters
+@pytest.mark.parametrize("answer", [{"status": 502, "text": "Bad gateway"}, {"json": {"onboarded": False}}])
+async def test_devices_kept_without_a_meter_list(hass, linked_entry, aioclient_mock, answer):
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, linked_entry)
+    await hass.config_entries.async_unload(linked_entry.entry_id)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/snapshot", **answer)
+    await _start(hass, linked_entry)
+    assert len(_devices(hass, linked_entry)) == 3
 
 
 async def test_panel_loads_porabims_card(hass, linked_entry):

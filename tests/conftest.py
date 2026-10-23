@@ -1,6 +1,7 @@
 """Shared fixtures: a linked config entry with a key that is still valid."""
 
 import time
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -13,6 +14,16 @@ ACCOUNT = "ha:abc123"
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     yield
+
+
+@pytest.fixture(autouse=True)
+def no_meter_sync(request):
+    """Every start asks porabim for the account's meters; only tests marked `meters` answer that request."""
+    if request.node.get_closest_marker("meters"):
+        yield
+        return
+    with patch("custom_components.daily_energy_mojelektro.meters.async_sync", AsyncMock()):
+        yield
 
 
 def token(access="access-1", refresh="refresh-1", expires_at=None, account=ACCOUNT):

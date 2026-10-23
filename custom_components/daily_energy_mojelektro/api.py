@@ -54,20 +54,33 @@ def valid_path(path: str) -> bool:
     return bool(PATH.match(path)) and path.split("?", 1)[0].split("/", 1)[0] not in BLOCKED
 
 
-def meter_title(snapshot: Any) -> str:
-    """Porabim · <meter name, else its EIMM>, from /api/snapshot: `meter` is porabim's own meter id (not for
-    people), `meters` lists [{id, name, eimm}]. Just Porabim when neither is there."""
-    label = None
-    if isinstance(snapshot, dict) and isinstance(snapshot.get("meters"), list):
-        meters = [m for m in snapshot["meters"] if isinstance(m, dict)]
-        shown = next((m for m in meters if m.get("id") == snapshot.get("meter")), meters[0] if meters else {})
-        label = shown.get("name") or shown.get("eimm")
-    return f"Porabim · {label}" if isinstance(label, str) and label else "Porabim"
+TITLE = "Porabim"
+# 2.0.2 and 2.0.3 titled the entry Porabim · <EIMM>
+EIMM = re.compile(r"^\d+-\d+$")
 
 
-def auto_title(title: str) -> bool:
-    """A title this integration made and may still correct: plain Porabim, or 2.0.x's Porabim · ha:<account>."""
-    return title == "Porabim" or title.startswith("Porabim · ha:")
+def meters(snapshot: Any) -> list[dict[str, str]] | None:
+    """[{id, label, eimm}] of the account's meters from /api/snapshot (`meters` lists [{id, name, eimm}]; the id is
+    porabim's own, not for people). The label is the meter's name, else its EIMM. None when the list is not there."""
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get("meters"), list):
+        return None
+    found = []
+    for meter in snapshot["meters"]:
+        if not isinstance(meter, dict) or not isinstance(meter.get("id"), str) or not meter["id"]:
+            continue
+        eimm = meter.get("eimm") if isinstance(meter.get("eimm"), str) else ""
+        name = meter.get("name") if isinstance(meter.get("name"), str) else ""
+        found.append({"id": meter["id"], "label": name or eimm or meter["id"], "eimm": eimm})
+    return found
+
+
+def auto_title(title: str, labels: list[str]) -> bool:
+    """A title this integration made and may still correct: Porabim, 2.0.x's Porabim · ha:<account>, or 2.0.2/2.0.3's
+    Porabim · <one meter> (its EIMM or a meter's name). A name the user gave the entry stays."""
+    if title == TITLE or title.startswith(f"{TITLE} · ha:"):
+        return True
+    rest = title.removeprefix(f"{TITLE} · ")
+    return rest != title and (rest in labels or bool(EIMM.match(rest)))
 
 
 def timeout_for(path: str) -> int:
