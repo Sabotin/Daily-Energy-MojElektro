@@ -100,6 +100,20 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             return self.async_show_form(step_id="reauth_confirm")
         return await self.async_step_user()
 
+    async def _old_account_alive(self, entry: ConfigEntry) -> bool:
+        """The old key still refreshes, so its account exists. Refused (account deleted on porabim): the entry may move
+        to the new account, its devices follow the new account's meters at the reload."""
+        implementation = await config_entry_oauth2_flow.async_get_config_entry_implementation(self.hass, entry)
+        try:
+            token = await implementation.async_refresh_token(entry.data["token"])
+        except aiohttp.ClientResponseError as err:
+            return not 400 <= err.status < 500
+        except (aiohttp.ClientError, TimeoutError):
+            return True
+        # porabim rotates the refresh token on every use: keep the new one
+        self.hass.config_entries.async_update_entry(entry, data={**entry.data, "token": token})
+        return True
+
     async def _async_abort_and_revoke(self, data: dict[str, Any], reason: str) -> ConfigFlowResult:
         """porabim already made a link for this key: end it, so no unused link is left there."""
         await api.async_revoke(self.hass, data["token"]["access_token"])
@@ -111,8 +125,8 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             return await self._async_abort_and_revoke(data, "oauth_error")
         if self.source == SOURCE_REAUTH:
             entry = self._get_reauth_entry()
-            if "token" in entry.data and entry.unique_id != account:
-                # A linked entry must come back to the same porabim account
+            if "token" in entry.data and entry.unique_id != account and await self._old_account_alive(entry):
+                # A linked entry comes back to the same porabim account while that one still exists
                 return await self._async_abort_and_revoke(data, "wrong_account")
             other = next(
                 (e for e in self._async_current_entries(include_ignore=False) if e.unique_id == account and e.entry_id != entry.entry_id),
