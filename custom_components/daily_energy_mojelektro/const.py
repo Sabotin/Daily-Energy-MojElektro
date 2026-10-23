@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "2.0.4"
+VERSION = "2.0.5"
 
 PORABIM = "https://porabim.com"
 CLIENT_ID = DOMAIN
@@ -19,7 +19,9 @@ REDIRECT_URI = "https://my.home-assistant.io/redirect/oauth"
 
 CONF_SIDEBAR = "sidebar"
 
-PANEL_ELEMENT = "porabim-panel"
+# Our panel around porabim's (frontend/panel.js): it gives Home Assistant's page back as it was when it is left
+PANEL_ELEMENT = "daily-energy-panel"
+PANEL_URL = f"/{DOMAIN}/panel.js?v={VERSION}"
 PANEL_ICON = "mdi:lightning-bolt"
 PANEL_TITLE = "Daily Energy"
 
