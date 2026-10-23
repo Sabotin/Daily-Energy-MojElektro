@@ -6,10 +6,12 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import aiohttp
 
 from homeassistant.components import frontend, panel_custom
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
@@ -26,6 +28,7 @@ from .const import (
     PANEL_ELEMENT,
     PANEL_ICON,
     PANEL_TITLE,
+    PANEL_URL,
     STORAGE_VERSION,
     VERSION,
 )
@@ -39,6 +42,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
     oauth.async_register(hass)
     websocket.async_register(hass)
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(f"/{DOMAIN}", str(Path(__file__).parent / "frontend"), cache_headers=False)]
+    )
     # read once here, so requests later never wait for Home Assistant's storage
     await api.async_instance_hash(hass)
     return True
@@ -80,10 +86,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             webcomponent_name=PANEL_ELEMENT,
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
-            module_url=CARD_URL,
-            # porabim.com's own card: without this HA asks "Do you trust the external panel" on every open
+            module_url=PANEL_URL,
+            # our panel loads porabim.com's own card; without this HA asks "Do you trust the external panel" on every open
             trust_external=True,
-            config={"entry_id": entry.entry_id},
+            config={"entry_id": entry.entry_id, "card": CARD_URL},
             require_admin=False,
         )
     entry.async_on_unload(entry.add_update_listener(_async_reload))

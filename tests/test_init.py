@@ -165,16 +165,26 @@ async def test_devices_kept_without_a_meter_list(hass, linked_entry, aioclient_m
     assert len(_devices(hass, linked_entry)) == 3
 
 
-async def test_panel_loads_porabims_card(hass, linked_entry):
+async def test_panel_loads_porabims_card(hass, linked_entry, hass_client):
+    """Our panel (served by the integration) around porabim's card, which it loads from porabim.com."""
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     panel = hass.data["frontend_panels"]["daily-energy"]
     custom = panel.config["_panel_custom"]
-    assert custom["name"] == "porabim-panel"
-    assert custom["module_url"] == f"https://porabim.com/ha/card.js?v={VERSION}"
+    assert custom["name"] == "daily-energy-panel"
+    assert custom["module_url"] == f"/{DOMAIN}/panel.js?v={VERSION}"
     assert custom["trust_external"] is True
     assert panel.config["entry_id"] == linked_entry.entry_id
+    assert panel.config["card"] == f"https://porabim.com/ha/card.js?v={VERSION}"
     assert panel.require_admin is False
+
+    resp = await (await hass_client()).get(f"/{DOMAIN}/panel.js")
+    assert resp.status == 200
+    js = await resp.text()
+    assert "customElements.define('daily-energy-panel'" in js
+    # what porabim's panel colours on the page is put back when the panel is left
+    for prop in ("'background', 'colorScheme'", "'margin', 'background', 'color', 'minHeight'", "disconnectedCallback"):
+        assert prop in js
 
 
 async def test_remove_revokes_the_link(hass, linked_entry, aioclient_mock):
