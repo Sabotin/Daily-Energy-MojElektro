@@ -67,5 +67,66 @@
       "title": "Poveži s porabim.com",
       "description": "Daily Energy zdaj teče na porabim.com, ki hrani vaše podatke in jih vsako jutro prenese iz Moj Elektro. Pojdite v Nastavitve › Naprave in storitve › {title} › Ponovno konfiguriraj in na porabim.com vnesite merilno mesto in žeton Moj Elektro. Vaš dnevnik se tja naloži enkrat; do takrat ostane v Home Assistantu."
     }
+  },
+  "entity": {
+    "sensor": {
+      "in_day": {
+        "name": "Odjem, zadnji dan"
+      },
+      "in_month": {
+        "name": "Odjem, ta mesec"
+      },
+      "in_last_month": {
+        "name": "Odjem, prejšnji mesec"
+      },
+      "out_day": {
+        "name": "Oddaja, zadnji dan"
+      },
+      "out_month": {
+        "name": "Oddaja, ta mesec"
+      },
+      "out_last_month": {
+        "name": "Oddaja, prejšnji mesec"
+      },
+      "block_day": {
+        "name": "Blok {block}, zadnji dan"
+      },
+      "peak_day": {
+        "name": "Najvišja moč, zadnji dan"
+      },
+      "peak_block_month": {
+        "name": "Najvišja moč bloka {block}, ta mesec"
+      },
+      "agreed_block": {
+        "name": "Dogovorjena moč bloka {block}"
+      },
+      "cost_month": {
+        "name": "Ocena računa, ta mesec"
+      },
+      "cost_last_month": {
+        "name": "Ocena računa, prejšnji mesec"
+      },
+      "plant_day": {
+        "name": "Proizvodnja elektrarne, zadnji dan"
+      },
+      "plant_month": {
+        "name": "Proizvodnja elektrarne, ta mesec"
+      },
+      "self_use_day": {
+        "name": "Lastna poraba, zadnji dan"
+      },
+      "self_use_share_day": {
+        "name": "Delež lastne porabe, zadnji dan"
+      },
+      "autarky_day": {
+        "name": "Samooskrba, zadnji dan"
+      },
+      "day": {
+        "name": "Dan podatkov"
+      },
+      "last_check": {
+        "name": "Zadnje preverjanje"
+      }
+    }
   }
 }

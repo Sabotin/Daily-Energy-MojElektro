@@ -25,6 +25,17 @@ async def async_sync(hass: HomeAssistant, link: api.PorabimLink) -> None:
 
 
 @callback
+def device_meters(hass: HomeAssistant, entry_id: str) -> set[str]:
+    """The porabim meter ids that have a device under the entry."""
+    return {
+        ident[1]
+        for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry_id)
+        for ident in device.identifiers
+        if ident[0] == DOMAIN
+    }
+
+
+@callback
 def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) -> None:
     """One device per meter under the entry (its name, else its EIMM), and the entry titled Porabim.
 
@@ -39,6 +50,7 @@ def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) ->
         hass.config_entries.async_update_entry(entry, title=api.TITLE)
     registry = dr.async_get(hass)
     kept = set()
+    new = bool({m["id"] for m in meters} - device_meters(hass, entry.entry_id))
     for meter in meters:
         device = registry.async_get_or_create(
             config_entry_id=entry.entry_id,
@@ -53,3 +65,6 @@ def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) ->
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         if device.id not in kept:
             registry.async_remove_device(device.id)
+    # a meter added later (Add integration, + in the panel): its entities come with the next sensor refresh, now
+    if new and link.sensors is not None and link.sensors.data is not None:
+        hass.async_create_task(link.sensors.async_request_refresh())

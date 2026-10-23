@@ -18,11 +18,18 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 @pytest.fixture(autouse=True)
 def no_meter_sync(request):
-    """Every start asks porabim for the account's meters; only tests marked `meters` answer that request."""
+    """Every start asks porabim for the account's meters and their sensor values; only tests marked `meters` answer
+    those requests."""
     if request.node.get_closest_marker("meters"):
         yield
         return
-    with patch("custom_components.daily_energy_mojelektro.meters.async_sync", AsyncMock()):
+    with (
+        patch("custom_components.daily_energy_mojelektro.meters.async_sync", AsyncMock()),
+        patch(
+            "custom_components.daily_energy_mojelektro.sensor.SensorsCoordinator._async_update_data",
+            AsyncMock(return_value={"off": False, "meters": {}}),
+        ),
+    ):
         yield
 
 
