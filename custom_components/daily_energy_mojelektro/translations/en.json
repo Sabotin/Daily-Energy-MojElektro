@@ -67,5 +67,66 @@
       "title": "Connect to porabim.com",
       "description": "Daily Energy now runs on porabim.com, which keeps your data and fetches it from Moj Elektro every morning. Go to Settings › Devices & services › {title} › Reconfigure, and enter your meter ID and Moj Elektro token on porabim.com. Your day log is uploaded there once; until then it stays in Home Assistant."
     }
+  },
+  "entity": {
+    "sensor": {
+      "in_day": {
+        "name": "Grid in, last day"
+      },
+      "in_month": {
+        "name": "Grid in, this month"
+      },
+      "in_last_month": {
+        "name": "Grid in, last month"
+      },
+      "out_day": {
+        "name": "Grid out, last day"
+      },
+      "out_month": {
+        "name": "Grid out, this month"
+      },
+      "out_last_month": {
+        "name": "Grid out, last month"
+      },
+      "block_day": {
+        "name": "Block {block}, last day"
+      },
+      "peak_day": {
+        "name": "Peak power, last day"
+      },
+      "peak_block_month": {
+        "name": "Peak power block {block}, this month"
+      },
+      "agreed_block": {
+        "name": "Agreed power block {block}"
+      },
+      "cost_month": {
+        "name": "Bill estimate, this month"
+      },
+      "cost_last_month": {
+        "name": "Bill estimate, last month"
+      },
+      "plant_day": {
+        "name": "Solar production, last day"
+      },
+      "plant_month": {
+        "name": "Solar production, this month"
+      },
+      "self_use_day": {
+        "name": "Self use, last day"
+      },
+      "self_use_share_day": {
+        "name": "Self use share, last day"
+      },
+      "autarky_day": {
+        "name": "Self-sufficiency, last day"
+      },
+      "day": {
+        "name": "Data day"
+      },
+      "last_check": {
+        "name": "Last check"
+      }
+    }
   }
 }

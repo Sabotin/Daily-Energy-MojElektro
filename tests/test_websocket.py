@@ -207,10 +207,12 @@ async def test_entries(hass, linked_entry, hass_ws_client, aioclient_mock):
 @pytest.mark.meters
 async def test_panel_snapshot_updates_the_devices(hass, linked_entry, hass_ws_client, aioclient_mock):
     """The meter list in every snapshot the panel loads: a meter added on porabim shows up without a restart."""
+    aioclient_mock.get(f"{API_URL}/sensors", json={"v": 1, "off": False, "meters": []})
     aioclient_mock.get(f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-1"}]})
     await _setup(hass, linked_entry)
     await hass.async_block_till_done(wait_background_tasks=True)
     aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json={"v": 1, "off": False, "meters": []})
     aioclient_mock.get(
         f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-1"}, {"id": "m2", "name": "Vikend", "eimm": "4-2"}]}
     )
@@ -221,3 +223,6 @@ async def test_panel_snapshot_updates_the_devices(hass, linked_entry, hass_ws_cl
     assert (await client.receive_json())["success"]
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id)
     assert sorted(d.name for d in devices) == ["4-1", "Vikend"]
+    # the new meter's entities come with a sensor refresh at once
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert any(str(c[1]) == f"{API_URL}/sensors" for c in aioclient_mock.mock_calls)

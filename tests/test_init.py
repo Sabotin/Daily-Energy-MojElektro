@@ -9,6 +9,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, REVOKE_URL, VERSION
 
+# the meter tests answer /api/sensors with no values (tests/test_sensor.py covers them)
+NO_SENSORS = {"v": 1, "off": False, "meters": []}
+
 OLD_LOG = {
     "days": {"2026-10-01": {"u": 12.5, "vt": 8.0, "mt": 4.5}},
     "manual": {"2026-09-30": {"t": 100123.4}},
@@ -106,6 +109,7 @@ async def _start(hass, entry):
 @pytest.mark.meters
 async def test_every_meter_is_a_device(hass, linked_entry, aioclient_mock):
     """The entry is the account: Porabim, with one device per meter (its name, else its EIMM)."""
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
     assert linked_entry.title == "Porabim"
@@ -124,6 +128,7 @@ async def test_every_meter_is_a_device(hass, linked_entry, aioclient_mock):
 async def test_titles_from_2_0_x_become_porabim(hass, linked_entry, aioclient_mock, title):
     """2.0.0 / 2.0.1 had the account id, 2.0.2 / 2.0.3 one meter's EIMM or name."""
     hass.config_entries.async_update_entry(linked_entry, title=title)
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
     assert linked_entry.title == "Porabim"
@@ -132,6 +137,7 @@ async def test_titles_from_2_0_x_become_porabim(hass, linked_entry, aioclient_mo
 @pytest.mark.meters
 async def test_renamed_entry_keeps_its_title(hass, linked_entry, aioclient_mock):
     hass.config_entries.async_update_entry(linked_entry, title="Hiša")
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
     assert linked_entry.title == "Hiša"
@@ -141,10 +147,12 @@ async def test_renamed_entry_keeps_its_title(hass, linked_entry, aioclient_mock)
 @pytest.mark.meters
 async def test_devices_follow_the_account(hass, linked_entry, aioclient_mock):
     """A meter removed on porabim loses its device; a renamed one gets the new name."""
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
     await hass.config_entries.async_unload(linked_entry.entry_id)
     aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(
         f"{API_URL}/snapshot",
         json={"meters": [{"id": "m1", "name": "Hiša", "eimm": "4-67936"}, {"id": "m3", "name": "Vikend", "eimm": "4-138044"}]},
@@ -156,10 +164,12 @@ async def test_devices_follow_the_account(hass, linked_entry, aioclient_mock):
 @pytest.mark.meters
 @pytest.mark.parametrize("answer", [{"status": 502, "text": "Bad gateway"}, {"json": {"onboarded": False}}])
 async def test_devices_kept_without_a_meter_list(hass, linked_entry, aioclient_mock, answer):
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
     await hass.config_entries.async_unload(linked_entry.entry_id)
     aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", **answer)
     await _start(hass, linked_entry)
     assert len(_devices(hass, linked_entry)) == 3

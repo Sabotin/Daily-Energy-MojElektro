@@ -13,6 +13,7 @@ import aiohttp
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv, issue_registry as ir
@@ -35,6 +36,7 @@ from .const import (
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _LOGGER = logging.getLogger(__name__)
+PLATFORMS = [Platform.SENSOR]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -92,18 +94,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             config={"entry_id": entry.entry_id, "card": CARD_URL},
             require_admin=False,
         )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     entry.async_create_background_task(hass, _async_upload_old_log(hass, link), f"{DOMAIN} old log upload")
-    entry.async_create_background_task(hass, meters.async_sync(hass, link), f"{DOMAIN} meters")
+    entry.async_create_background_task(hass, _async_meters_then_sensors(hass, link), f"{DOMAIN} meters")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Remove the panel; the link on porabim stays."""
+    """Remove the panel and the entities; the link on porabim stays."""
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
     link = hass.data[DOMAIN].pop(entry.entry_id, None)
     if link is not None and link.panel_url:
         frontend.async_remove_panel(hass, link.panel_url)
     return True
+
+
+async def _async_meters_then_sensors(hass: HomeAssistant, link: api.PorabimLink) -> None:
+    """The meter devices first, so the first sensor refresh finds them (entities go on those devices)."""
+    await meters.async_sync(hass, link)
+    if link.sensors is not None:
+        await link.sensors.async_refresh()
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

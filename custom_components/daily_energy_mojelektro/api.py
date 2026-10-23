@@ -36,6 +36,8 @@ class PorabimLink:
     entry: ConfigEntry
     session: config_entry_oauth2_flow.OAuth2Session
     panel_url: str | None = None
+    # sensor.SensorsCoordinator, set when the sensor platform starts
+    sensors: Any = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
