@@ -21,6 +21,7 @@ Pregled porabe energije za Home Assistant. Podatke hrani in vsako jutro prenese 
 - Slovenščina ali angleščina
 - Lahek način za tablice na steni
 - Vrstica z gumbi na vrhu na računalniku, ob levem robu na tablici, zavihki na dnu na telefonu
+- Entitete za vsako merilno mesto: odjem in oddaja (zadnji dan, ta mesec, prejšnji mesec), bloki, najvišja moč, dogovorjena moč, ocena računa in elektrarna, za avtomatizacije in nadzorne plošče
 
 ## Zahteve
 
@@ -94,6 +95,7 @@ Energy dashboard for Home Assistant. [porabim.com](https://porabim.com) keeps th
 - English or Slovenian
 - Light mode for wall tablets
 - Top bar on PC, side rail on tablets, bottom tabs on phones
+- Entities for every meter: grid in and out (last day, this month, last month), blocks, peak power, agreed power, bill estimate and solar plant, for automations and dashboards
 
 ## Requirements
 

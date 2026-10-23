@@ -107,10 +107,12 @@ async def test_second_add_adds_the_meter_to_the_same_account(hass, aioclient_moc
 
 @pytest.mark.meters
 async def test_added_meter_shows_as_a_device(hass, aioclient_mock, linked_entry):
+    aioclient_mock.get(f"{API_URL}/sensors", json={"v": 1, "off": False, "meters": []})
     aioclient_mock.get(f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-123456"}]})
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json={"v": 1, "off": False, "meters": []})
     aioclient_mock.get(
         f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-123456"}, {"id": "m2", "eimm": "4-67936"}]}
     )
@@ -121,6 +123,7 @@ async def test_added_meter_shows_as_a_device(hass, aioclient_mock, linked_entry)
     assert result["reason"] == "meter_added"
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id)
     assert sorted(d.name for d in devices) == ["4-123456", "4-67936"]
+    assert any(str(c[1]) == f"{API_URL}/sensors" for c in aioclient_mock.mock_calls)
 
 
 async def test_second_add_shows_porabims_error(hass, aioclient_mock, linked_entry):
