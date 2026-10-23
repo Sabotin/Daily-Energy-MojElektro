@@ -67,3 +67,7 @@ async def ws_api(hass: HomeAssistant, connection: websocket_api.ActiveConnection
         # Every snapshot the panel loads lists the account's meters: the devices follow it without another request
         meters.async_apply(hass, link, data)
     connection.send_result(msg["id"], {"status": status, "data": data})
+    if 200 <= status < 300 and msg["method"] == "POST" and msg["path"] == "delete-account":
+        # Izbriši račun: the porabim account is gone, so are its entries (Devices & services, the sidebar, the entities)
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hass.async_create_task(hass.config_entries.async_remove(entry.entry_id), f"{DOMAIN} remove {entry.entry_id}")

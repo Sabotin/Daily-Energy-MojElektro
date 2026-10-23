@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.daily_energy_mojelektro import api
-from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, LONG_TIMEOUT, TIMEOUT, TOKEN_URL, VERSION
+from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, LONG_TIMEOUT, REVOKE_URL, TIMEOUT, TOKEN_URL, VERSION
 
 
 @pytest.mark.parametrize(
@@ -230,3 +230,32 @@ async def test_panel_snapshot_updates_the_devices(hass, linked_entry, hass_ws_cl
     # the new meter's entities come with a sensor refresh at once
     await hass.async_block_till_done(wait_background_tasks=True)
     assert any(str(c[1]) == f"{API_URL}/sensors" for c in aioclient_mock.mock_calls)
+
+
+async def test_delete_account_removes_the_entries(hass, linked_entry, hass_ws_client, aioclient_mock):
+    """Izbriši račun in the panel: porabim deleted the account, so its entry leaves Home Assistant too."""
+    aioclient_mock.post(f"{API_URL}/delete-account", json={"ok": True})
+    aioclient_mock.post(REVOKE_URL, status=401, json={"error": "invalid_token"})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/api", "entry_id": linked_entry.entry_id, "method": "POST", "path": "delete-account", "body": {"pin": ""}}
+    )
+    msg = await client.receive_json()
+    assert msg["result"] == {"status": 200, "data": {"ok": True}}
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == []
+    assert "daily-energy" not in hass.data.get("frontend_panels", {})
+
+
+async def test_delete_account_refused_keeps_the_entry(hass, linked_entry, hass_ws_client, aioclient_mock):
+    aioclient_mock.post(f"{API_URL}/delete-account", status=403, json={"error": "wrong_pin"})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/api", "entry_id": linked_entry.entry_id, "method": "POST", "path": "delete-account", "body": {"pin": "1"}}
+    )
+    msg = await client.receive_json()
+    assert msg["result"]["status"] == 403
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == [linked_entry]

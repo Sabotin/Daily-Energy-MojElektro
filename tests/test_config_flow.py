@@ -12,6 +12,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
 
 from custom_components.daily_energy_mojelektro.const import API_URL, AUTHORIZE_URL, DOMAIN, REDIRECT_URI, REVOKE_URL, TOKEN_URL
 from custom_components.daily_energy_mojelektro import api
@@ -206,6 +207,39 @@ async def test_reauth_with_another_account_aborts(hass, hass_client_no_auth, aio
     assert result["reason"] == "wrong_account"
     assert entry.unique_id == "ha:someone-else"
     assert _revoked(aioclient_mock) == ["Bearer access-1"]
+
+
+async def test_reauth_after_the_account_was_deleted_takes_the_new_one(hass, hass_client_no_auth, aioclient_mock):
+    """Izbriši račun on porabim: the old key is refused, porabim makes a new account; the entry moves to it."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        unique_id="ha:deleted",
+        data={"auth_implementation": DOMAIN, "token": token(access="old-access", refresh="old-refresh", account="ha:deleted")},
+    )
+    entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id}, data=entry.data
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    await _through_porabim(hass, result, hass_client_no_auth, aioclient_mock)
+    aioclient_mock.clear_requests()
+
+    async def token_answer(method, url, data):
+        if data["grant_type"] == "refresh_token":
+            return AiohttpClientMockResponse(method, url, status=400, json={"error": "invalid_grant"})
+        return AiohttpClientMockResponse(method, url, json=TOKEN_ANSWER)
+
+    aioclient_mock.post(TOKEN_URL, side_effect=token_answer)
+    aioclient_mock.post(REVOKE_URL, json={})
+    with patch("custom_components.daily_energy_mojelektro.async_setup_entry", return_value=True):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"])
+        await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+    assert entry.unique_id == ACCOUNT
+    assert entry.data["token"]["access_token"] == "access-1"
+    assert _revoked(aioclient_mock) == ["Bearer old-access"]
 
 
 async def test_reauth_same_account_ends_the_old_link(hass, hass_client_no_auth, aioclient_mock):

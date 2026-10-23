@@ -69,6 +69,7 @@ restart → Settings → Devices & services → **Add integration** → **Daily 
 - Več merilnih mest (največ 3): vsa so v istem računu in v istem vnosu v stranski vrstici. Dodate jih z gumbom **+** v plošči Daily Energy ali z **Dodaj integracijo** (vpišete merilno mesto in žeton) – oboje deluje enako.
 - Home Assistant ima na porabim.com en račun. Ostane isti tudi, če integracijo izbrišete in dodate znova.
 - Ko izbrišete integracijo, se povezava na porabim.com prekine. Za ponovno povezavo uporabite eno od merilnih mest v računu.
+- **Izbriši račun** v nastavitvah plošče izbriše račun na porabim.com in hkrati integracijo iz Naprave in storitve. Če je bil račun izbrisan drugje, se ob ponovni povezavi vnos premakne v novi račun.
 
 ## Licenca
 
@@ -143,6 +144,7 @@ restart → Settings → Devices & services → **Add integration** → **Daily 
 - Several meters (up to 3): all in the same account and the same sidebar item. Add them with **+** in the Daily Energy panel or with **Add integration** (meter ID and token) – both do the same.
 - Home Assistant has one account on porabim.com. It stays the same when you delete the integration and add it again.
 - Deleting the integration ends its link on porabim.com. To connect again, use one of the meters in the account.
+- **Delete account** in the panel settings deletes the porabim.com account and the integration in Devices & services with it. If the account was deleted elsewhere, reconnecting moves the entry to the new account.
 
 ## Licence
 
