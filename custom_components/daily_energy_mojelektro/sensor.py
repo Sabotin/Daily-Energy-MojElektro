@@ -5,9 +5,10 @@
 """Each meter's numbers from porabim's /api/sensors as entities on its device. porabim computes them (the same
 logic.js as its dashboard); nothing is computed here.
 
-An entity is made the first time its key comes for its meter and stays: a key that is missing (the month keys on the
-1st, the bill in a month's first days, block 1 in summer) or the API switched off in porabim's Skrbnik leaves it
-unavailable. Entities go with their meter's device (meters.py)."""
+Every entity porabim lists in a meter's keys is made at once, the moment the meter is added, and a key that comes in
+its values is made then too (an older porabim lists none). Once made, an entity stays: a key without a number (a new
+meter's first minutes, the month keys on the 1st, the bill in a month's first days, block 1 in summer) or the API
+switched off in porabim's Skrbnik leaves it unavailable. Entities go with their meter's device (meters.py)."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -37,6 +38,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # porabim's data changes about once a day (Moj Elektro sends it a day late); one call covers every meter
 SCAN_INTERVAL = timedelta(minutes=30)
+# a new meter's first Moj Elektro check (seconds after it is added) decides Odjem in oddaja: while porabim says "wait",
+# asked again this often, at most this many times per meter
+WAIT_INTERVAL = timedelta(seconds=10)
+WAIT_TRIES = 12
 BLOCKS = range(1, 6)
 # meter-level fields shown as diagnostic entities
 DAY, LAST_CHECK = "day", "last_check"
@@ -98,29 +103,44 @@ DESCRIPTIONS: dict[str, SensorEntityDescription] = {
 
 
 class SensorsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """GET /api/sensors: {"off": bool, "meters": {id: {"day", "last_check", "values"}}}."""
+    """GET /api/sensors: {"off": bool, "meters": [{"id", "day", "last_check", "values", "keys", "wait"}]}."""
 
     def __init__(self, hass: HomeAssistant, link: api.PorabimLink) -> None:
         super().__init__(hass, _LOGGER, config_entry=link.entry, name=f"{DOMAIN} sensors", update_interval=SCAN_INTERVAL)
         self.link = link
+        # meter id → how many answers in a row said "wait"
+        self._waits: dict[str, int] = {}
 
     async def _async_update_data(self) -> dict[str, Any]:
+        # a failed call never keeps the short interval
+        self.update_interval = SCAN_INTERVAL
         try:
             status, data = await api.async_call(self.hass, self.link, "GET", "sensors")
         except (aiohttp.ClientError, TimeoutError) as err:
             raise UpdateFailed(f"porabim.com did not answer: {err}") from err
         if status != 200 or not isinstance(data, dict):
             raise UpdateFailed(f"porabim.com answered HTTP {status}")
-        found = {}
+        found, keys, soon = {}, {}, False
         for meter in data.get("meters") if isinstance(data.get("meters"), list) else []:
             if isinstance(meter, dict) and isinstance(meter.get("id"), str) and meter["id"]:
                 values = meter.get("values") if isinstance(meter.get("values"), dict) else {}
                 found[meter["id"]] = {**values, DAY: meter.get(DAY), LAST_CHECK: meter.get(LAST_CHECK)}
-        return {"off": data.get("off") is True, "meters": found}
+                # every entity the meter can have, made at once (an older porabim sends none)
+                listed = meter.get("keys")
+                keys[meter["id"]] = [k for k in listed if isinstance(k, str)] if isinstance(listed, list) else []
+                if meter.get("wait") is True:
+                    self._waits[meter["id"]] = self._waits.get(meter["id"], 0) + 1
+                    soon = soon or self._waits[meter["id"]] <= WAIT_TRIES
+                else:
+                    self._waits.pop(meter["id"], None)
+        if soon:
+            self.update_interval = WAIT_INTERVAL
+        return {"off": data.get("off") is True, "meters": found, "keys": keys}
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Entities are added as their keys come; the first refresh runs after the meter sync (__init__)."""
+    """Entities are added as porabim lists them or their numbers come; the first refresh runs after the meter sync
+    (__init__)."""
     link: api.PorabimLink = hass.data[DOMAIN][entry.entry_id]
     coordinator = link.sensors = SensorsCoordinator(hass, link)
     added: set[str] = set()
@@ -135,8 +155,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             # only on a device meters.py made (it names it); the next refresh tries again
             if meter not in devices:
                 continue
-            for key, value in values.items():
-                if value is not None and key in DESCRIPTIONS and f"{meter}_{key}" not in added:
+            # porabim's keys (every entity the meter can have), then any key with a number
+            listed = coordinator.data.get("keys", {}).get(meter, [])
+            for key in [*listed, *(k for k, v in values.items() if v is not None)]:
+                if key in DESCRIPTIONS and f"{meter}_{key}" not in added:
                     added.add(f"{meter}_{key}")
                     new.append(PorabimSensor(coordinator, meter, DESCRIPTIONS[key], added))
         if new:
