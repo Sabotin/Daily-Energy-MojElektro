@@ -10,6 +10,7 @@ from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN
+from custom_components.daily_energy_mojelektro.sensor import WAIT_TRIES
 
 pytestmark = pytest.mark.meters
 
@@ -28,6 +29,11 @@ FULL = {
 IN_ONLY = {"in_day": 27.274, "in_month": 578.354, "in_last_month": 790.501, "block2_day": 15.323, "peak_day": 4.204,
            "peak_day_at": "2026-10-22T07:30:00+02:00", "cost_month": 7.38, "cost_last_month": 8.59}
 CHECK = "2026-10-23T09:32:56+02:00"
+# porabim's keys of a meter with grid in only and no plant (23)
+BASE = ["in_day", "in_month", "in_last_month", *(f"block{b}_day" for b in range(1, 6)), "peak_day",
+        *(f"peak_block{b}_month" for b in range(1, 6)), *(f"agreed_block{b}" for b in range(1, 6)), "cost_month",
+        "cost_last_month", "day", "last_check"]
+SOON = timedelta(seconds=15)
 
 
 def answer(m1=FULL, m2=IN_ONLY, off=False):
@@ -42,15 +48,22 @@ async def start(hass, entry, aioclient_mock, sensors):
     await hass.async_block_till_done(wait_background_tasks=True)
 
 
-async def next_answer(hass, aioclient_mock, **kw):
+async def next_answer(hass, aioclient_mock, after=timedelta(minutes=31), **kw):
     aioclient_mock.clear_requests()
     aioclient_mock.get(f"{API_URL}/sensors", **kw)
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=31))
+    async_fire_time_changed(hass, dt_util.utcnow() + after)
     await hass.async_block_till_done(wait_background_tasks=True)
 
 
 def entity(hass, meter, key):
     return er.async_get(hass).async_get_entity_id("sensor", DOMAIN, f"{meter}_{key}")
+
+
+def just_added(keys=BASE, wait=False):
+    """porabim's answer for a meter just added: no numbers yet, its keys listed."""
+    a = answer(m1={}, m2=None)
+    a["meters"][0].update(day=None, last_check=None, keys=keys, wait=wait)
+    return a
 
 
 async def test_entities_per_meter_on_its_device(hass, linked_entry, aioclient_mock):
@@ -117,3 +130,59 @@ async def test_unload_removes_entities_from_states(hass, linked_entry, aioclient
     await start(hass, linked_entry, aioclient_mock, answer())
     assert await hass.config_entries.async_unload(linked_entry.entry_id)
     assert hass.states.get(entity(hass, "m1", "in_day")).state == STATE_UNAVAILABLE
+
+
+async def test_listed_keys_make_every_entity_at_once(hass, linked_entry, aioclient_mock):
+    """A meter just added: every listed entity at once, unavailable, then its number under the same entity id."""
+    await start(hass, linked_entry, aioclient_mock, just_added(keys=[*BASE, "unknown_key", 5]))
+    ents = er.async_entries_for_config_entry(er.async_get(hass), linked_entry.entry_id)
+    assert sorted(e.unique_id for e in ents) == sorted(f"m1_{k}" for k in BASE)
+    assert all(hass.states.get(e.entity_id).state == STATE_UNAVAILABLE for e in ents)
+    in_day = entity(hass, "m1", "in_day")
+    await next_answer(hass, aioclient_mock, json=answer(m2=None))
+    assert entity(hass, "m1", "in_day") == in_day
+    assert hass.states.get(in_day).state == "19.991"
+
+
+async def test_listed_keys_keep_existing_entities(hass, linked_entry, aioclient_mock):
+    """An update from 2.0.x: an entity made before keeps its entity id (renamed by the user here); none twice."""
+    reg = er.async_get(hass)
+    old = reg.async_get_or_create("sensor", DOMAIN, "m1_in_day", config_entry=linked_entry)
+    reg.async_update_entity(old.entity_id, new_entity_id="sensor.my_grid_in")
+    listed = answer(m2=None)
+    listed["meters"][0]["keys"] = BASE
+    await start(hass, linked_entry, aioclient_mock, listed)
+    assert entity(hass, "m1", "in_day") == "sensor.my_grid_in"
+    assert hass.states.get("sensor.my_grid_in").state == "19.991"
+    assert [e.unique_id for e in er.async_entries_for_config_entry(reg, linked_entry.entry_id)].count("m1_in_day") == 1
+
+
+async def test_wait_asks_again_every_10_s_at_most_12_times(hass, linked_entry, aioclient_mock):
+    await start(hass, linked_entry, aioclient_mock, just_added(wait=True))
+    for _ in range(WAIT_TRIES):
+        await next_answer(hass, aioclient_mock, after=SOON, json=just_added(wait=True))
+        assert aioclient_mock.call_count == 1
+    # still waiting after 12: back to every 30 minutes
+    await next_answer(hass, aioclient_mock, after=SOON, json=just_added(wait=True))
+    assert aioclient_mock.call_count == 0
+    await next_answer(hass, aioclient_mock, json=just_added(wait=True))
+    assert aioclient_mock.call_count == 1
+
+
+async def test_wait_ends_with_odjem_in_oddaja(hass, linked_entry, aioclient_mock):
+    await start(hass, linked_entry, aioclient_mock, just_added(wait=True))
+    assert entity(hass, "m1", "out_day") is None
+    both = [*BASE[:3], "out_day", "out_month", "out_last_month", *BASE[3:]]
+    await next_answer(hass, aioclient_mock, after=SOON, json=just_added(keys=both))
+    assert hass.states.get(entity(hass, "m1", "out_day")).state == STATE_UNAVAILABLE
+    # no longer waiting: the next call in 30 minutes, not 10 s
+    await next_answer(hass, aioclient_mock, after=SOON, json=just_added(keys=both))
+    assert aioclient_mock.call_count == 0
+
+
+async def test_wait_never_keeps_asking_while_porabim_fails(hass, linked_entry, aioclient_mock):
+    await start(hass, linked_entry, aioclient_mock, just_added(wait=True))
+    await next_answer(hass, aioclient_mock, after=SOON, status=500, json={"error": "x"})
+    assert aioclient_mock.call_count == 1
+    await next_answer(hass, aioclient_mock, after=SOON, status=500, json={"error": "x"})
+    assert aioclient_mock.call_count == 0
