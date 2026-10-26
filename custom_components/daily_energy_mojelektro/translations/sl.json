@@ -33,7 +33,7 @@
       "unknown": "Prišlo je do napake. Poskusite znova."
     },
     "abort": {
-      "meter_added": "Merilno mesto {meter} je dodano v Daily Energy. Odprite ploščo Daily Energy in ga izberite v izbiri merilnih mest.",
+      "meter_added": "Merilno mesto {meter} je dodano v Daily Energy. Odprite ploščo Daily Energy in ga izberite v izbiri merilnih mest. Dokler porabim.com nima prvih podatkov iz Moj Elektro, so njegove entitete nedosegljive.",
       "connect_first": "Daily Energy še ni povezan s porabim.com. Najprej ga povežite (Nastavitve › Naprave in storitve › Daily Energy › Ponovno konfiguriraj), nato dodajte druga merilna mesta.",
       "already_configured": "Ta račun porabim.com je že povezan.",
       "wrong_account": "To je drug račun porabim.com. Povežite se z merilnim mestom, s katerim je bil ta vnos prvič nastavljen.",
@@ -48,7 +48,7 @@
       "user_rejected_authorize": "Povezava je bila na porabim.com preklicana."
     },
     "create_entry": {
-      "default": "Povezano s porabim.com."
+      "default": "Daily Energy je pripravljen. Odprite Daily Energy v stranski vrstici in si oglejte svoje podatke. Dokler porabim.com nima prvih podatkov iz Moj Elektro, so entitete merilnega mesta nedosegljive."
     }
   },
   "options": {

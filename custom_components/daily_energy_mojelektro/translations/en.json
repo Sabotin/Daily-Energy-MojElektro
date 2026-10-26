@@ -33,7 +33,7 @@
       "unknown": "Something went wrong. Try again."
     },
     "abort": {
-      "meter_added": "Meter {meter} is added to Daily Energy. Open the Daily Energy panel and pick it in the meter switcher.",
+      "meter_added": "Meter {meter} is added to Daily Energy. Open the Daily Energy panel and pick it in the meter switcher. Until porabim.com has its first data from Moj Elektro, its entities show as unavailable.",
       "connect_first": "Daily Energy is not connected to porabim.com yet. Connect it first (Settings › Devices & services › Daily Energy › Reconfigure), then add more meters.",
       "already_configured": "This porabim.com account is already connected.",
       "wrong_account": "This is a different porabim.com account. Connect with the meter this entry was set up with first.",
@@ -48,7 +48,7 @@
       "user_rejected_authorize": "The connection was cancelled on porabim.com."
     },
     "create_entry": {
-      "default": "Connected to porabim.com."
+      "default": "Daily Energy is ready. Open Daily Energy in the sidebar to see your data. Until porabim.com has your first data from Moj Elektro, the meter's entities show as unavailable."
     }
   },
   "options": {
