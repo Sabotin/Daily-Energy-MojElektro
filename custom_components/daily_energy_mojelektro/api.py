@@ -108,7 +108,7 @@ async def async_revoke(hass: HomeAssistant, access_token: str) -> None:
 
 
 async def _async_send(
-    hass: HomeAssistant, token: str, method: str, path: str, body: Any, meter: str | None
+    hass: HomeAssistant, token: str, method: str, path: str, body: Any, meter: str | None, visit: bool
 ) -> tuple[int, Any]:
     headers = {
         "authorization": f"Bearer {token}",
@@ -117,6 +117,9 @@ async def _async_send(
     }
     if meter:
         headers["x-meter"] = meter
+    # nobody is looking (sensors, setup, the old log): porabim's Zadnji obisk leaves it out
+    if not visit:
+        headers["x-ha-background"] = "1"
     # porabim takes a POST only as JSON (else 415 json_only): {} when there is no body
     payload = ({} if body is None else body) if method == "POST" else None
     async with asyncio.timeout(timeout_for(path)):
@@ -155,19 +158,26 @@ async def _async_valid_token(hass: HomeAssistant, link: PorabimLink, stale: str 
 
 
 async def async_call(
-    hass: HomeAssistant, link: PorabimLink, method: str, path: str, body: Any = None, meter: str | None = None
+    hass: HomeAssistant,
+    link: PorabimLink,
+    method: str,
+    path: str,
+    body: Any = None,
+    meter: str | None = None,
+    visit: bool = False,
 ) -> tuple[int, Any]:
-    """(status, parsed JSON or None). A 401 gets one refresh and one retry, then reauth."""
+    """(status, parsed JSON or None). A 401 gets one refresh and one retry, then reauth. `visit`: the panel's own call
+    (someone has it open); every other call goes as background."""
     token = await _async_valid_token(hass, link)
     if token is None:
         return 401, SIGNED_OUT
-    status, data = await _async_send(hass, token, method, path, body, meter)
+    status, data = await _async_send(hass, token, method, path, body, meter, visit)
     if status != 401:
         return status, data
     token = await _async_valid_token(hass, link, stale=token)
     if token is None:
         return 401, data
-    status, data = await _async_send(hass, token, method, path, body, meter)
+    status, data = await _async_send(hass, token, method, path, body, meter, visit)
     if status == 401:
         # porabim refuses even the new key: as a refused refresh, the user is asked once and porabim no more
         link.refused = True

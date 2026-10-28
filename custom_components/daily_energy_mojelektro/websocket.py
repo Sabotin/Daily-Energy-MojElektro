@@ -56,7 +56,9 @@ async def ws_api(hass: HomeAssistant, connection: websocket_api.ActiveConnection
         connection.send_error(msg["id"], "invalid_format", "Not a porabim API path")
         return
     try:
-        status, data = await api.async_call(hass, link, msg["method"], msg["path"], msg.get("body"), msg.get("meter"))
+        status, data = await api.async_call(
+            hass, link, msg["method"], msg["path"], msg.get("body"), msg.get("meter"), visit=True
+        )
     except TimeoutError:
         connection.send_error(msg["id"], "timeout", "porabim.com did not answer in time")
         return

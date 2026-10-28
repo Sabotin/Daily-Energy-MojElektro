@@ -120,6 +120,8 @@ async def test_forwards_with_key_and_meter(hass, linked_entry, hass_ws_client, a
     assert headers["x-meter"] == "4-123456"
     assert headers["x-porabim-client"] == f"ha/{VERSION}"
     assert headers["x-ha-instance"] == await api.async_instance_hash(hass)
+    # the panel is open: a visit for porabim's Zadnji obisk
+    assert "x-ha-background" not in headers
 
 
 @pytest.mark.parametrize("body", [{}, {"body": None}])
