@@ -13,11 +13,16 @@
     [() => document.documentElement.style, ['background', 'colorScheme']],
     [() => document.body && document.body.style, ['margin', 'background', 'color', 'minHeight']],
   ];
+  // shown while porabim.com's card cannot be loaded (offline, porabim.com down)
+  const TEXT = {
+    en: { title: 'Could not reach porabim.com', hint: 'Check the internet connection of this device and try again.', retry: 'Try again' },
+    sl: { title: 'porabim.com ni dosegljiv', hint: 'Preverite internetno povezavo te naprave in poskusite znova.', retry: 'Poskusi znova' },
+  };
 
   class DailyEnergyPanel extends HTMLElement {
-    set hass(h) { this._hass = h; if (this._inner) this._inner.hass = h; }
+    set hass(h) { this._hass = h; if (this._inner) this._inner.hass = h; if (this._menu) this._menu.hass = h; }
     set panel(p) { this._panel = p; if (this._inner) this._inner.panel = p; this._load(); }
-    set narrow(n) { this._narrow = n; if (this._inner) this._inner.narrow = n; }
+    set narrow(n) { this._narrow = n; if (this._inner) this._inner.narrow = n; if (this._menu) this._menu.narrow = n; }
     set route(r) { this._route = r; if (this._inner) this._inner.route = r; }
 
     connectedCallback() {
@@ -29,6 +34,7 @@
     }
 
     disconnectedCallback() {
+      this._hideError();
       if (!this._page) return;
       PAGE.forEach(([get, keys], i) => {
         const s = get(), was = this._page[i];
@@ -43,12 +49,20 @@
       const card = this._panel && this._panel.config && this._panel.config.card;
       if (this._inner || this._loading || !card) return;
       this._loading = true;
+      this._hideError();
       try {
-        if (!customElements.get('porabim-panel')) await import(card);
+        // a browser keeps a failed import: a retry asks for the card under another address
+        if (!customElements.get('porabim-panel')) {
+          await import(this._tries ? `${card}${card.includes('?') ? '&' : '?'}try=${this._tries}` : card);
+        }
+      } catch (err) {
+        this._tries = (this._tries || 0) + 1;
+        if (this.isConnected) this._showError();
+        return;
       } finally {
         this._loading = false;
       }
-      if (this._inner) return;
+      if (this._inner || !customElements.get('porabim-panel')) return;
       const inner = document.createElement('porabim-panel');
       inner.panel = this._panel;
       if (this._hass) inner.hass = this._hass;
@@ -56,6 +70,47 @@
       if (this._route !== undefined) inner.route = this._route;
       this._inner = inner;
       this.appendChild(inner);
+    }
+
+    _showError() {
+      this._hideError();
+      const lang = String((this._hass && this._hass.language) || navigator.language || 'en').toLowerCase();
+      const t = TEXT[lang.startsWith('sl') ? 'sl' : 'en'];
+      const box = document.createElement('div');
+      box.setAttribute('role', 'alert');
+      box.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;'
+        + 'gap:12px;min-height:100vh;padding:24px;box-sizing:border-box;text-align:center;'
+        + 'background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--ha-font-family-body,Roboto,sans-serif);';
+      // the panel has no Home Assistant header: on a phone this is the way to the sidebar
+      const menu = document.createElement('ha-menu-button');
+      menu.style.cssText = 'position:absolute;top:4px;left:4px;';
+      menu.hass = this._hass;
+      menu.narrow = this._narrow;
+      const title = document.createElement('div');
+      title.textContent = t.title;
+      title.style.cssText = 'font-size:20px;font-weight:500;';
+      const hint = document.createElement('div');
+      hint.textContent = t.hint;
+      hint.style.cssText = 'max-width:360px;color:var(--secondary-text-color);';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = t.retry;
+      retry.style.cssText = 'margin-top:8px;padding:10px 24px;border:0;border-radius:20px;cursor:pointer;font:inherit;font-weight:500;'
+        + 'background:var(--primary-color,#03a9f4);color:var(--text-primary-color,#fff);';
+      retry.addEventListener('click', () => this._load());
+      box.append(menu, title, hint, retry);
+      // back online: try again by itself
+      this._online = () => this._load();
+      window.addEventListener('online', this._online);
+      this._menu = menu;
+      this._error = box;
+      this.appendChild(box);
+    }
+
+    _hideError() {
+      if (this._online) window.removeEventListener('online', this._online);
+      if (this._error) this._error.remove();
+      this._online = this._error = this._menu = null;
     }
   }
 
