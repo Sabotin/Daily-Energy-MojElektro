@@ -122,6 +122,32 @@ async def test_forwards_with_key_and_meter(hass, linked_entry, hass_ws_client, a
     assert headers["x-ha-instance"] == await api.async_instance_hash(hass)
 
 
+@pytest.mark.parametrize("body", [{}, {"body": None}])
+async def test_post_without_body_sends_an_empty_object(hass, linked_entry, hass_ws_client, aioclient_mock, body):
+    """porabim takes a POST only as JSON (415 json_only otherwise): a POST the panel gives no body goes as {}."""
+    aioclient_mock.post(f"{API_URL}/refresh", json={"ok": True})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/api", "entry_id": linked_entry.entry_id, "method": "POST", "path": "refresh", **body}
+    )
+    msg = await client.receive_json()
+    assert msg["result"] == {"status": 200, "data": {"ok": True}}
+    method, url, sent, _ = aioclient_mock.mock_calls[-1]
+    assert (method, str(url), sent) == ("POST", f"{API_URL}/refresh", {})
+
+
+async def test_get_sends_no_body(hass, linked_entry, hass_ws_client, aioclient_mock):
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"days": {}})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": f"{DOMAIN}/api", "entry_id": linked_entry.entry_id, "method": "GET", "path": "snapshot", "body": {"x": 1}}
+    )
+    await client.receive_json()
+    assert aioclient_mock.mock_calls[-1][2] is None
+
+
 async def test_no_meter_header_without_meter(hass, linked_entry, hass_ws_client, aioclient_mock):
     aioclient_mock.get(f"{API_URL}/snapshot", json={"days": {}})
     await _setup(hass, linked_entry)

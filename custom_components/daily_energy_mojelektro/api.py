@@ -117,10 +117,10 @@ async def _async_send(
     }
     if meter:
         headers["x-meter"] = meter
+    # porabim takes a POST only as JSON (else 415 json_only): {} when there is no body
+    payload = ({} if body is None else body) if method == "POST" else None
     async with asyncio.timeout(timeout_for(path)):
-        resp = await async_get_clientsession(hass).request(
-            method, f"{API_URL}/{path}", headers=headers, json=body if method == "POST" else None
-        )
+        resp = await async_get_clientsession(hass).request(method, f"{API_URL}/{path}", headers=headers, json=payload)
         try:
             data = await resp.json(content_type=None)
         except ValueError:
