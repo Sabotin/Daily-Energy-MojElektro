@@ -19,6 +19,16 @@
           "meter": "Na primer 4-123456.",
           "token": "mojelektro.si › Moj profil › Kreiraj žeton. Deluje tudi žeton že dodanega merilnega mesta, če velja tudi za to."
         }
+      },
+      "merge": {
+        "title": "Merilno mesto {meter} v Daily Energy",
+        "description": "Home Assistant je že povezan s porabim.com in ima tam en račun. Merilno mesto {meter} iz različice 1 gre v ta račun, poleg drugih merilnih mest: en vnos v stranski vrstici, merilna mesta v njegovi izbiri. Njegov dnevnik se naloži nanj, nato se ta vnos odstrani. Če merilnega mesta še ni v računu, vnesite njegov žeton Moj Elektro: pošlje se na porabim.com in ne ostane v Home Assistantu.",
+        "data": {
+          "token": "API žeton Moj Elektro"
+        },
+        "data_description": {
+          "token": "mojelektro.si › Moj profil › Kreiraj žeton. Deluje tudi žeton že dodanega merilnega mesta, če velja tudi za to."
+        }
       }
     },
     "error": {
@@ -30,10 +40,13 @@
       "too_many_meters": "Ta račun že ima največ merilnih mest, kar jih lahko ima.",
       "meter_blocked": "Tega merilnega mesta ni mogoče dodati.",
       "too_many": "Preveč poskusov, počakajte eno uro.",
+      "meter_missing": "Tega merilnega mesta še ni v računu. Vnesite njegov žeton Moj Elektro.",
+      "upload_failed": "porabim.com ni sprejel dnevnika. Poskusite znova pozneje.",
       "unknown": "Prišlo je do napake. Poskusite znova."
     },
     "abort": {
       "meter_added": "Merilno mesto {meter} je dodano v Daily Energy. Odprite ploščo Daily Energy in ga izberite v izbiri merilnih mest. Dokler porabim.com nima prvih podatkov iz Moj Elektro, so njegove entitete nedosegljive.",
+      "merged": "Merilno mesto {meter} je zdaj v Daily Energy poleg drugih merilnih mest, njegov dnevnik iz različice 1 pa je na porabim.com. Ta vnos je odstranjen; merilno mesto izberite v izbiri merilnih mest v plošči.",
       "connect_first": "Daily Energy še ni povezan s porabim.com. Najprej ga povežite (Nastavitve › Naprave in storitve › Daily Energy › Ponovno konfiguriraj), nato dodajte druga merilna mesta.",
       "already_configured": "Ta račun porabim.com je že povezan.",
       "wrong_account": "To je drug račun porabim.com. Povežite se z merilnim mestom, s katerim je bil ta vnos prvič nastavljen.",
@@ -66,6 +79,10 @@
     "connect_porabim": {
       "title": "Poveži s porabim.com",
       "description": "Daily Energy zdaj teče na porabim.com, ki hrani vaše podatke in jih vsako jutro prenese iz Moj Elektro. Pojdite v Nastavitve › Naprave in storitve › {title} › Ponovno konfiguriraj in na porabim.com vnesite merilno mesto in žeton Moj Elektro. Vaš dnevnik se tja naloži enkrat; do takrat ostane v Home Assistantu."
+    },
+    "old_log_meter": {
+      "title": "Dnevnik za merilno mesto {meter} čaka",
+      "description": "Vaš dnevnik Daily Energy iz različice 1 za merilno mesto {meter} je še v Home Assistantu, ker tega merilnega mesta ni v vašem računu porabim.com. Dodajte ga z Dodaj integracijo › Daily Energy for Moj Elektro (merilno mesto in žeton Moj Elektro) in dnevnik se naloži nanj. Če ga dodate z gumbom + v plošči Daily Energy, se naloži ob naslednjem zagonu Home Assistanta."
     }
   },
   "entity": {

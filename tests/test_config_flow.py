@@ -9,7 +9,8 @@ from yarl import URL
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
+from homeassistant.helpers.storage import Store
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
@@ -148,25 +149,6 @@ async def test_second_add_before_connecting(hass):
     assert result["reason"] == "connect_first"
 
 
-async def test_reauth_into_another_entrys_account_aborts(hass, hass_client_no_auth, aioclient_mock, linked_entry):
-    """A 1.x entry reconnecting with a meter whose account another entry already has: stop, and end the new link."""
-    old = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-999999", data={}, options={"sidebar": True})
-    old.add_to_hass(hass)
-    assert await async_setup_component(hass, DOMAIN, {})
-    await hass.async_block_till_done()
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_REAUTH, "entry_id": old.entry_id}, data=old.data
-    )
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
-    await _through_porabim(hass, result, hass_client_no_auth, aioclient_mock)
-    aioclient_mock.post(REVOKE_URL, json={})
-    result = await hass.config_entries.flow.async_configure(result["flow_id"])
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "already_configured"
-    assert old.unique_id == "4-999999"
-    assert _revoked(aioclient_mock) == ["Bearer access-1"]  # porabim's new link is ended, not left unused
-
-
 async def test_reauth_links_a_1x_entry(hass, hass_client_no_auth, aioclient_mock):
     """Migration left a 1.x entry without a key; reauth gives it one and the porabim account as unique id."""
     entry = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-123456", data={}, options={"sidebar": True})
@@ -185,6 +167,80 @@ async def test_reauth_links_a_1x_entry(hass, hass_client_no_auth, aioclient_mock
     assert result["reason"] == "reauth_successful"
     assert entry.unique_id == ACCOUNT
     assert entry.data["token"]["account"] == ACCOUNT
+    assert entry.data["old_meter"] == "4-123456"  # its day log goes onto this meter
+
+
+SNAPSHOT = {
+    "meter": "m1",
+    "meters": [{"id": "m1", "name": None, "eimm": "4-123456"}, {"id": "m2", "name": None, "eimm": "4-999999"}],
+}
+OLD_LOG = {"days": {"2026-10-01": {"u": 12.5}}, "manual": {}, "edits": {}, "settings": {}}
+
+
+def _old_store(hass, entry):
+    return Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
+
+
+async def _second_1x_meter(hass, aioclient_mock):
+    """Home Assistant is linked (linked_entry), and 1.x's entry of another meter asks to be connected."""
+    old = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-999999", data={}, options={"sidebar": True})
+    old.add_to_hass(hass)
+    await _old_store(hass, old).async_save(OLD_LOG)
+    aioclient_mock.post(f"{API_URL}/import-backup", json={"kind": "backup", "days": 1})
+    assert await async_setup_component(hass, DOMAIN, {})
+    await hass.async_block_till_done()
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_REAUTH, "entry_id": old.entry_id}, data=old.data
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "merge"  # no second connect: Home Assistant has its one account
+    assert result["description_placeholders"]["meter"] == "4-999999"
+    return old, result
+
+
+def _backups(aioclient_mock):
+    return [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/import-backup"]
+
+
+async def test_second_1x_meter_merges_into_the_account(hass, aioclient_mock, linked_entry):
+    """1.x had one entry per meter; the second one's meter is in the account: its log goes onto it, the entry goes."""
+    aioclient_mock.get(f"{API_URL}/snapshot", json=SNAPSHOT)
+    old, result = await _second_1x_meter(hass, aioclient_mock)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "merged"
+    assert [c[3]["x-meter"] for c in _backups(aioclient_mock)] == ["m2"]
+    assert hass.config_entries.async_get_entry(old.entry_id) is None
+    assert hass.config_entries.async_get_entry(linked_entry.entry_id) is not None
+    assert await _old_store(hass, old).async_load() is None
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"connect_porabim_{old.entry_id}") is None
+
+
+async def test_merge_adds_a_missing_meter_with_its_token(hass, aioclient_mock, linked_entry):
+    aioclient_mock.get(f"{API_URL}/snapshot", json=SNAPSHOT)
+    aioclient_mock.post(f"{API_URL}/meters/add", json={"ok": True})
+    old, result = await _second_1x_meter(hass, aioclient_mock)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"token": " moj-token "})
+    await hass.async_block_till_done()
+    assert result["reason"] == "merged"
+    adds = [c[2] for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/meters/add"]
+    assert adds == [{"meter": "4-999999", "token": "moj-token"}]
+    assert [c[3]["x-meter"] for c in _backups(aioclient_mock)] == ["m2"]
+    assert hass.config_entries.async_get_entry(old.entry_id) is None
+
+
+async def test_merge_asks_for_the_token_of_a_missing_meter(hass, aioclient_mock, linked_entry):
+    """The meter is not in the account and no token: nothing goes to another meter, the entry and its log stay."""
+    aioclient_mock.get(f"{API_URL}/snapshot", json={**SNAPSHOT, "meters": SNAPSHOT["meters"][:1]})
+    old, result = await _second_1x_meter(hass, aioclient_mock)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "meter_missing"}
+    assert not _backups(aioclient_mock)
+    assert hass.config_entries.async_get_entry(old.entry_id) is not None
+    assert await _old_store(hass, old).async_load() == OLD_LOG
 
 
 async def test_reauth_with_another_account_aborts(hass, hass_client_no_auth, aioclient_mock):

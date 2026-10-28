@@ -17,8 +17,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_entry_oauth2_flow, issue_registry as ir
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
-from . import api, meters, oauth
-from .const import CONF_SIDEBAR, DOMAIN, ISSUE_CONNECT
+from . import api, meters, oauth, oldlog
+from .const import CONF_OLD_METER, CONF_SIDEBAR, DOMAIN, ISSUE_CONNECT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,21 +68,23 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         meter = ""
         if user_input is not None:
             meter = str(user_input[CONF_METER]).strip()
-            body = {"meter": meter, "token": str(user_input[CONF_TOKEN]).strip()}
             link = self._link()
             if link is None:
                 return self.async_abort(reason="connect_first")
-            try:
-                status, data = await api.async_call(self.hass, link, "POST", "meters/add", body)
-            except (aiohttp.ClientError, TimeoutError):
-                status, data = 0, None
-            if 200 <= status < 300 and isinstance(data, dict) and data.get("ok"):
+            error = await self._async_add(link, meter, str(user_input[CONF_TOKEN]).strip())
+            if error is None:
                 link.entry.async_create_background_task(self.hass, meters.async_sync(self.hass, link), f"{DOMAIN} meters")
+                if link.entry.data.get(CONF_OLD_METER):
+                    # the 1.x day log may have waited for this meter
+                    link.entry.async_create_background_task(
+                        self.hass,
+                        oldlog.async_upload(self.hass, link, link.entry, link.entry.data[CONF_OLD_METER]),
+                        f"{DOMAIN} old log upload",
+                    )
                 return self.async_abort(reason="meter_added", description_placeholders={"meter": meter})
-            if status == 401:
+            if error == "signed_out":
                 return self.async_abort(reason="connect_first")
-            error = data.get("error") if isinstance(data, dict) else None
-            errors["base"] = ADD_ERRORS.get(error, "too_many" if status == 429 else "cannot_connect" if status == 0 else "unknown")
+            errors["base"] = error
         schema = vol.Schema(
             {
                 vol.Required(CONF_METER, default=meter): str,
@@ -91,6 +93,20 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         )
         return self.async_show_form(step_id="add_meter", data_schema=schema, errors=errors)
 
+    async def _async_add(self, link: api.PorabimLink, meter: str, token: str) -> str | None:
+        """porabim's POST /api/meters/add (the panel's +): None when the meter is added, else this form's error
+        ("signed_out": porabim refused the key)."""
+        try:
+            status, data = await api.async_call(self.hass, link, "POST", "meters/add", {"meter": meter, "token": token})
+        except (aiohttp.ClientError, TimeoutError):
+            status, data = 0, None
+        if 200 <= status < 300 and isinstance(data, dict) and data.get("ok"):
+            return None
+        if status == 401:
+            return "signed_out"
+        error = data.get("error") if isinstance(data, dict) else None
+        return ADD_ERRORS.get(error, "too_many" if status == 429 else "cannot_connect" if status == 0 else "unknown")
+
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
         """The key stopped working (porabim refused the refresh), or a 1.x entry is not linked yet."""
         return await self.async_step_reauth_confirm()
@@ -98,7 +114,40 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is None:
             return self.async_show_form(step_id="reauth_confirm")
+        entry = self._get_reauth_entry()
+        if "token" not in entry.data and entry.unique_id and self._link() is not None:
+            # A 1.x entry of another meter (1.x had one entry per meter), and this Home Assistant has its one porabim
+            # account already: a connect would only land in that account again
+            return await self.async_step_merge()
         return await self.async_step_user()
+
+    async def async_step_merge(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """The 1.x entry's meter goes into the account Home Assistant has (porabim's + route, when it is not there
+        yet), its day log onto that meter, then the entry is removed: one entry, one sidebar item for every meter."""
+        entry = self._get_reauth_entry()
+        link = self._link()
+        if link is None:
+            return self.async_abort(reason="connect_first")
+        # a 1.x entry's unique id is its meter
+        meter = str(entry.unique_id)
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            token = str(user_input.get(CONF_TOKEN) or "").strip()
+            error = await self._async_add(link, meter, token) if token else None
+            if error in (None, "duplicate_meter"):
+                error = await oldlog.async_upload(self.hass, link, entry, meter, must_have=True)
+            if error is None:
+                # after this flow has ended: removing the entry ends its flows
+                self.hass.async_create_task(self.hass.config_entries.async_remove(entry.entry_id), f"{DOMAIN} merge")
+                link.entry.async_create_background_task(self.hass, meters.async_sync(self.hass, link), f"{DOMAIN} meters")
+                return self.async_abort(reason="merged", description_placeholders={"meter": meter})
+            if error == "signed_out":
+                return self.async_abort(reason="connect_first")
+            errors["base"] = error
+        schema = vol.Schema({vol.Optional(CONF_TOKEN): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))})
+        return self.async_show_form(
+            step_id="merge", data_schema=schema, errors=errors, description_placeholders={"meter": meter}
+        )
 
     async def _old_account_alive(self, entry: ConfigEntry) -> bool:
         """The old key still refreshes, so its account exists. Refused (account deleted on porabim): the entry may move
@@ -135,7 +184,11 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             if other is not None:
                 return await self._async_abort_and_revoke(data, "already_configured")
             old = entry.data.get("token")
-            # A 1.x entry had the meter as its unique id; from now on it is the porabim account
+            # A 1.x entry had the meter as its unique id; from now on it is the porabim account. The meter is kept: the
+            # entry's day log goes onto it, also when it is linked with another meter (oldlog)
+            old_meter = entry.data.get(CONF_OLD_METER) or (None if old else entry.unique_id)
+            if old_meter:
+                data = {**data, CONF_OLD_METER: old_meter}
             self.hass.config_entries.async_update_entry(entry, unique_id=account, data=data)
             ir.async_delete_issue(self.hass, DOMAIN, f"{ISSUE_CONNECT}_{entry.entry_id}")
             if old and old.get("access_token"):
