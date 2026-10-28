@@ -1,6 +1,6 @@
 """The refresh key: refused once → reauth once and no more refreshes; a reauth links again; a 5xx retries."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
@@ -52,6 +52,27 @@ async def test_refused_key_asks_porabim_once(hass, linked_entry, aioclient_mock)
     assert answers == [(401, api.SIGNED_OUT)] * 11
     assert not link.sensors.last_update_success
     assert _token_posts(aioclient_mock) == 1
+    assert link.refused
+    assert reauth.call_count == 1
+    assert len(_reauth_flows(hass)) == 1
+
+
+async def test_refused_new_key_asks_porabim_once(hass, linked_entry, aioclient_mock):
+    """The refresh works, but porabim refuses the new key too: reauth once, then signed out without asking porabim
+    (before, every call refreshed the key again and started the reauth again)."""
+    # the refresh updates the entry, which would reload it; this test keeps its one link
+    with patch("custom_components.daily_energy_mojelektro._async_reload", AsyncMock()):
+        link = await _start(hass, linked_entry, aioclient_mock)
+        aioclient_mock.clear_requests()
+        aioclient_mock.get(f"{API_URL}/snapshot", status=401, json={"error": "unauthorized"})
+        aioclient_mock.post(TOKEN_URL, json=NEW_TOKEN)
+        with patch.object(linked_entry, "async_start_reauth", wraps=linked_entry.async_start_reauth) as reauth:
+            answers = [await api.async_call(hass, link, "GET", "snapshot") for _ in range(5)]
+            await hass.async_block_till_done()
+    assert answers[0] == (401, {"error": "unauthorized"})
+    assert answers[1:] == [(401, api.SIGNED_OUT)] * 4
+    assert _token_posts(aioclient_mock) == 1
+    assert sum(1 for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/snapshot") == 2
     assert link.refused
     assert reauth.call_count == 1
     assert len(_reauth_flows(hass)) == 1
