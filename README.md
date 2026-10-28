@@ -63,13 +63,14 @@ restart → Settings → Devices & services → **Add integration** → **Daily 
 
 ## Dobro je vedeti
 
-- Novi podatki se preverjajo vsako uro. Včerajšnji 15-minutni podatki so običajno na voljo okoli 06:00, skupna poraba števca (z VT / MT) pa šele naslednji dan. Do takrat se včerajšnja poraba prikazuje na podlagi 15-minutnih podatkov.
+- porabim.com preverja nove podatke vsako jutro, vsako uro od 6:05 do 11:05, dokler včerajšnji dan ni popoln. Včerajšnji 15-minutni podatki so običajno na voljo okoli 06:00, skupna poraba števca (z VT / MT) pa šele naslednji dan. Do takrat se včerajšnja poraba prikazuje na podlagi 15-minutnih podatkov.
 - Podatki in API-žeton Moj Elektro so shranjeni na porabim.com ([zasebnost](https://porabim.com/zasebnost)). Home Assistant hrani samo ključ za porabim.com, ki ne pride do brskalnika.
 - Nadgradnja z različice 1: Home Assistant vas prosi, da se povežete s porabim.com (Popravila → **Poveži s porabim.com**). Po prvi povezavi se vaš dnevnik enkrat naloži na porabim.com, na svoje merilno mesto, in izbriše iz Home Assistanta. Ste imeli v različici 1 več merilnih mest? Povežite prvo; **Ponovno konfiguriraj** pri vsakem od drugih doda njegovo merilno mesto in dnevnik v isti račun in ta vnos odstrani.
 - Več merilnih mest (največ 3): vsa so v istem računu in v istem vnosu v stranski vrstici. Dodate jih z gumbom **+** v plošči Daily Energy ali z **Dodaj integracijo** (vpišete merilno mesto in žeton) – oboje deluje enako.
 - Home Assistant ima na porabim.com en račun. Ostane isti tudi, če integracijo izbrišete in dodate znova.
 - Ko izbrišete integracijo, se povezava na porabim.com prekine. Za ponovno povezavo uporabite eno od merilnih mest v računu.
 - **Izbriši račun** v nastavitvah plošče izbriše račun na porabim.com in hkrati integracijo iz Naprave in storitve. Če je bil račun izbrisan drugje, se ob ponovni povezavi vnos premakne v novi račun.
+- Če porabim.com zavrne ključ (npr. ker je bil račun izbrisan), vas Home Assistant enkrat prosi za ponovno povezavo (Naprave in storitve → Daily Energy → **Ponovno konfiguriraj**) in porabim.com ne vpraša znova, dokler se ne povežete; do takrat sta plošča in entitete odjavljeni.
 
 ## Licenca
 
@@ -138,7 +139,7 @@ restart → Settings → Devices & services → **Add integration** → **Daily 
 
 ## Good to know
 
-- New data is checked every hour. Yesterday's 15-minute data arrives at about 06:00, the meter total (with VT / MT) a day later – until then yesterday is shown from the 15-minute data.
+- porabim.com checks for new data every morning, every hour from 6:05 to 11:05, until yesterday is complete. Yesterday's 15-minute data arrives at about 06:00, the meter total (with VT / MT) a day later – until then yesterday is shown from the 15-minute data.
 - Your data and Moj Elektro token are stored on porabim.com ([privacy](https://porabim.com/zasebnost)). Home Assistant keeps only the porabim.com key, which never reaches the browser.
 - Upgrading from version 1: Home Assistant asks you to connect to porabim.com (Repairs → **Connect to porabim.com**). After the first connection your day log is uploaded to porabim.com once, onto its own meter, and deleted from Home Assistant. Had several meters in version 1? Connect the first one; **Reconfigure** on each of the others puts its meter and day log into the same account and removes that entry.
 - Several meters (up to 3): all in the same account and the same sidebar item. Add them with **+** in the Daily Energy panel or with **Add integration** (meter ID and token) – both do the same.
