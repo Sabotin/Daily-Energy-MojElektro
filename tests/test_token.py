@@ -1,6 +1,6 @@
 """The refresh key: refused once → reauth once and no more refreshes; a reauth links again; a 5xx retries."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import aiohttp
 import pytest
@@ -60,15 +60,13 @@ async def test_refused_key_asks_porabim_once(hass, linked_entry, aioclient_mock)
 async def test_refused_new_key_asks_porabim_once(hass, linked_entry, aioclient_mock):
     """The refresh works, but porabim refuses the new key too: reauth once, then signed out without asking porabim
     (before, every call refreshed the key again and started the reauth again)."""
-    # the refresh updates the entry, which would reload it; this test keeps its one link
-    with patch("custom_components.daily_energy_mojelektro._async_reload", AsyncMock()):
-        link = await _start(hass, linked_entry, aioclient_mock)
-        aioclient_mock.clear_requests()
-        aioclient_mock.get(f"{API_URL}/snapshot", status=401, json={"error": "unauthorized"})
-        aioclient_mock.post(TOKEN_URL, json=NEW_TOKEN)
-        with patch.object(linked_entry, "async_start_reauth", wraps=linked_entry.async_start_reauth) as reauth:
-            answers = [await api.async_call(hass, link, "GET", "snapshot") for _ in range(5)]
-            await hass.async_block_till_done()
+    link = await _start(hass, linked_entry, aioclient_mock)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/snapshot", status=401, json={"error": "unauthorized"})
+    aioclient_mock.post(TOKEN_URL, json=NEW_TOKEN)
+    with patch.object(linked_entry, "async_start_reauth", wraps=linked_entry.async_start_reauth) as reauth:
+        answers = [await api.async_call(hass, link, "GET", "snapshot") for _ in range(5)]
+        await hass.async_block_till_done()
     assert answers[0] == (401, {"error": "unauthorized"})
     assert answers[1:] == [(401, api.SIGNED_OUT)] * 4
     assert _token_posts(aioclient_mock) == 1
@@ -109,6 +107,41 @@ async def test_reauth_after_a_refused_key_works_again(hass, linked_entry, hass_c
     assert await api.async_call(hass, new, "GET", "snapshot") == (200, SNAPSHOT)
     assert _token_posts(aioclient_mock) == 1
     assert aioclient_mock.mock_calls[-1][3]["authorization"] == "Bearer access-2"
+
+
+async def test_key_refresh_keeps_the_entry_loaded(hass, linked_entry, aioclient_mock):
+    """The new key is saved in the entry about every hour; that is no reason to reload it (the panel and every entity
+    went away and came back each time)."""
+    link = await _start(hass, linked_entry, aioclient_mock)
+    aioclient_mock.clear_requests()
+    aioclient_mock.post(TOKEN_URL, json=NEW_TOKEN)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=SNAPSHOT)
+    aioclient_mock.get(f"{API_URL}/sensors", json=SENSORS)
+    _expire(linked_entry)
+    assert await api.async_call(hass, link, "GET", "snapshot") == (200, SNAPSHOT)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert linked_entry.data["token"]["access_token"] == "access-2"
+    assert hass.data[DOMAIN][linked_entry.entry_id] is link
+    # a reload would have asked for the meters and the sensors again
+    assert [str(c[1]) for c in aioclient_mock.mock_calls] == [TOKEN_URL, f"{API_URL}/snapshot"]
+
+
+async def test_title_change_keeps_the_entry_loaded(hass, linked_entry, aioclient_mock):
+    link = await _start(hass, linked_entry, aioclient_mock)
+    hass.config_entries.async_update_entry(linked_entry, title="Doma")
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert hass.data[DOMAIN][linked_entry.entry_id] is link
+
+
+async def test_sidebar_option_still_reloads(hass, linked_entry, aioclient_mock):
+    link = await _start(hass, linked_entry, aioclient_mock)
+    assert link.panel_url == "daily-energy"
+    hass.config_entries.async_update_entry(linked_entry, options={"sidebar": False})
+    await hass.async_block_till_done(wait_background_tasks=True)
+    new = hass.data[DOMAIN][linked_entry.entry_id]
+    assert new is not link
+    assert new.panel_url is None
+    assert "daily-energy" not in hass.data.get("frontend_panels", {})
 
 
 async def test_porabim_down_retries_the_refresh(hass, linked_entry, aioclient_mock):

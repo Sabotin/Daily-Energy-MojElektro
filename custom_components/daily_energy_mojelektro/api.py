@@ -42,6 +42,8 @@ class PorabimLink:
     # porabim refused the refresh key: no more refreshes until the user connects again (the reauth reloads the entry,
     # so a new link starts with False)
     refused: bool = False
+    # the options it was set up with: only a change of these reloads the entry (__init__._async_reload)
+    options: dict[str, Any] = field(default_factory=dict)
 
 
 async def async_instance_hash(hass: HomeAssistant) -> str:
