@@ -77,7 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady("porabim.com did not answer") from err
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ConfigEntryNotReady("porabim.com did not answer") from err
-    link = api.PorabimLink(entry, session)
+    link = api.PorabimLink(entry, session, options=dict(entry.options))
     hass.data[DOMAIN][entry.entry_id] = link
     if entry.options.get(CONF_SIDEBAR, True):
         link.panel_url = _panel_url(hass, entry)
@@ -146,6 +146,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Home Assistant calls this on every change of the entry; only the options (the sidebar) need a reload. Not the new
+    key every refresh saves (about once an hour) nor the title: a reload took the panel and every entity away."""
+    link = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if link is not None and dict(entry.options) == link.options:
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
