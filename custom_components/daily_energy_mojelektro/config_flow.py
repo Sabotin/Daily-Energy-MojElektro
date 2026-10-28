@@ -137,8 +137,11 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             if error in (None, "duplicate_meter"):
                 error = await oldlog.async_upload(self.hass, link, entry, meter, must_have=True)
             if error is None:
-                # after this flow has ended: removing the entry ends its flows
-                self.hass.async_create_task(self.hass.config_entries.async_remove(entry.entry_id), f"{DOMAIN} merge")
+                # not before this flow has ended: removing the entry aborts its flows, this one too if it started at
+                # once (2024.12 aborts it before it returns: UnknownFlow)
+                self.hass.async_create_task(
+                    self.hass.config_entries.async_remove(entry.entry_id), f"{DOMAIN} merge", eager_start=False
+                )
                 link.entry.async_create_background_task(self.hass, meters.async_sync(self.hass, link), f"{DOMAIN} meters")
                 return self.async_abort(reason="merged", description_placeholders={"meter": meter})
             if error == "signed_out":

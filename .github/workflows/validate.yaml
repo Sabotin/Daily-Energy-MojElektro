@@ -25,15 +25,27 @@ jobs:
           ignore: brands license
 
   tests:
-    name: Integration tests
+    name: Integration tests (${{ matrix.ha }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ha: newest
+            python: "3.13"
+            packages: pytest-homeassistant-custom-component home-assistant-frontend
+          # the oldest Home Assistant hacs.json allows: 0.13.190 is the test harness of 2024.12.0, and the frontend
+          # that version pins; a newer pycares leaves a thread that harness does not know yet
+          - ha: "2024.12.0"
+            python: "3.12"
+            packages: pytest-homeassistant-custom-component==0.13.190 home-assistant-frontend==20241127.4 pycares==4.4.0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
       # The integration depends on frontend, which needs the frontend package in tests
-      - run: pip install pytest-homeassistant-custom-component home-assistant-frontend
+      - run: pip install ${{ matrix.packages }}
       - run: pytest -q
       - name: Compile all Python files
         run: python -m compileall -q custom_components
