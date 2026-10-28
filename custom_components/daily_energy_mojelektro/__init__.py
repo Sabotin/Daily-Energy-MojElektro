@@ -17,21 +17,20 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow, config_validation as cv, issue_registry as ir
-from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
-from . import api, meters, oauth, websocket
+from . import api, meters, oauth, oldlog, websocket
 from .const import (
     CARD_URL,
+    CONF_OLD_METER,
     CONF_SIDEBAR,
     DOMAIN,
     ISSUE_CONNECT,
+    ISSUE_OLD_LOG,
     PANEL_ELEMENT,
     PANEL_ICON,
     PANEL_TITLE,
     PANEL_URL,
-    STORAGE_VERSION,
-    VERSION,
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -96,7 +95,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
-    entry.async_create_background_task(hass, _async_upload_old_log(hass, link), f"{DOMAIN} old log upload")
+    entry.async_create_background_task(
+        hass, oldlog.async_upload(hass, link, entry, entry.data.get(CONF_OLD_METER)), f"{DOMAIN} old log upload"
+    )
     entry.async_create_background_task(hass, _async_meters_then_sensors(hass, link), f"{DOMAIN} meters")
     return True
 
@@ -130,7 +131,8 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         except Exception:  # noqa: BLE001
             _LOGGER.debug("porabim.com did not take the revoke; the link ends when its key expires")
     ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_CONNECT}_{entry.entry_id}")
-    await _old_store(hass, entry).async_remove()
+    ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_OLD_LOG}_{entry.entry_id}")
+    await oldlog.store(hass, entry).async_remove()
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -152,30 +154,3 @@ def _panel_url(hass: HomeAssistant, entry: ConfigEntry) -> str:
     entries = hass.config_entries.async_entries(DOMAIN)
     index = next((i for i, e in enumerate(entries) if e.entry_id == entry.entry_id), 0)
     return "daily-energy" if index == 0 else f"daily-energy-{index + 1}"
-
-
-def _old_store(hass: HomeAssistant, entry: ConfigEntry) -> Store:
-    return Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
-
-
-async def _async_upload_old_log(hass: HomeAssistant, link: api.PorabimLink) -> None:
-    """Once, after the first link: the 1.x day log goes to porabim as the backup the old card exported.
-
-    The store is deleted only when porabim took it; otherwise the next start tries again.
-    """
-    store = _old_store(hass, link.entry)
-    old = await store.async_load()
-    if not isinstance(old, dict):
-        return
-    backup = {"app": DOMAIN, "version": VERSION}
-    for key in ("days", "manual", "edits", "settings"):
-        backup[key] = old.get(key) if isinstance(old.get(key), dict) else {}
-    if any(backup[key] for key in ("days", "manual", "edits")):
-        try:
-            status, _ = await api.async_call(hass, link, "POST", "import-backup", backup)
-        except (aiohttp.ClientError, TimeoutError):
-            status = 0
-        if not 200 <= status < 300:
-            _LOGGER.warning("porabim.com did not take the old day log (HTTP %s); trying again at the next start", status)
-            return
-    await store.async_remove()

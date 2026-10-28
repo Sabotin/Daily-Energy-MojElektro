@@ -19,6 +19,16 @@
           "meter": "For example 4-123456.",
           "token": "mojelektro.si › Moj profil › Kreiraj žeton. The token of a meter already added works too if it covers this one."
         }
+      },
+      "merge": {
+        "title": "Meter {meter} into Daily Energy",
+        "description": "Home Assistant is already connected to porabim.com and has one account there. Meter {meter} from version 1 goes into that account, next to your other meters: one sidebar item, the meters in its switcher. Its day log is uploaded onto it, and this entry is then removed. If the meter is not in the account yet, enter its Moj Elektro token: it is sent to porabim.com and not kept in Home Assistant.",
+        "data": {
+          "token": "Moj Elektro API token"
+        },
+        "data_description": {
+          "token": "mojelektro.si › Moj profil › Kreiraj žeton. The token of a meter already added works too if it covers this one."
+        }
       }
     },
     "error": {
@@ -30,10 +40,13 @@
       "too_many_meters": "This account already has the most meters it can have.",
       "meter_blocked": "This meter cannot be added.",
       "too_many": "Too many tries, wait an hour.",
+      "meter_missing": "This meter is not in the account yet. Enter its Moj Elektro token.",
+      "upload_failed": "porabim.com did not take the day log. Try again later.",
       "unknown": "Something went wrong. Try again."
     },
     "abort": {
       "meter_added": "Meter {meter} is added to Daily Energy. Open the Daily Energy panel and pick it in the meter switcher. Until porabim.com has its first data from Moj Elektro, its entities show as unavailable.",
+      "merged": "Meter {meter} is now in Daily Energy next to your other meters, and its day log from version 1 is on porabim.com. This entry is removed; pick the meter in the panel's meter switcher.",
       "connect_first": "Daily Energy is not connected to porabim.com yet. Connect it first (Settings › Devices & services › Daily Energy › Reconfigure), then add more meters.",
       "already_configured": "This porabim.com account is already connected.",
       "wrong_account": "This is a different porabim.com account. Connect with the meter this entry was set up with first.",
@@ -66,6 +79,10 @@
     "connect_porabim": {
       "title": "Connect to porabim.com",
       "description": "Daily Energy now runs on porabim.com, which keeps your data and fetches it from Moj Elektro every morning. Go to Settings › Devices & services › {title} › Reconfigure, and enter your meter ID and Moj Elektro token on porabim.com. Your day log is uploaded there once; until then it stays in Home Assistant."
+    },
+    "old_log_meter": {
+      "title": "Day log for meter {meter} waits",
+      "description": "Your Daily Energy day log from version 1 for meter {meter} is still in Home Assistant, because that meter is not in your porabim.com account. Add it with Add integration › Daily Energy for Moj Elektro (meter ID and Moj Elektro token), and the log is uploaded onto it. Added with + in the Daily Energy panel instead, it is uploaded at the next start of Home Assistant."
     }
   },
   "entity": {

@@ -5,7 +5,7 @@
 """Constants for Daily Energy for Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "2.1.1"
+VERSION = "3.0.0"
 
 PORABIM = "https://porabim.com"
 CLIENT_ID = DOMAIN
@@ -30,6 +30,10 @@ TIMEOUT = 30
 LONG_TIMEOUT = 25 * 60
 LONG_PATHS = frozenset({"refresh", "import-range"})
 
-# The 1.x day log, kept until it has been uploaded to porabim once
+# The 1.x day log, kept until it has been uploaded to porabim once (oldlog.py)
 STORAGE_VERSION = 1
 ISSUE_CONNECT = "connect_porabim"
+# its meter is not in the porabim account (yet)
+ISSUE_OLD_LOG = "old_log_meter"
+# a 1.x entry's meter (its unique id until it was linked): its day log goes onto that meter
+CONF_OLD_METER = "old_meter"

@@ -62,15 +62,19 @@ async def test_first_link_uploads_the_old_log_once(hass, linked_entry, aioclient
     calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/import-backup"]
     assert len(calls) == 1
     body = calls[0][2]
+    # porabim reads the backup under data (porabim's validate.cleanBackup(body.data))
     assert body == {
-        "app": DOMAIN,
-        "version": VERSION,
-        "days": OLD_LOG["days"],
-        "manual": OLD_LOG["manual"],
-        "edits": {},
-        "settings": OLD_LOG["settings"],
+        "data": {
+            "app": DOMAIN,
+            "version": VERSION,
+            "days": OLD_LOG["days"],
+            "manual": OLD_LOG["manual"],
+            "edits": {},
+            "settings": OLD_LOG["settings"],
+        }
     }
     assert calls[0][3]["authorization"] == "Bearer access-1"
+    assert "x-meter" not in calls[0][3]  # linked before 3.0.0: no meter kept, the account's first meter
     assert await _old_store(hass, linked_entry).async_load() is None
 
 
@@ -92,6 +96,42 @@ THREE = {
         {"id": "m3", "name": "Vikend", "eimm": "4-138044"},
     ],
 }
+
+
+def _with_old_meter(hass, entry, meter):
+    hass.config_entries.async_update_entry(entry, data={**entry.data, "old_meter": meter})
+
+
+async def test_old_log_goes_onto_its_own_meter(hass, linked_entry, aioclient_mock):
+    """The 1.x entry's meter is the account's second: the log goes there, not onto the first meter."""
+    _with_old_meter(hass, linked_entry, " 4-211708")
+    await _old_store(hass, linked_entry).async_save(OLD_LOG)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    aioclient_mock.post(f"{API_URL}/import-backup", json={"kind": "backup", "days": 1})
+
+    await _start(hass, linked_entry)
+
+    calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/import-backup"]
+    assert len(calls) == 1
+    assert calls[0][3]["x-meter"] == "m2"
+    assert await _old_store(hass, linked_entry).async_load() is None
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"old_log_meter_{linked_entry.entry_id}") is None
+
+
+async def test_old_log_waits_for_its_meter(hass, linked_entry, aioclient_mock):
+    """The 1.x meter is not in the account: nothing goes to another meter, the log waits with a repair."""
+    _with_old_meter(hass, linked_entry, "4-999999")
+    await _old_store(hass, linked_entry).async_save(OLD_LOG)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    aioclient_mock.post(f"{API_URL}/import-backup", json={"kind": "backup", "days": 1})
+
+    await _start(hass, linked_entry)
+
+    assert not [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/import-backup"]
+    assert await _old_store(hass, linked_entry).async_load() == OLD_LOG
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"old_log_meter_{linked_entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders == {"meter": "4-999999"}
 
 
 def _devices(hass, entry):
