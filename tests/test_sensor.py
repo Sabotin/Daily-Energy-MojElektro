@@ -87,6 +87,9 @@ async def test_entities_per_meter_on_its_device(hass, linked_entry, aioclient_mo
     assert hass.states.get(entity(hass, "m1", "day")).state == "2026-10-22"
     assert hass.states.get(entity(hass, "m1", "last_check")).state == "2026-10-23T07:32:56+00:00"
     assert hass.states.get(entity(hass, "m1", "block3_day")).name == "Hiša Block 3, last day"
+    # nobody is looking: porabim's Zadnji obisk leaves the sensors' call out
+    calls = [c for c in aioclient_mock.mock_calls if str(c[1]).startswith(API_URL)]
+    assert calls and all(c[3]["x-ha-background"] == "1" for c in calls)
 
 
 async def test_missing_key_unavailable_then_back(hass, linked_entry, aioclient_mock):
