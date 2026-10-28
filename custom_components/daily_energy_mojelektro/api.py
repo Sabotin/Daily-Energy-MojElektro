@@ -167,5 +167,7 @@ async def async_call(
         return 401, data
     status, data = await _async_send(hass, token, method, path, body, meter)
     if status == 401:
+        # porabim refuses even the new key: as a refused refresh, the user is asked once and porabim no more
+        link.refused = True
         link.entry.async_start_reauth(hass)
     return status, data
