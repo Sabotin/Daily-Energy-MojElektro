@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""Sign-in with porabim.com: OAuth2 authorization code with PKCE (S256), public client, no secret."""
+"""Prijava s porabim.com: avtorizacijska koda OAuth2 s PKCE (S256), javni odjemalec, brez skrivnosti."""
 from __future__ import annotations
 
 import base64
@@ -20,13 +20,13 @@ from .const import AUTHORIZE_URL, CLIENT_ID, DOMAIN, REDIRECT_URI, TOKEN_URL
 
 
 def code_challenge(verifier: str) -> str:
-    """b64url(sha256(verifier)) without padding, as RFC 7636 S256 wants."""
+    """b64url(sha256(verifier)) brez polnila, kot zahteva RFC 7636 S256."""
     digest = hashlib.sha256(verifier.encode("ascii")).digest()
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
 
 
 class PorabimImplementation(config_entry_oauth2_flow.LocalOAuth2Implementation):
-    """porabim.com's /ha/connect and /ha/token, with a new code verifier for every flow."""
+    """/ha/connect in /ha/token na porabim.com, z novim preverjevalnikom kode za vsak potek."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         super().__init__(hass, DOMAIN, CLIENT_ID, "", AUTHORIZE_URL, TOKEN_URL)
@@ -38,7 +38,7 @@ class PorabimImplementation(config_entry_oauth2_flow.LocalOAuth2Implementation):
 
     @property
     def redirect_uri(self) -> str:
-        """Always the my.home-assistant.io redirect: the only one porabim accepts."""
+        """Vedno preusmeritev my.home-assistant.io: edina, ki jo porabim sprejme."""
         return REDIRECT_URI
 
     async def async_generate_authorize_url(self, flow_id: str) -> str:
@@ -49,13 +49,13 @@ class PorabimImplementation(config_entry_oauth2_flow.LocalOAuth2Implementation):
             URL(url).update_query(
                 code_challenge=code_challenge(verifier),
                 code_challenge_method="S256",
-                # porabim keeps one account per Home Assistant, also after this integration is deleted and added again
+                # porabim hrani en račun na Home Assistant, tudi po izbrisu in ponovnem dodajanju te integracije
                 ha_instance=await api.async_instance_hash(self.hass),
             )
         )
 
     async def async_resolve_external_data(self, external_data: Any) -> dict:
-        """Swap the code for tokens; porabim checks the verifier against the challenge."""
+        """Zamenja kodo za žetone; porabim preveri preverjevalnik glede na izziv."""
         verifier = self._verifiers.pop(external_data["state"]["flow_id"], "")
         return await self._token_request(
             {
@@ -69,7 +69,7 @@ class PorabimImplementation(config_entry_oauth2_flow.LocalOAuth2Implementation):
 
 @callback
 def async_register(hass: HomeAssistant) -> None:
-    """Register the one implementation (again is fine: the setup and the config flow both call it)."""
+    """Registrira edino izvedbo (večkrat ni težava: kličeta jo nastavitev in potek nastavitve)."""
     current = hass.data.get(config_entry_oauth2_flow.DATA_IMPLEMENTATIONS, {}).get(DOMAIN, {})
     if DOMAIN not in current:
         config_entry_oauth2_flow.async_register_implementation(hass, DOMAIN, PorabimImplementation(hass))

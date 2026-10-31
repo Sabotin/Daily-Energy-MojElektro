@@ -3,17 +3,17 @@
 // Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 // any part of this file without written permission is not allowed. See LICENSE.
 
-// The sidebar panel: porabim's own panel inside it. porabim's panel colours the whole page dark (html and body), but
-// Home Assistant shows it on its own page, not in a frame, so the dark page stayed on every dashboard after it. This
-// panel notes what the page had when it opens and puts it back when it is left.
+// Plošča v stranski vrstici: v njej je plošča porabim. Ta temno pobarva celo stran (html in body), Home Assistant pa jo
+// prikaže na svoji strani, ne v okvirju, zato je temna stran ostala na vseh naslednjih nadzornih ploščah. Ta plošča si ob
+// odprtju zapomni stanje strani in ga ob izhodu vrne.
 (() => {
   if (customElements.get('daily-energy-panel')) return;
-  // what porabim's panel sets on the page; the rest of the page's style (Home Assistant's theme) is left alone
+  // kar plošča porabim nastavi na strani; preostali slog strani (tema Home Assistanta) ostane nedotaknjen
   const PAGE = [
     [() => document.documentElement.style, ['background', 'colorScheme']],
     [() => document.body && document.body.style, ['margin', 'background', 'color', 'minHeight']],
   ];
-  // shown while porabim.com's card cannot be loaded (offline, porabim.com down)
+  // prikazano, dokler se kartica s porabim.com ne more naložiti (brez povezave, porabim.com ne deluje)
   const TEXT = {
     en: { title: 'Could not reach porabim.com', hint: 'Check the internet connection of this device and try again.', retry: 'Try again' },
     sl: { title: 'porabim.com ni dosegljiv', hint: 'Preverite internetno povezavo te naprave in poskusite znova.', retry: 'Poskusi znova' },
@@ -26,7 +26,7 @@
     set route(r) { this._route = r; if (this._inner) this._inner.route = r; }
 
     connectedCallback() {
-      // before porabim's panel inside is connected (a parent is connected first)
+      // preden se poveže notranja plošča porabim (najprej se poveže nadrejeni element)
       this._page = PAGE.map(([get, keys]) => { const s = get(); return s ? keys.map(k => s[k]) : null; });
       this._lang = document.documentElement.getAttribute('lang');
       this.style.display = 'block';
@@ -51,7 +51,7 @@
       this._loading = true;
       this._hideError();
       try {
-        // a browser keeps a failed import: a retry asks for the card under another address
+        // brskalnik si zapomni neuspel uvoz: ponovni poskus zahteva kartico pod drugim naslovom
         if (!customElements.get('porabim-panel')) {
           await import(this._tries ? `${card}${card.includes('?') ? '&' : '?'}try=${this._tries}` : card);
         }
@@ -81,7 +81,7 @@
       box.style.cssText = 'position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;'
         + 'gap:12px;min-height:100vh;padding:24px;box-sizing:border-box;text-align:center;'
         + 'background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--ha-font-family-body,Roboto,sans-serif);';
-      // the panel has no Home Assistant header: on a phone this is the way to the sidebar
+      // plošča nima glave Home Assistanta: na telefonu je to pot do stranske vrstice
       const menu = document.createElement('ha-menu-button');
       menu.style.cssText = 'position:absolute;top:4px;left:4px;';
       menu.hass = this._hass;
@@ -99,7 +99,7 @@
         + 'background:var(--primary-color,#03a9f4);color:var(--text-primary-color,#fff);';
       retry.addEventListener('click', () => this._load());
       box.append(menu, title, hint, retry);
-      // back online: try again by itself
+      // spet na spletu: sama poskusi znova
       this._online = () => this._load();
       window.addEventListener('online', this._online);
       this._menu = menu;

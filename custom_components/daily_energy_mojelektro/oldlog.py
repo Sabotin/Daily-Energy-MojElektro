@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""The 1.x day log: kept in Home Assistant's store until porabim took it, onto the meter it was kept for."""
+"""Dnevni zapis iz 1.x: v shrambi Home Assistanta, dokler ga porabim ne prevzame, na merilno mesto, za katero je bil hranjen."""
 from __future__ import annotations
 
 import logging
@@ -26,12 +26,12 @@ def store(hass: HomeAssistant, entry: ConfigEntry) -> Store:
 
 
 def same_meter(a: str, b: str) -> bool:
-    """porabim compares meter numbers trimmed and in capitals."""
+    """porabim primerja številke merilnih mest obrezane in z velikimi črkami."""
     return a.strip().upper() == b.strip().upper()
 
 
 def _backup(old: Any) -> dict[str, Any] | None:
-    """The backup the old card exported, None when the log holds nothing to upload."""
+    """Varnostna kopija, ki jo je izvažala stara kartica; None, kadar v zapisu ni česa naložiti."""
     if not isinstance(old, dict):
         return None
     backup = {"app": DOMAIN, "version": VERSION}
@@ -48,13 +48,13 @@ def _failed(status: int) -> str:
 async def async_upload(
     hass: HomeAssistant, link: api.PorabimLink, entry: ConfigEntry, eimm: str | None, *, must_have: bool = False
 ) -> str | None:
-    """The 1.x day log of `entry`, once, into the account of `link`. None when nothing is left to upload, else why not:
-    "meter_missing", "upload_failed" or "signed_out". The store is deleted only when porabim took it.
+    """Dnevni zapis iz 1.x za `entry`, enkrat, v račun od `link`. None, kadar ni več česa naložiti, sicer razlog:
+    "meter_missing", "upload_failed" ali "signed_out". Shramba se izbriše šele, ko ga porabim prevzame.
 
-    It goes onto its own meter (`eimm`, the 1.x entry's meter): porabim puts a backup without x-meter on the account's
-    first meter, so while that meter is not in the account the log waits, with a repair that says so. An entry linked
-    before 3.0.0 has no `eimm`: its log goes to the first meter, as before. `must_have`: the meter must be in the account
-    even when the log is empty (a 1.x entry of a second meter, merged into the account).
+    Gre na svoje merilno mesto (`eimm`, merilno mesto vnosa iz 1.x): porabim varnostno kopijo brez x-meter da na prvo
+    merilno mesto računa, zato zapis čaka s popravilom, ki to pove, dokler tega merilnega mesta ni v računu. Vnos, povezan
+    pred 3.0.0, nima `eimm`: zapis gre na prvo merilno mesto, kot prej. `must_have`: merilno mesto mora biti v računu tudi
+    pri praznem zapisu (vnos iz 1.x za drugo merilno mesto, združen v račun).
     """
     old_store = store(hass, entry)
     old = await old_store.async_load()
@@ -80,7 +80,7 @@ async def async_upload(
                     )
                 return "meter_missing"
         if backup:
-            # under data, as porabim's dashboard sends it
+            # pod data, tako kot ga pošlje nadzorna plošča porabim
             status, _ = await api.async_call(hass, link, "POST", "import-backup", {"data": backup}, meter)
             if not 200 <= status < 300:
                 return _failed(status)

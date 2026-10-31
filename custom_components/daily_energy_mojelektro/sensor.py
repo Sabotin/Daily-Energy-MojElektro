@@ -2,13 +2,13 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""Each meter's numbers from porabim's /api/sensors as entities on its device. porabim computes them (the same
-logic.js as its dashboard); nothing is computed here.
+"""Številke vsakega merilnega mesta iz /api/sensors na porabim kot entitete na njegovi napravi. Izračuna jih porabim (isti
+logic.js kot nadzorna plošča); tukaj se nič ne računa.
 
-Every entity porabim lists in a meter's keys is made at once, the moment the meter is added, and a key that comes in
-its values is made then too (an older porabim lists none). Once made, an entity stays: a key without a number (a new
-meter's first minutes, the month keys on the 1st, the bill in a month's first days, block 1 in summer) or the API
-switched off in porabim's Skrbnik leaves it unavailable. Entities go with their meter's device (meters.py)."""
+Vsaka entiteta, ki jo porabim navede med ključi merilnega mesta, nastane takoj, ko je merilno mesto dodano; ključ, ki
+pride med vrednostmi, nastane takrat (starejši porabim ne navede nobenega). Nastala entiteta ostane: ključ brez številke
+(prve minute novega merilnega mesta, mesečni ključi 1. v mesecu, račun v prvih dneh meseca, blok 1 poleti) ali API,
+izklopljen v Skrbniku na porabim, jo pusti nedosegljivo. Entitete gredo z napravo svojega merilnega mesta (meters.py)."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -36,19 +36,19 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# porabim's data changes about once a day (Moj Elektro sends it a day late); one call covers every meter
+# podatki na porabim se spremenijo približno enkrat na dan (Moj Elektro jih pošlje dan pozneje); en klic zajame vsa merilna mesta
 SCAN_INTERVAL = timedelta(minutes=30)
-# a new meter's first Moj Elektro check (seconds after it is added) decides Odjem in oddaja: while porabim says "wait",
-# asked again this often, at most this many times per meter
+# prvo preverjanje Moj Elektro novega merilnega mesta (sekunde po dodajanju) odloči o Odjem in oddaja: dokler porabim pravi "wait",
+# vprašamo tako pogosto, največ tolikokrat na merilno mesto
 WAIT_INTERVAL = timedelta(seconds=10)
 WAIT_TRIES = 12
 BLOCKS = range(1, 6)
-# meter-level fields shown as diagnostic entities
+# polja merilnega mesta, prikazana kot diagnostične entitete
 DAY, LAST_CHECK = "day", "last_check"
 
 
 def _energy(key: str, tkey: str | None = None, block: int | None = None) -> SensorEntityDescription:
-    # no state_class: the data comes a day late, so the Energy dashboard would count it on the wrong day
+    # brez state_class: podatki pridejo dan pozneje, zato bi jih plošča Energija štela na napačen dan
     return SensorEntityDescription(
         key=key, translation_key=tkey or key, device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, suggested_display_precision=2,
@@ -108,11 +108,11 @@ class SensorsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def __init__(self, hass: HomeAssistant, link: api.PorabimLink) -> None:
         super().__init__(hass, _LOGGER, config_entry=link.entry, name=f"{DOMAIN} sensors", update_interval=SCAN_INTERVAL)
         self.link = link
-        # meter id → how many answers in a row said "wait"
+        # id merilnega mesta → koliko odgovorov zapored je reklo "wait"
         self._waits: dict[str, int] = {}
 
     async def _async_update_data(self) -> dict[str, Any]:
-        # a failed call never keeps the short interval
+        # neuspešen klic nikoli ne obdrži kratkega intervala
         self.update_interval = SCAN_INTERVAL
         try:
             status, data = await api.async_call(self.hass, self.link, "GET", "sensors")
@@ -125,7 +125,7 @@ class SensorsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if isinstance(meter, dict) and isinstance(meter.get("id"), str) and meter["id"]:
                 values = meter.get("values") if isinstance(meter.get("values"), dict) else {}
                 found[meter["id"]] = {**values, DAY: meter.get(DAY), LAST_CHECK: meter.get(LAST_CHECK)}
-                # every entity the meter can have, made at once (an older porabim sends none)
+                # vsaka entiteta, ki jo merilno mesto lahko ima, nastane takoj (starejši porabim ne pošlje nobene)
                 listed = meter.get("keys")
                 keys[meter["id"]] = [k for k in listed if isinstance(k, str)] if isinstance(listed, list) else []
                 if meter.get("wait") is True:
@@ -139,8 +139,8 @@ class SensorsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Entities are added as porabim lists them or their numbers come; the first refresh runs after the meter sync
-    (__init__)."""
+    """Entitete se dodajo, ko jih porabim navede ali ko pridejo njihove številke; prva osvežitev steče po uskladitvi
+    merilnih mest (__init__)."""
     link: api.PorabimLink = hass.data[DOMAIN][entry.entry_id]
     coordinator = link.sensors = SensorsCoordinator(hass, link)
     added: set[str] = set()
@@ -152,10 +152,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         devices = meters.device_meters(hass, entry.entry_id)
         new = []
         for meter, values in coordinator.data["meters"].items():
-            # only on a device meters.py made (it names it); the next refresh tries again
+            # samo na napravi, ki jo je naredil meters.py (ta ji da ime); naslednja osvežitev poskusi znova
             if meter not in devices:
                 continue
-            # porabim's keys (every entity the meter can have), then any key with a number
+            # ključi porabim (vsaka entiteta, ki jo merilno mesto lahko ima), nato vsak ključ s številko
             listed = coordinator.data.get("keys", {}).get(meter, [])
             for key in [*listed, *(k for k, v in values.items() if v is not None)]:
                 if key in DESCRIPTIONS and f"{meter}_{key}" not in added:
@@ -179,7 +179,7 @@ class PorabimSensor(CoordinatorEntity[SensorsCoordinator], SensorEntity):
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, meter)})
 
     async def async_will_remove_from_hass(self) -> None:
-        # its device was removed: if the meter comes back, the entity is made again
+        # njegova naprava je odstranjena: če se merilno mesto vrne, entiteta spet nastane
         self._added.discard(self._attr_unique_id)
 
     def _values(self) -> dict[str, Any]:

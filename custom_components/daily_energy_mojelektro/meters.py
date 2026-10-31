@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""The account's meters as devices under the entry, from porabim's snapshot."""
+"""Merilna mesta računa kot naprave pod vnosom, iz posnetka porabim."""
 from __future__ import annotations
 
 import aiohttp
@@ -15,7 +15,7 @@ from .const import DOMAIN
 
 
 async def async_sync(hass: HomeAssistant, link: api.PorabimLink) -> None:
-    """At every start and after Add integration adds a meter: the account's meters from porabim's snapshot."""
+    """Ob vsakem zagonu in ko Dodaj integracijo doda merilno mesto: merilna mesta računa iz posnetka porabim."""
     try:
         status, data = await api.async_call(hass, link, "GET", "snapshot")
     except (aiohttp.ClientError, TimeoutError):
@@ -26,7 +26,7 @@ async def async_sync(hass: HomeAssistant, link: api.PorabimLink) -> None:
 
 @callback
 def device_meters(hass: HomeAssistant, entry_id: str) -> set[str]:
-    """The porabim meter ids that have a device under the entry."""
+    """Id-ji merilnih mest porabim, ki imajo napravo pod vnosom."""
     return {
         ident[1]
         for device in dr.async_entries_for_config_entry(dr.async_get(hass), entry_id)
@@ -37,10 +37,10 @@ def device_meters(hass: HomeAssistant, entry_id: str) -> set[str]:
 
 @callback
 def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) -> None:
-    """One device per meter under the entry (its name, else its EIMM), and the entry titled Porabim.
+    """Ena naprava na merilno mesto pod vnosom (ime, sicer EIMM), vnos pa z naslovom Porabim.
 
-    The entry is the porabim account, which can hold several meters, so its title names none of them. A title the
-    user gave stays. Nothing changes when the snapshot has no meter list.
+    Vnos je račun porabim, ki ima lahko več merilnih mest, zato naslov ne imenuje nobenega. Naslov, ki ga je dal uporabnik,
+    ostane. Brez seznama merilnih mest v posnetku se nič ne spremeni.
     """
     meters = api.meters(snapshot)
     if meters is None:
@@ -65,6 +65,6 @@ def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) ->
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         if device.id not in kept:
             registry.async_remove_device(device.id)
-    # a meter added later (Add integration, + in the panel): its entities come with the next sensor refresh, now
+    # pozneje dodano merilno mesto (Dodaj integracijo, + v plošči): entitete pridejo z naslednjo osvežitvijo senzorjev, zdaj
     if new and link.sensors is not None and link.sensors.data is not None:
         hass.async_create_task(link.sensors.async_request_refresh())

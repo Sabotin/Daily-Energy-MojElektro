@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""Config and options flow: connect Home Assistant to porabim.com."""
+"""Potek nastavitve in možnosti: povezava Home Assistanta s porabim.com."""
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONF_METER = "meter"
 CONF_TOKEN = "token"
-# porabim's POST /api/meters/add errors → this form's (translations: config.error)
+# napake POST /api/meters/add na porabim → napake tega obrazca (prevodi: config.error)
 ADD_ERRORS = {
     "invalid_auth": "invalid_auth",
     "invalid_meter": "invalid_meter",
@@ -38,7 +38,7 @@ ADD_ERRORS = {
 
 
 class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN):
-    """Add integration → porabim.com (meter ID and Moj Elektro token there) → back here with a key."""
+    """Dodaj integracijo → porabim.com (tam ID merilnega mesta in žeton Moj Elektro) → nazaj sem s ključem."""
 
     DOMAIN = DOMAIN
     VERSION = 3
@@ -49,7 +49,7 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if self.source == SOURCE_USER and self._async_current_entries(include_ignore=False):
-            # One entry, one porabim account per Home Assistant: another meter goes into it, as + in the panel does
+            # En vnos, en račun porabim na Home Assistant: novo merilno mesto gre vanj, tako kot + v plošči
             if self._link() is None:
                 return self.async_abort(reason="connect_first")
             return await self.async_step_add_meter()
@@ -57,13 +57,13 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         return await super().async_step_user(user_input)
 
     def _link(self) -> api.PorabimLink | None:
-        """The first connected entry's link (none while every entry still waits to be connected)."""
+        """Povezava prvega povezanega vnosa (nobene, dokler vsi vnosi še čakajo na povezavo)."""
         links = self.hass.data.get(DOMAIN, {})
         return next((links[e.entry_id] for e in self._async_current_entries(include_ignore=False) if e.entry_id in links), None)
 
     async def async_step_add_meter(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Add integration again: the meter goes into the account Home Assistant already has, with porabim's own
-        POST /api/meters/add (the panel's +). No second entry, sidebar or account; the token is not kept here."""
+        """Znova Dodaj integracijo: merilno mesto gre v račun, ki ga Home Assistant že ima, prek POST /api/meters/add na
+        porabim (+ v plošči). Brez drugega vnosa, stranske vrstice ali računa; žetona tukaj ne hranimo."""
         errors: dict[str, str] = {}
         meter = ""
         if user_input is not None:
@@ -75,7 +75,7 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             if error is None:
                 link.entry.async_create_background_task(self.hass, meters.async_sync(self.hass, link), f"{DOMAIN} meters")
                 if link.entry.data.get(CONF_OLD_METER):
-                    # the 1.x day log may have waited for this meter
+                    # dnevni zapis iz 1.x je morda čakal na to merilno mesto
                     link.entry.async_create_background_task(
                         self.hass,
                         oldlog.async_upload(self.hass, link, link.entry, link.entry.data[CONF_OLD_METER]),
@@ -94,8 +94,8 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         return self.async_show_form(step_id="add_meter", data_schema=schema, errors=errors)
 
     async def _async_add(self, link: api.PorabimLink, meter: str, token: str) -> str | None:
-        """porabim's POST /api/meters/add (the panel's +): None when the meter is added, else this form's error
-        ("signed_out": porabim refused the key)."""
+        """POST /api/meters/add na porabim (+ v plošči): None, ko je merilno mesto dodano, sicer napaka tega obrazca
+        ("signed_out": porabim je zavrnil ključ)."""
         try:
             status, data = await api.async_call(self.hass, link, "POST", "meters/add", {"meter": meter, "token": token})
         except (aiohttp.ClientError, TimeoutError):
@@ -108,7 +108,7 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         return ADD_ERRORS.get(error, "too_many" if status == 429 else "cannot_connect" if status == 0 else "unknown")
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
-        """The key stopped working (porabim refused the refresh), or a 1.x entry is not linked yet."""
+        """Ključ ne deluje več (porabim je zavrnil osvežitev) ali pa vnos iz 1.x še ni povezan."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -116,19 +116,19 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             return self.async_show_form(step_id="reauth_confirm")
         entry = self._get_reauth_entry()
         if "token" not in entry.data and entry.unique_id and self._link() is not None:
-            # A 1.x entry of another meter (1.x had one entry per meter), and this Home Assistant has its one porabim
-            # account already: a connect would only land in that account again
+            # Vnos iz 1.x za drugo merilno mesto (1.x je imel en vnos na merilno mesto), ta Home Assistant pa svoj račun porabim
+            # že ima: povezava bi spet pristala v tem računu
             return await self.async_step_merge()
         return await self.async_step_user()
 
     async def async_step_merge(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """The 1.x entry's meter goes into the account Home Assistant has (porabim's + route, when it is not there
-        yet), its day log onto that meter, then the entry is removed: one entry, one sidebar item for every meter."""
+        """Merilno mesto vnosa iz 1.x gre v račun, ki ga Home Assistant ima (+ na porabim, če ga še ni), dnevni zapis nanj,
+        nato se vnos odstrani: en vnos, en element v stranski vrstici za vsa merilna mesta."""
         entry = self._get_reauth_entry()
         link = self._link()
         if link is None:
             return self.async_abort(reason="connect_first")
-        # a 1.x entry's unique id is its meter
+        # unique id vnosa iz 1.x je njegovo merilno mesto
         meter = str(entry.unique_id)
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -137,8 +137,8 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             if error in (None, "duplicate_meter"):
                 error = await oldlog.async_upload(self.hass, link, entry, meter, must_have=True)
             if error is None:
-                # not before this flow has ended: removing the entry aborts its flows, this one too if it started at
-                # once (2024.12 aborts it before it returns: UnknownFlow)
+                # ne pred koncem tega poteka: odstranitev vnosa prekine njegove poteke, tudi tega, če bi se začela takoj
+                # (2024.12 ga prekine, preden se vrne: UnknownFlow)
                 self.hass.async_create_task(
                     self.hass.config_entries.async_remove(entry.entry_id), f"{DOMAIN} merge", eager_start=False
                 )
@@ -153,8 +153,8 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         )
 
     async def _old_account_alive(self, entry: ConfigEntry) -> bool:
-        """The old key still refreshes, so its account exists. Refused (account deleted on porabim): the entry may move
-        to the new account, its devices follow the new account's meters at the reload."""
+        """Stari ključ se še osveži, torej račun obstaja. Če je zavrnjen (račun izbrisan na porabim), se vnos sme preseliti na
+        nov račun, njegove naprave pa ob ponovnem nalaganju sledijo merilnim mestom novega računa."""
         implementation = await config_entry_oauth2_flow.async_get_config_entry_implementation(self.hass, entry)
         try:
             token = await implementation.async_refresh_token(entry.data["token"])
@@ -162,12 +162,12 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             return not 400 <= err.status < 500
         except (aiohttp.ClientError, TimeoutError):
             return True
-        # porabim rotates the refresh token on every use: keep the new one
+        # porabim ob vsaki uporabi zamenja žeton za osvežitev: shranimo novega
         self.hass.config_entries.async_update_entry(entry, data={**entry.data, "token": token})
         return True
 
     async def _async_abort_and_revoke(self, data: dict[str, Any], reason: str) -> ConfigFlowResult:
-        """porabim already made a link for this key: end it, so no unused link is left there."""
+        """porabim je za ta ključ že naredil povezavo: končamo jo, da tam ne ostane neuporabljena."""
         await api.async_revoke(self.hass, data["token"]["access_token"])
         return self.async_abort(reason=reason)
 
@@ -178,7 +178,7 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
         if self.source == SOURCE_REAUTH:
             entry = self._get_reauth_entry()
             if "token" in entry.data and entry.unique_id != account and await self._old_account_alive(entry):
-                # A linked entry comes back to the same porabim account while that one still exists
+                # Povezan vnos se vrne na isti račun porabim, dokler ta obstaja
                 return await self._async_abort_and_revoke(data, "wrong_account")
             other = next(
                 (e for e in self._async_current_entries(include_ignore=False) if e.unique_id == account and e.entry_id != entry.entry_id),
@@ -187,22 +187,22 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
             if other is not None:
                 return await self._async_abort_and_revoke(data, "already_configured")
             old = entry.data.get("token")
-            # A 1.x entry had the meter as its unique id; from now on it is the porabim account. The meter is kept: the
-            # entry's day log goes onto it, also when it is linked with another meter (oldlog)
+            # Vnos iz 1.x je imel za unique id merilno mesto; odslej je to račun porabim. Merilno mesto ostane: dnevni zapis
+            # vnosa gre nanj, tudi če je vnos povezan z drugim merilnim mestom (oldlog)
             old_meter = entry.data.get(CONF_OLD_METER) or (None if old else entry.unique_id)
             if old_meter:
                 data = {**data, CONF_OLD_METER: old_meter}
             self.hass.config_entries.async_update_entry(entry, unique_id=account, data=data)
             ir.async_delete_issue(self.hass, DOMAIN, f"{ISSUE_CONNECT}_{entry.entry_id}")
             if old and old.get("access_token"):
-                # The new link replaces the old one; end the old one too (it may already be dead)
+                # Nova povezava zamenja staro; končamo tudi staro (morda je že mrtva)
                 await api.async_revoke(self.hass, old["access_token"])
             self.hass.config_entries.async_schedule_reload(entry.entry_id)
             return self.async_abort(reason="reauth_successful")
         await self.async_set_unique_id(account)
         if any(e.unique_id == account for e in self._async_current_entries(include_ignore=False)):
             return await self._async_abort_and_revoke(data, "already_configured")
-        # The account can hold several meters: they show as its devices, the entry itself is just Porabim
+        # Račun ima lahko več merilnih mest: prikazana so kot njegove naprave, sam vnos je samo Porabim
         return self.async_create_entry(title=api.TITLE, data=data, options={CONF_SIDEBAR: True})
 
     @staticmethod
@@ -212,7 +212,7 @@ class DailyEnergyConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
 
 
 class DailyEnergyOptionsFlow(OptionsFlow):
-    """The sidebar panel on or off; everything else (PIN, meter, token) is on porabim.com."""
+    """Plošča v stranski vrstici vklopljena ali izklopljena; vse drugo (PIN, merilno mesto, žeton) je na porabim.com."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:

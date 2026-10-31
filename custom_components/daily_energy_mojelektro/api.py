@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""Forwarding to porabim.com's /api with the key of one config entry. Nothing is stored or computed here."""
+"""Posredovanje na /api porabim.com s ključem enega vnosa. Tukaj se nič ne shranjuje in nič ne računa."""
 from __future__ import annotations
 
 import asyncio
@@ -24,31 +24,31 @@ from .const import API_URL, DOMAIN, LONG_PATHS, LONG_TIMEOUT, REVOKE_URL, TIMEOU
 _LOGGER = logging.getLogger(__name__)
 
 PATH = re.compile(r"^[a-z0-9-]+(/[a-z0-9-]+)*(\?[A-Za-z0-9=&,._%-]*)?$")
-# Never forwarded: porabim's own sign-in routes
+# Nikoli ne posredujemo: poti za prijavo v porabim
 BLOCKED = frozenset({"ha", "auth"})
 SIGNED_OUT = {"error": "signed_out"}
 
 
 @dataclass
 class PorabimLink:
-    """One config entry: its OAuth2 session and its sidebar panel."""
+    """En vnos: njegova seja OAuth2 in plošča v stranski vrstici."""
 
     entry: ConfigEntry
     session: config_entry_oauth2_flow.OAuth2Session
     panel_url: str | None = None
-    # sensor.SensorsCoordinator, set when the sensor platform starts
+    # sensor.SensorsCoordinator, nastavi se ob zagonu platforme senzorjev
     sensors: Any = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    # porabim refused the refresh key: no more refreshes until the user connects again (the reauth reloads the entry,
-    # so a new link starts with False)
+    # porabim je zavrnil ključ za osvežitev: brez osvežitev, dokler se uporabnik znova ne poveže (ponovna prijava vnos
+    # naloži znova, zato nova povezava začne s False)
     refused: bool = False
-    # the options it was set up with: only a change of these reloads the entry (__init__._async_reload)
+    # možnosti ob nastavitvi: vnos se znova naloži samo ob njihovi spremembi (__init__._async_reload)
     options: dict[str, Any] = field(default_factory=dict)
 
 
 async def async_instance_hash(hass: HomeAssistant) -> str:
-    """This Home Assistant's lasting id for porabim: sha256 of its instance id (made at its first start, kept across
-    updates, backups and deleting this integration) and the domain. The instance id itself never leaves Home Assistant."""
+    """Trajni id tega Home Assistanta za porabim: sha256 iz id-ja instance (nastane ob prvem zagonu, ostane čez posodobitve,
+    varnostne kopije in izbris integracije) in domene. Sam id instance nikoli ne zapusti Home Assistanta."""
     key = f"{DOMAIN}_instance"
     if key not in hass.data:
         uuid = await instance_id.async_get(hass)
@@ -57,19 +57,19 @@ async def async_instance_hash(hass: HomeAssistant) -> str:
 
 
 def valid_path(path: str) -> bool:
-    """A path under /api only: lowercase segments and a plain query (URL-encoded, so % only there), no dots, no ha/ or
+    """Samo pot pod /api: segmenti z malimi črkami in navadna poizvedba (URL-kodirana, zato % samo tam), brez pik, ha/ in
     auth/."""
     return bool(PATH.match(path)) and path.split("?", 1)[0].split("/", 1)[0] not in BLOCKED
 
 
 TITLE = "Porabim"
-# 2.0.2 and 2.0.3 titled the entry Porabim · <EIMM>
+# 2.0.2 in 2.0.3 sta vnos naslovila Porabim · <EIMM>
 EIMM = re.compile(r"^\d+-\d+$")
 
 
 def meters(snapshot: Any) -> list[dict[str, str]] | None:
-    """[{id, label, eimm}] of the account's meters from /api/snapshot (`meters` lists [{id, name, eimm}]; the id is
-    porabim's own, not for people). The label is the meter's name, else its EIMM. None when the list is not there."""
+    """[{id, label, eimm}] merilnih mest računa iz /api/snapshot (`meters` navaja [{id, name, eimm}]; id je od porabim, ni
+    za ljudi). Oznaka je ime merilnega mesta, sicer EIMM. None, kadar seznama ni."""
     if not isinstance(snapshot, dict) or not isinstance(snapshot.get("meters"), list):
         return None
     found = []
@@ -83,8 +83,8 @@ def meters(snapshot: Any) -> list[dict[str, str]] | None:
 
 
 def auto_title(title: str, labels: list[str]) -> bool:
-    """A title this integration made and may still correct: Porabim, 2.0.x's Porabim · ha:<account>, or 2.0.2/2.0.3's
-    Porabim · <one meter> (its EIMM or a meter's name). A name the user gave the entry stays."""
+    """Naslov, ki ga je naredila ta integracija in ga še sme popraviti: Porabim, Porabim · ha:<račun> iz 2.0.x ali
+    Porabim · <merilno mesto> iz 2.0.2/2.0.3 (EIMM ali ime). Naslov, ki ga je dal uporabnik, ostane."""
     if title == TITLE or title.startswith(f"{TITLE} · ha:"):
         return True
     rest = title.removeprefix(f"{TITLE} · ")
@@ -92,12 +92,12 @@ def auto_title(title: str, labels: list[str]) -> bool:
 
 
 def timeout_for(path: str) -> int:
-    """Osveži and Uvozi wait in porabim's queue; everything else answers in seconds."""
+    """Osveži in Uvozi čakata v vrsti na porabim; vse drugo odgovori v nekaj sekundah."""
     return LONG_TIMEOUT if path.split("?", 1)[0] in LONG_PATHS else TIMEOUT
 
 
 async def async_revoke(hass: HomeAssistant, access_token: str) -> None:
-    """End the porabim link of this key (POST /ha/revoke). Errors are ignored: the key expires on its own."""
+    """Konča povezavo tega ključa na porabim (POST /ha/revoke). Napake prezremo: ključ sam poteče."""
     try:
         async with asyncio.timeout(TIMEOUT):
             await async_get_clientsession(hass).post(
@@ -117,10 +117,10 @@ async def _async_send(
     }
     if meter:
         headers["x-meter"] = meter
-    # a background call (sensors, setup, the old log), not the open panel's
+    # klic v ozadju (senzorji, nastavitev, stari zapis), ne klic odprte plošče
     if not panel:
         headers["x-ha-background"] = "1"
-    # porabim takes a POST only as JSON (else 415 json_only): {} when there is no body
+    # porabim sprejme POST samo kot JSON (sicer 415 json_only): {}, kadar telesa ni
     payload = ({} if body is None else body) if method == "POST" else None
     async with asyncio.timeout(timeout_for(path)):
         resp = await async_get_clientsession(hass).request(method, f"{API_URL}/{path}", headers=headers, json=payload)
@@ -132,11 +132,11 @@ async def _async_send(
 
 
 async def _async_valid_token(hass: HomeAssistant, link: PorabimLink, stale: str | None = None) -> str | None:
-    """The access token, refreshed when it expired (or when porabim refused `stale`).
+    """Dostopni žeton, osvežen, ko je potekel (ali ko ga je porabim zavrnil kot `stale`).
 
-    None when porabim refused the refresh too: then Home Assistant asks the user to connect again, once, and every
-    later call is signed out without asking porabim (the dead key would only be refused again).
-    One refresh at a time, because porabim rotates the refresh token on every use.
+    None, kadar porabim zavrne tudi osvežitev: Home Assistant takrat enkrat prosi za novo povezavo, vsak nadaljnji klic
+    pa je odjavljen, brez vprašanja na porabim (mrtev ključ bi bil le znova zavrnjen).
+    Po ena osvežitev naenkrat, ker porabim ob vsaki uporabi zamenja žeton za osvežitev.
     """
     session = link.session
     async with link.lock:
@@ -166,8 +166,8 @@ async def async_call(
     meter: str | None = None,
     panel: bool = False,
 ) -> tuple[int, Any]:
-    """(status, parsed JSON or None). A 401 gets one refresh and one retry, then reauth. `panel`: the open panel's call;
-    every other call goes as background."""
+    """(status, razčlenjen JSON ali None). Pri 401 ena osvežitev in en ponovni poskus, nato ponovna prijava. `panel`: klic
+    odprte plošče; vsak drug klic gre kot klic v ozadju."""
     token = await _async_valid_token(hass, link)
     if token is None:
         return 401, SIGNED_OUT
@@ -179,7 +179,7 @@ async def async_call(
         return 401, data
     status, data = await _async_send(hass, token, method, path, body, meter, panel)
     if status == 401:
-        # porabim refuses even the new key: as a refused refresh, the user is asked once and porabim no more
+        # porabim zavrne tudi nov ključ: kot pri zavrnjeni osvežitvi uporabnika vprašamo enkrat, porabim pa nič več
         link.refused = True
         link.entry.async_start_reauth(hass)
     return status, data

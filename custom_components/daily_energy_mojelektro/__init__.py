@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""Daily Energy for Moj Elektro: porabim.com's dashboard in Home Assistant. The data lives on porabim.com."""
+"""Daily Energy za Moj Elektro: nadzorna plošča porabim.com v Home Assistantu. Podatki so na porabim.com."""
 from __future__ import annotations
 
 import logging
@@ -39,24 +39,24 @@ PLATFORMS = [Platform.SENSOR]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """The porabim.com sign-in and the one websocket command the panel uses."""
+    """Prijava v porabim.com in edini ukaz websocket, ki ga uporablja plošča."""
     hass.data.setdefault(DOMAIN, {})
     oauth.async_register(hass)
     websocket.async_register(hass)
     await hass.http.async_register_static_paths(
         [StaticPathConfig(f"/{DOMAIN}", str(Path(__file__).parent / "frontend"), cache_headers=False)]
     )
-    # read once here, so requests later never wait for Home Assistant's storage
+    # preberemo enkrat tukaj, da poznejše zahteve nikoli ne čakajo na shrambo Home Assistanta
     await api.async_instance_hash(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """One porabim account: its key and the sidebar panel with porabim's card."""
+    """En račun porabim: njegov ključ in plošča v stranski vrstici s kartico porabim."""
     hass.data.setdefault(DOMAIN, {})
     oauth.async_register(hass)
     if "token" not in entry.data:
-        # A 1.x entry: its day log waits in the old store until the user connects to porabim.com
+        # Vnos iz 1.x: dnevni zapis čaka v stari shrambi, dokler se uporabnik ne poveže s porabim.com
         ir.async_create_issue(
             hass,
             DOMAIN,
@@ -88,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
             module_url=PANEL_URL,
-            # our panel loads porabim.com's own card; without this HA asks "Do you trust the external panel" on every open
+            # naša plošča naloži kartico s porabim.com; brez tega HA ob vsakem odprtju vpraša "Do you trust the external panel"
             trust_external=True,
             config={"entry_id": entry.entry_id, "card": CARD_URL},
             require_admin=False,
@@ -103,7 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Remove the panel and the entities; the link on porabim stays."""
+    """Odstrani ploščo in entitete; povezava na porabim ostane."""
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     link = hass.data[DOMAIN].pop(entry.entry_id, None)
@@ -113,14 +113,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_meters_then_sensors(hass: HomeAssistant, link: api.PorabimLink) -> None:
-    """The meter devices first, so the first sensor refresh finds them (entities go on those devices)."""
+    """Najprej naprave merilnih mest, da jih prva osvežitev senzorjev najde (entitete gredo na te naprave)."""
     await meters.async_sync(hass, link)
     if link.sensors is not None:
         await link.sensors.async_refresh()
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Deleting the entry ends its link on porabim (errors ignored) and deletes a 1.x log still waiting."""
+    """Izbris vnosa konča njegovo povezavo na porabim (napake prezremo) in izbriše zapis iz 1.x, ki še čaka."""
     if "token" in entry.data:
         try:
             implementation = await config_entry_oauth2_flow.async_get_config_entry_implementation(hass, entry)
@@ -136,9 +136,9 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """1.x → 3: the Moj Elektro meter and token leave Home Assistant (they are entered on porabim.com).
+    """1.x → 3: merilno mesto in žeton Moj Elektro zapustita Home Assistant (vnese se ju na porabim.com).
 
-    The old day log stays in its store; setup then asks the user to connect, and the first link uploads it.
+    Stari dnevni zapis ostane v svoji shrambi; nastavitev nato uporabnika prosi za povezavo, prva povezava ga naloži.
     """
     if entry.version < 3:
         hass.config_entries.async_update_entry(entry, data={}, options={CONF_SIDEBAR: entry.options.get(CONF_SIDEBAR, True)}, version=3)
@@ -146,8 +146,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Home Assistant calls this on every change of the entry; only the options (the sidebar) need a reload. Not the new
-    key every refresh saves (about once an hour) nor the title: a reload took the panel and every entity away."""
+    """Home Assistant to pokliče ob vsaki spremembi vnosa; ponovno nalaganje je potrebno samo za možnosti (stranska
+    vrstica). Ne za nov ključ, ki ga shrani vsaka osvežitev (približno na uro), in ne za naslov: nalaganje je odstranilo
+    ploščo in vse entitete."""
     link = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if link is not None and dict(entry.options) == link.options:
         return
@@ -155,7 +156,7 @@ async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 def _panel_url(hass: HomeAssistant, entry: ConfigEntry) -> str:
-    """"daily-energy" for the first entry, "daily-energy-2" and so on for more (the 1.x addresses)."""
+    """"daily-energy" za prvi vnos, "daily-energy-2" in tako naprej za naslednje (naslovi iz 1.x)."""
     entries = hass.config_entries.async_entries(DOMAIN)
     index = next((i for i, e in enumerate(entries) if e.entry_id == entry.entry_id), 0)
     return "daily-energy" if index == 0 else f"daily-energy-{index + 1}"

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Sabotin (https://github.com/Sabotin). All rights reserved.
 # Personal, non-commercial use through HACS only. Copying, modifying, sharing or reusing
 # any part of this file without written permission is not allowed. See LICENSE.
-"""Websocket API used by porabim's card: the list of entries and one forwarding command."""
+"""API websocket za kartico porabim: seznam vnosov in en ukaz za posredovanje."""
 from __future__ import annotations
 
 from typing import Any
@@ -47,7 +47,7 @@ def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, 
 )
 @websocket_api.async_response
 async def ws_api(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """The card's api(method, path, body, meter): porabim's /api/<path> with this entry's key → {status, data}."""
+    """api(method, path, body, meter) kartice: /api/<path> na porabim s ključem tega vnosa → {status, data}."""
     link = hass.data.get(DOMAIN, {}).get(msg["entry_id"])
     if link is None:
         connection.send_error(msg["id"], "not_found", "Daily Energy entry not found")
@@ -66,10 +66,10 @@ async def ws_api(hass: HomeAssistant, connection: websocket_api.ActiveConnection
         connection.send_error(msg["id"], "cannot_connect", "Could not reach porabim.com")
         return
     if status == 200 and msg["method"] == "GET" and msg["path"].split("?", 1)[0] == "snapshot":
-        # Every snapshot the panel loads lists the account's meters: the devices follow it without another request
+        # Vsak posnetek, ki ga plošča naloži, navede merilna mesta računa: naprave mu sledijo brez dodatne zahteve
         meters.async_apply(hass, link, data)
     connection.send_result(msg["id"], {"status": status, "data": data})
     if 200 <= status < 300 and msg["method"] == "POST" and msg["path"] == "delete-account":
-        # Izbriši račun: the porabim account is gone, so are its entries (Devices & services, the sidebar, the entities)
+        # Izbriši račun: računa porabim ni več, zato tudi ne njegovih vnosov (Naprave in storitve, stranska vrstica, entitete)
         for entry in hass.config_entries.async_entries(DOMAIN):
             hass.async_create_task(hass.config_entries.async_remove(entry.entry_id), f"{DOMAIN} remove {entry.entry_id}")
