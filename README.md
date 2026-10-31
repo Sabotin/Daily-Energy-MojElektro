@@ -68,21 +68,21 @@ ponovni zagon → Settings → Devices & services → **Add integration** → **
 | Pomoč | Prijavi težavo, Predlagaj novost |
 | Izbriši moj račun | Izbriše račun na porabim.com in integracijo v Home Assistantu |
 
-## Dobro je vedeti
+## Informacije
 
-**Kdaj pridejo podatki.** porabim.com preverja nove podatke vsako jutro, vsako uro od 6:05 do 11:05, dokler včerajšnji dan ni popoln. Včerajšnji 15-minutni podatki so običajno na voljo okoli 6:00, skupna poraba števca (z VT / MT) pa šele naslednji dan. Do takrat se včerajšnja poraba prikazuje na podlagi 15-minutnih podatkov.
+**Posodabljanje podatkov.** porabim.com vsak dan preverja nove podatke med 6:05 in 11:05, in sicer vsako uro, dokler niso na voljo vsi podatki za prejšnji dan. Podatki za posamezne 15-minutne intervale so običajno na voljo okoli 6:00. Podatki o skupni porabi števcev (z VT/MT) so praviloma na voljo šele naslednji dan. Do takrat se včerajšnja poraba izračunava iz 15-minutnih podatkov.
 
-**Zasebnost.** Podatki in API-žeton Moj Elektro so shranjeni na porabim.com ([zasebnost](https://porabim.com/zasebnost)). Home Assistant hrani samo ključ za porabim.com, ki ne pride do brskalnika. Kot obisk na porabim.com šteje samo odpiranje plošče, ne pa osveževanje entitet v ozadju.
+**Zasebnost.** Podatki in API-žeton za Moj Elektro so shranjeni na porabim.com ([politika zasebnosti](https://porabim.com/zasebnost)). Home Assistant hrani samo ključ za dostop do porabim.com, ki nikoli ne pride do vašega brskalnika. Obisk spletne strani porabim.com se zabeleži le ob odprtju nadzorne plošče, ne pa tudi ob vsakem posodabljanju podatkov.
 
-**Več merilnih mest.** Vsa so v istem računu in v istem vnosu v stranski vrstici. Dodate jih z gumbom **+** v plošči Daily Energy ali z **Dodaj integracijo** (vpišete merilno mesto in žeton), oboje deluje enako.
+**Več merilnih mest.** Vsa merilna mesta so prikazana v istem računu in v istem vnosu v stranski vrstici. Novo merilno mesto lahko dodate z gumbom **+** na plošči Daily Energy ali prek možnosti **Dodaj integracijo**. V obeh primerih vnesete merilno mesto in žeton.
 
-**En račun.** Home Assistant ima na porabim.com en račun. Ostane isti tudi, če integracijo izbrišete in dodate znova. Ko izbrišete integracijo, se povezava na porabim.com prekine. Za ponovno povezavo uporabite eno od merilnih mest v računu.
+**Račun za Home Assistant.** Integracija uporablja en račun na porabim.com. Račun ostane enak tudi, če integracijo izbrišete in jo nato znova dodate. Če integracijo izbrišete, se povezava s porabim.com prekine. Ob ponovni nastavitvi izberete eno od merilnih mest, ki so že povezana z vašim računom.
 
-**Brisanje računa.** **Izbriši moj račun** v nastavitvah plošče izbriše račun na porabim.com in hkrati integracijo iz Naprave in storitve. Če je bil račun izbrisan drugje, se ob ponovni povezavi vnos premakne v novi račun.
+**Brisanje računa.** Če v nastavitvah plošče izberete **Izbriši moj račun**, se račun na porabim.com izbriše, integracija pa se odstrani iz Home Assistanta. Če ste račun pred tem izbrisali neposredno na porabim.com, se bo ob naslednji povezavi ustvaril nov račun.
 
-**Ponovna povezava.** Če porabim.com zavrne ključ (npr. ker je bil račun izbrisan), vas Home Assistant enkrat prosi za ponovno povezavo (Naprave in storitve → Daily Energy → **Ponovno konfiguriraj**) in porabim.com ne vpraša znova, dokler se ne povežete. Do takrat sta plošča in entitete odjavljeni.
+**Ponovna povezava.** Če porabim.com zavrne ključ za dostop, na primer zato, ker je bil račun izbrisan, vas Home Assistant pozove, da znova povežete integracijo. To storite v razdelku **Naprave in storitve → Daily Energy → Ponovno konfiguriraj**. Do uspešne ponovne povezave podatki in entitete integracije niso na voljo.
 
-**Ko porabim.com ni dosegljiv.** Plošča to pove in ponudi **Poskusi znova**. Ko je naprava spet na spletu, poskusi znova sama.
+**Če porabim.com ni dosegljiv.** Home Assistant prikaže napako in ponudi možnost **Poskusi znova**. Ko je porabim.com znova dosegljiv, lahko povezavo poskusite vzpostaviti še enkrat.
 
 <details><summary>Nadgradnja z različice 1</summary>
 
