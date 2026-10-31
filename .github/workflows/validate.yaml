@@ -1,4 +1,4 @@
-name: Validate
+name: Preverjanje
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
 
   hacs:
     name: HACS
-    # HACS reads the repository from outside, which only works once it is public
+    # HACS bere repozitorij od zunaj, kar deluje šele, ko je javen
     if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
@@ -25,7 +25,7 @@ jobs:
           ignore: brands license
 
   tests:
-    name: Integration tests (${{ matrix.ha }})
+    name: Testi integracije (${{ matrix.ha }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -34,8 +34,8 @@ jobs:
           - ha: newest
             python: "3.13"
             packages: pytest-homeassistant-custom-component home-assistant-frontend
-          # the oldest Home Assistant hacs.json allows: 0.13.190 is the test harness of 2024.12.0, and the frontend
-          # that version pins; a newer pycares leaves a thread that harness does not know yet
+          # najstarejši Home Assistant, ki ga dovoli hacs.json: 0.13.190 je testno okolje za 2024.12.0, zraven frontend,
+          # ki ga ta različica določa; novejši pycares pusti nit, ki je to okolje še ne pozna
           - ha: "2024.12.0"
             python: "3.12"
             packages: pytest-homeassistant-custom-component==0.13.190 home-assistant-frontend==20241127.4 pycares==4.4.0
@@ -44,8 +44,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      # The integration depends on frontend, which needs the frontend package in tests
+      # Integracija je odvisna od frontend, ki v testih potrebuje paket frontend
       - run: pip install ${{ matrix.packages }}
       - run: pytest -q
-      - name: Compile all Python files
+      - name: Prevedi vse datoteke Python
         run: python -m compileall -q custom_components
