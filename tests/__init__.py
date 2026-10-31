@@ -1,1 +1,1 @@
-"""Tests for Daily Energy for Moj Elektro."""
+"""Testi za Daily Energy za Moj Elektro."""

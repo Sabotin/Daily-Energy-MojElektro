@@ -1,4 +1,4 @@
-"""Migration 1.x → 3, the one-time upload of the old day log, the meters as devices, the panel, and revoke on delete."""
+"""Selitev 1.x → 3, enkratno nalaganje starega dnevnega zapisa, merilna mesta kot naprave, plošča in preklic ob izbrisu."""
 
 import pytest
 
@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, REVOKE_URL, VERSION
 
-# the meter tests answer /api/sensors with no values (tests/test_sensor.py covers them)
+# testi merilnih mest odgovorijo na /api/sensors brez vrednosti (te pokriva tests/test_sensor.py)
 NO_SENSORS = {"v": 1, "off": False, "meters": []}
 
 OLD_LOG = {
@@ -41,7 +41,7 @@ async def test_migration_v2_to_v3_asks_to_connect(hass):
     await hass.async_block_till_done(wait_background_tasks=True)
 
     assert entry.version == 3
-    assert entry.data == {}  # the Moj Elektro token is gone from Home Assistant
+    assert entry.data == {}  # žetona Moj Elektro v Home Assistantu ni več
     assert entry.options == {"sidebar": False}
     assert entry.state is ConfigEntryState.SETUP_ERROR
     issue = ir.async_get(hass).async_get_issue(DOMAIN, f"connect_porabim_{entry.entry_id}")
@@ -49,7 +49,7 @@ async def test_migration_v2_to_v3_asks_to_connect(hass):
     assert issue.translation_key == "connect_porabim"
     flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
     assert [f["context"]["source"] for f in flows] == [SOURCE_REAUTH]
-    assert await _old_store(hass, entry).async_load() == OLD_LOG  # kept until it is uploaded
+    assert await _old_store(hass, entry).async_load() == OLD_LOG  # hranjen, dokler ni naložen
 
 
 async def test_first_link_uploads_the_old_log_once(hass, linked_entry, aioclient_mock):
@@ -62,7 +62,7 @@ async def test_first_link_uploads_the_old_log_once(hass, linked_entry, aioclient
     calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == f"{API_URL}/import-backup"]
     assert len(calls) == 1
     body = calls[0][2]
-    # porabim reads the backup under data (porabim's validate.cleanBackup(body.data))
+    # porabim bere varnostno kopijo pod data (validate.cleanBackup(body.data) na porabim)
     assert body == {
         "data": {
             "app": DOMAIN,
@@ -74,7 +74,7 @@ async def test_first_link_uploads_the_old_log_once(hass, linked_entry, aioclient
         }
     }
     assert calls[0][3]["authorization"] == "Bearer access-1"
-    assert "x-meter" not in calls[0][3]  # linked before 3.0.0: no meter kept, the account's first meter
+    assert "x-meter" not in calls[0][3]  # povezan pred 3.0.0: merilno mesto ni shranjeno, prvo merilno mesto računa
     assert await _old_store(hass, linked_entry).async_load() is None
 
 
@@ -103,7 +103,7 @@ def _with_old_meter(hass, entry, meter):
 
 
 async def test_old_log_goes_onto_its_own_meter(hass, linked_entry, aioclient_mock):
-    """The 1.x entry's meter is the account's second: the log goes there, not onto the first meter."""
+    """Merilno mesto vnosa iz 1.x je drugo v računu: zapis gre tja, ne na prvo."""
     _with_old_meter(hass, linked_entry, " 4-211708")
     await _old_store(hass, linked_entry).async_save(OLD_LOG)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
@@ -119,7 +119,7 @@ async def test_old_log_goes_onto_its_own_meter(hass, linked_entry, aioclient_moc
 
 
 async def test_old_log_waits_for_its_meter(hass, linked_entry, aioclient_mock):
-    """The 1.x meter is not in the account: nothing goes to another meter, the log waits with a repair."""
+    """Merilnega mesta iz 1.x ni v računu: nič ne gre na drugo merilno mesto, zapis čaka s popravilom."""
     _with_old_meter(hass, linked_entry, "4-999999")
     await _old_store(hass, linked_entry).async_save(OLD_LOG)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
@@ -148,7 +148,7 @@ async def _start(hass, entry):
 
 @pytest.mark.meters
 async def test_every_meter_is_a_device(hass, linked_entry, aioclient_mock):
-    """The entry is the account: Porabim, with one device per meter (its name, else its EIMM)."""
+    """Vnos je račun: Porabim, z eno napravo na merilno mesto (ime, sicer EIMM)."""
     aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
@@ -166,7 +166,7 @@ async def test_every_meter_is_a_device(hass, linked_entry, aioclient_mock):
 @pytest.mark.meters
 @pytest.mark.parametrize("title", ["Porabim · ha:abc123", "Porabim · 4-67936", "Porabim · 4-555555", "Porabim · Vikend"])
 async def test_titles_from_2_0_x_become_porabim(hass, linked_entry, aioclient_mock, title):
-    """2.0.0 / 2.0.1 had the account id, 2.0.2 / 2.0.3 one meter's EIMM or name."""
+    """2.0.0 / 2.0.1 sta imela id računa, 2.0.2 / 2.0.3 EIMM ali ime enega merilnega mesta."""
     hass.config_entries.async_update_entry(linked_entry, title=title)
     aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
@@ -186,7 +186,7 @@ async def test_renamed_entry_keeps_its_title(hass, linked_entry, aioclient_mock)
 
 @pytest.mark.meters
 async def test_devices_follow_the_account(hass, linked_entry, aioclient_mock):
-    """A meter removed on porabim loses its device; a renamed one gets the new name."""
+    """Merilno mesto, odstranjeno na porabim, izgubi napravo; preimenovano dobi novo ime."""
     aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
@@ -216,7 +216,7 @@ async def test_devices_kept_without_a_meter_list(hass, linked_entry, aioclient_m
 
 
 async def test_panel_loads_porabims_card(hass, linked_entry, hass_client):
-    """Our panel (served by the integration) around porabim's card, which it loads from porabim.com."""
+    """Naša plošča (streže jo integracija) okoli kartice porabim, ki jo naloži s porabim.com."""
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     panel = hass.data["frontend_panels"]["daily-energy"]
@@ -232,7 +232,7 @@ async def test_panel_loads_porabims_card(hass, linked_entry, hass_client):
     assert resp.status == 200
     js = await resp.text()
     assert "customElements.define('daily-energy-panel'" in js
-    # what porabim's panel colours on the page is put back when the panel is left
+    # kar plošča porabim obarva na strani, se ob izhodu iz plošče vrne
     for prop in ("'background', 'colorScheme'", "'margin', 'background', 'color', 'minHeight'", "disconnectedCallback"):
         assert prop in js
 

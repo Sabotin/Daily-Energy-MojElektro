@@ -1,4 +1,4 @@
-"""The refresh key: refused once → reauth once and no more refreshes; a reauth links again; a 5xx retries."""
+"""Ključ za osvežitev: enkrat zavrnjen → ena ponovna prijava in brez osvežitev; ponovna prijava poveže znova; 5xx ponovi."""
 
 from unittest.mock import patch
 
@@ -29,7 +29,7 @@ async def _start(hass: HomeAssistant, entry, aioclient_mock) -> api.PorabimLink:
 
 
 def _expire(entry) -> None:
-    """The access token runs out (in place: an entry update would reload the entry)."""
+    """Dostopni žeton poteče (na mestu: posodobitev vnosa bi vnos naložila znova)."""
     entry.data["token"]["expires_at"] = 0
 
 
@@ -58,8 +58,8 @@ async def test_refused_key_asks_porabim_once(hass, linked_entry, aioclient_mock)
 
 
 async def test_refused_new_key_asks_porabim_once(hass, linked_entry, aioclient_mock):
-    """The refresh works, but porabim refuses the new key too: reauth once, then signed out without asking porabim
-    (before, every call refreshed the key again and started the reauth again)."""
+    """Osvežitev uspe, a porabim zavrne tudi nov ključ: ena ponovna prijava, nato odjavljen brez vprašanja na porabim
+    (prej je vsak klic znova osvežil ključ in znova začel ponovno prijavo)."""
     link = await _start(hass, linked_entry, aioclient_mock)
     aioclient_mock.clear_requests()
     aioclient_mock.get(f"{API_URL}/snapshot", status=401, json={"error": "unauthorized"})
@@ -83,7 +83,7 @@ async def test_reauth_after_a_refused_key_works_again(hass, linked_entry, hass_c
     assert await api.async_call(hass, link, "GET", "snapshot") == (401, api.SIGNED_OUT)
     await hass.async_block_till_done()
     [flow] = _reauth_flows(hass)
-    # the user connects again: porabim gives a new key, the entry reloads with a new link
+    # uporabnik se znova poveže: porabim da nov ključ, vnos se naloži z novo povezavo
     aioclient_mock.clear_requests()
     aioclient_mock.get(f"{API_URL}/snapshot", json=SNAPSHOT)
     aioclient_mock.get(f"{API_URL}/sensors", json=SENSORS)
@@ -98,7 +98,7 @@ async def test_reauth_after_a_refused_key_works_again(hass, linked_entry, hass_c
     assert not new.refused
     assert await api.async_call(hass, new, "GET", "snapshot") == (200, SNAPSHOT)
     assert aioclient_mock.mock_calls[-1][3]["authorization"] == "Bearer access-1"
-    # and it refreshes normally when that key runs out
+    # in se normalno osveži, ko ta ključ poteče
     aioclient_mock.clear_requests()
     aioclient_mock.post(TOKEN_URL, json=NEW_TOKEN)
     aioclient_mock.get(f"{API_URL}/snapshot", json=SNAPSHOT)
@@ -110,8 +110,8 @@ async def test_reauth_after_a_refused_key_works_again(hass, linked_entry, hass_c
 
 
 async def test_key_refresh_keeps_the_entry_loaded(hass, linked_entry, aioclient_mock):
-    """The new key is saved in the entry about every hour; that is no reason to reload it (the panel and every entity
-    went away and came back each time)."""
+    """Nov ključ se v vnos shrani približno vsako uro; to ni razlog za ponovno nalaganje (plošča in vse entitete so vsakič
+    izginile in se vrnile)."""
     link = await _start(hass, linked_entry, aioclient_mock)
     aioclient_mock.clear_requests()
     aioclient_mock.post(TOKEN_URL, json=NEW_TOKEN)
@@ -122,7 +122,7 @@ async def test_key_refresh_keeps_the_entry_loaded(hass, linked_entry, aioclient_
     await hass.async_block_till_done(wait_background_tasks=True)
     assert linked_entry.data["token"]["access_token"] == "access-2"
     assert hass.data[DOMAIN][linked_entry.entry_id] is link
-    # a reload would have asked for the meters and the sensors again
+    # ponovno nalaganje bi znova vprašalo za merilna mesta in senzorje
     assert [str(c[1]) for c in aioclient_mock.mock_calls] == [TOKEN_URL, f"{API_URL}/snapshot"]
 
 

@@ -1,4 +1,4 @@
-"""The one forwarding command: path check, headers, timeouts and 401 → reauth."""
+"""En ukaz za posredovanje: preverjanje poti, glave, časovne omejitve in 401 → ponovna prijava."""
 
 import pytest
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
@@ -120,13 +120,13 @@ async def test_forwards_with_key_and_meter(hass, linked_entry, hass_ws_client, a
     assert headers["x-meter"] == "4-123456"
     assert headers["x-porabim-client"] == f"ha/{VERSION}"
     assert headers["x-ha-instance"] == await api.async_instance_hash(hass)
-    # the open panel's call: not background
+    # klic odprte plošče: ne v ozadju
     assert "x-ha-background" not in headers
 
 
 @pytest.mark.parametrize("body", [{}, {"body": None}])
 async def test_post_without_body_sends_an_empty_object(hass, linked_entry, hass_ws_client, aioclient_mock, body):
-    """porabim takes a POST only as JSON (415 json_only otherwise): a POST the panel gives no body goes as {}."""
+    """porabim sprejme POST samo kot JSON (sicer 415 json_only): POST, ki mu plošča ne da telesa, gre kot {}."""
     aioclient_mock.post(f"{API_URL}/refresh", json={"ok": True})
     await _setup(hass, linked_entry)
     client = await hass_ws_client(hass)
@@ -238,7 +238,7 @@ async def test_entries(hass, linked_entry, hass_ws_client, aioclient_mock):
 
 @pytest.mark.meters
 async def test_panel_snapshot_updates_the_devices(hass, linked_entry, hass_ws_client, aioclient_mock):
-    """The meter list in every snapshot the panel loads: a meter added on porabim shows up without a restart."""
+    """Seznam merilnih mest v vsakem posnetku, ki ga plošča naloži: merilno mesto, dodano na porabim, se pokaže brez ponovnega zagona."""
     aioclient_mock.get(f"{API_URL}/sensors", json={"v": 1, "off": False, "meters": []})
     aioclient_mock.get(f"{API_URL}/snapshot", json={"meters": [{"id": "m1", "eimm": "4-1"}]})
     await _setup(hass, linked_entry)
@@ -255,13 +255,13 @@ async def test_panel_snapshot_updates_the_devices(hass, linked_entry, hass_ws_cl
     assert (await client.receive_json())["success"]
     devices = dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id)
     assert sorted(d.name for d in devices) == ["4-1", "Vikend"]
-    # the new meter's entities come with a sensor refresh at once
+    # entitete novega merilnega mesta pridejo takoj z osvežitvijo senzorjev
     await hass.async_block_till_done(wait_background_tasks=True)
     assert any(str(c[1]) == f"{API_URL}/sensors" for c in aioclient_mock.mock_calls)
 
 
 async def test_delete_account_removes_the_entries(hass, linked_entry, hass_ws_client, aioclient_mock):
-    """Izbriši račun in the panel: porabim deleted the account, so its entry leaves Home Assistant too."""
+    """Izbriši račun v plošči: porabim je izbrisal račun, zato njegov vnos zapusti tudi Home Assistant."""
     aioclient_mock.post(f"{API_URL}/delete-account", json={"ok": True})
     aioclient_mock.post(REVOKE_URL, status=401, json={"error": "invalid_token"})
     await _setup(hass, linked_entry)

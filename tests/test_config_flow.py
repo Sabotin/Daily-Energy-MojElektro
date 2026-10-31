@@ -1,4 +1,4 @@
-"""Add integration → porabim.com → back with a key, the reauth of a 1.x entry, and the options."""
+"""Dodaj integracijo → porabim.com → nazaj s ključem, ponovna prijava vnosa iz 1.x in možnosti."""
 
 from unittest.mock import patch
 
@@ -31,9 +31,9 @@ TOKEN_ANSWER = {
 
 
 async def _through_porabim(hass: HomeAssistant, result, hass_client_no_auth, aioclient_mock):
-    """The browser goes to porabim, comes back on HA's callback, HA swaps the code. Returns the authorize query."""
+    """Brskalnik gre na porabim, se vrne na povratni naslov HA, HA zamenja kodo. Vrne poizvedbo authorize."""
     if result["type"] is FlowResultType.FORM and result["step_id"] == "pick_implementation":
-        # Skipped in a browser; tests have no request, so HA shows the choice even for one implementation
+        # V brskalniku se preskoči; testi nimajo zahteve, zato HA pokaže izbiro tudi pri eni izvedbi
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"implementation": DOMAIN})
     assert result["type"] is FlowResultType.EXTERNAL_STEP
     url = URL(result["url"])
@@ -58,7 +58,7 @@ async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock
     assert query["redirect_uri"] == REDIRECT_URI
     assert query["code_challenge_method"] == "S256"
     assert len(query["code_challenge"]) == 43
-    # the same lasting id for this Home Assistant on every connect: sha256, the instance id itself never sent
+    # ob vsaki povezavi isti trajni id tega Home Assistanta: sha256, sam id instance se nikoli ne pošlje
     assert query["ha_instance"] == await api.async_instance_hash(hass)
     assert len(query["ha_instance"]) == 64
 
@@ -85,8 +85,8 @@ async def test_user_flow_creates_entry(hass, hass_client_no_auth, aioclient_mock
 
 
 async def test_second_add_adds_the_meter_to_the_same_account(hass, aioclient_mock, linked_entry):
-    """Add integration again: the meter goes into the account this Home Assistant has (porabim's + route), no second
-    entry and no trip to porabim's connect page."""
+    """Znova Dodaj integracijo: merilno mesto gre v račun tega Home Assistanta (+ na porabim), brez drugega vnosa in brez
+    poti na stran za povezavo porabim."""
     assert await hass.config_entries.async_setup(linked_entry.entry_id)
     await hass.async_block_till_done()
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
@@ -139,7 +139,7 @@ async def test_second_add_shows_porabims_error(hass, aioclient_mock, linked_entr
 
 
 async def test_second_add_before_connecting(hass):
-    """A 1.x entry still waiting to be connected: connect it first."""
+    """Vnos iz 1.x še čaka na povezavo: najprej ga povežite."""
     entry = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-123456", data={}, options={"sidebar": True})
     entry.add_to_hass(hass)
     assert await async_setup_component(hass, DOMAIN, {})
@@ -150,7 +150,7 @@ async def test_second_add_before_connecting(hass):
 
 
 async def test_reauth_links_a_1x_entry(hass, hass_client_no_auth, aioclient_mock):
-    """Migration left a 1.x entry without a key; reauth gives it one and the porabim account as unique id."""
+    """Selitev je pustila vnos iz 1.x brez ključa; ponovna prijava mu ga da in račun porabim kot unique id."""
     entry = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-123456", data={}, options={"sidebar": True})
     entry.add_to_hass(hass)
     assert await async_setup_component(hass, DOMAIN, {})
@@ -167,7 +167,7 @@ async def test_reauth_links_a_1x_entry(hass, hass_client_no_auth, aioclient_mock
     assert result["reason"] == "reauth_successful"
     assert entry.unique_id == ACCOUNT
     assert entry.data["token"]["account"] == ACCOUNT
-    assert entry.data["old_meter"] == "4-123456"  # its day log goes onto this meter
+    assert entry.data["old_meter"] == "4-123456"  # njegov dnevni zapis gre na to merilno mesto
 
 
 SNAPSHOT = {
@@ -182,7 +182,7 @@ def _old_store(hass, entry):
 
 
 async def _second_1x_meter(hass, aioclient_mock):
-    """Home Assistant is linked (linked_entry), and 1.x's entry of another meter asks to be connected."""
+    """Home Assistant je povezan (linked_entry), vnos iz 1.x za drugo merilno mesto pa prosi za povezavo."""
     old = MockConfigEntry(domain=DOMAIN, version=3, unique_id="4-999999", data={}, options={"sidebar": True})
     old.add_to_hass(hass)
     await _old_store(hass, old).async_save(OLD_LOG)
@@ -194,7 +194,7 @@ async def _second_1x_meter(hass, aioclient_mock):
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "merge"  # no second connect: Home Assistant has its one account
+    assert result["step_id"] == "merge"  # brez druge povezave: Home Assistant ima svoj en račun
     assert result["description_placeholders"]["meter"] == "4-999999"
     return old, result
 
@@ -204,7 +204,7 @@ def _backups(aioclient_mock):
 
 
 async def test_second_1x_meter_merges_into_the_account(hass, aioclient_mock, linked_entry):
-    """1.x had one entry per meter; the second one's meter is in the account: its log goes onto it, the entry goes."""
+    """1.x je imel en vnos na merilno mesto; merilno mesto drugega je v računu: zapis gre nanj, vnos gre stran."""
     aioclient_mock.get(f"{API_URL}/snapshot", json=SNAPSHOT)
     old, result = await _second_1x_meter(hass, aioclient_mock)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
@@ -232,7 +232,7 @@ async def test_merge_adds_a_missing_meter_with_its_token(hass, aioclient_mock, l
 
 
 async def test_merge_asks_for_the_token_of_a_missing_meter(hass, aioclient_mock, linked_entry):
-    """The meter is not in the account and no token: nothing goes to another meter, the entry and its log stay."""
+    """Merilnega mesta ni v računu in žetona ni: nič ne gre na drugo merilno mesto, vnos in zapis ostaneta."""
     aioclient_mock.get(f"{API_URL}/snapshot", json={**SNAPSHOT, "meters": SNAPSHOT["meters"][:1]})
     old, result = await _second_1x_meter(hass, aioclient_mock)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
@@ -266,7 +266,7 @@ async def test_reauth_with_another_account_aborts(hass, hass_client_no_auth, aio
 
 
 async def test_reauth_after_the_account_was_deleted_takes_the_new_one(hass, hass_client_no_auth, aioclient_mock):
-    """Izbriši račun on porabim: the old key is refused, porabim makes a new account; the entry moves to it."""
+    """Izbriši račun na porabim: stari ključ je zavrnjen, porabim naredi nov račun; vnos se preseli nanj."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         version=3,

@@ -1,4 +1,4 @@
-"""Shared fixtures: a linked config entry with a key that is still valid."""
+"""Skupni pripomočki: povezan vnos s ključem, ki še velja."""
 
 import time
 from unittest.mock import AsyncMock, patch
@@ -18,8 +18,8 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 @pytest.fixture(autouse=True)
 def no_meter_sync(request):
-    """Every start asks porabim for the account's meters and their sensor values; only tests marked `meters` answer
-    those requests."""
+    """Vsak zagon vpraša porabim za merilna mesta računa in vrednosti senzorjev; na te zahteve odgovorijo samo testi z
+    oznako `meters`."""
     if request.node.get_closest_marker("meters"):
         yield
         return
