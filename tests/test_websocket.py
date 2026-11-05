@@ -5,7 +5,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 
 from custom_components.daily_energy_mojelektro import api
 from custom_components.daily_energy_mojelektro.const import API_URL, DOMAIN, LONG_TIMEOUT, REVOKE_URL, TIMEOUT, TOKEN_URL, VERSION
@@ -274,6 +274,67 @@ async def test_delete_account_removes_the_entries(hass, linked_entry, hass_ws_cl
     await hass.async_block_till_done()
     assert hass.config_entries.async_entries(DOMAIN) == []
     assert "daily-energy" not in hass.data.get("frontend_panels", {})
+
+
+async def _api(client, entry, method, path, body=None):
+    msg = {"type": f"{DOMAIN}/api", "entry_id": entry.entry_id, "method": method, "path": path}
+    if body is not None:
+        msg["body"] = body
+    await client.send_json_auto_id(msg)
+    return (await client.receive_json())["result"]
+
+
+async def test_panel_snapshot_without_a_meter_removes_the_entry(hass, linked_entry, hass_ws_client, aioclient_mock):
+    """Posnetek, ki ga naloži plošča, pravi, da račun nima merilnega mesta: plošča dobi odgovor, vnos pa se odstrani."""
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"onboarded": False})
+    aioclient_mock.post(REVOKE_URL, json={"ok": True})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    assert await _api(client, linked_entry, "GET", "snapshot") == {"status": 200, "data": {"onboarded": False}}
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == []
+    assert "daily-energy" not in hass.data.get("frontend_panels", {})
+    assert sum(1 for c in aioclient_mock.mock_calls if str(c[1]) == REVOKE_URL) == 1
+
+
+async def test_last_meter_removed_in_the_panel_keeps_the_entry(hass, linked_entry, hass_ws_client, aioclient_mock):
+    """Zadnje merilno mesto odstrani uporabnik v plošči: prazen račun je namenski (obrazec doda novo), vnos ostane.
+    Ko posnetek spet navede merilno mesto, prazen račun pozneje vnos spet odstrani."""
+    aioclient_mock.post(f"{API_URL}/meters/remove", json={"ok": True, "last": True})
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"onboarded": False})
+    aioclient_mock.post(REVOKE_URL, json={"ok": True})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    assert (await _api(client, linked_entry, "POST", "meters/remove", {"id": "m1"}))["status"] == 200
+    assert (await _api(client, linked_entry, "GET", "snapshot"))["status"] == 200
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == [linked_entry]
+    assert ir.async_get(hass).async_get_issue(DOMAIN, "no_meter") is None
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json={"v": 1, "off": False, "meters": []})
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"meters": [{"id": "m2", "eimm": "4-2"}]})
+    await _api(client, linked_entry, "GET", "snapshot")
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"onboarded": False})
+    aioclient_mock.post(REVOKE_URL, json={"ok": True})
+    await _api(client, linked_entry, "GET", "snapshot")
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == []
+
+
+async def test_meter_removed_but_not_the_last_still_removes_an_empty_account(
+    hass, linked_entry, hass_ws_client, aioclient_mock
+):
+    aioclient_mock.post(f"{API_URL}/meters/remove", json={"ok": True})
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"onboarded": False})
+    aioclient_mock.post(REVOKE_URL, json={"ok": True})
+    await _setup(hass, linked_entry)
+    client = await hass_ws_client(hass)
+    await _api(client, linked_entry, "POST", "meters/remove", {"id": "m1"})
+    await _api(client, linked_entry, "GET", "snapshot")
+    await hass.async_block_till_done()
+    assert hass.config_entries.async_entries(DOMAIN) == []
 
 
 async def test_delete_account_refused_keeps_the_entry(hass, linked_entry, hass_ws_client, aioclient_mock):

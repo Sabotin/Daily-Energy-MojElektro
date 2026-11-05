@@ -202,17 +202,48 @@ async def test_devices_follow_the_account(hass, linked_entry, aioclient_mock):
 
 
 @pytest.mark.meters
-@pytest.mark.parametrize("answer", [{"status": 502, "text": "Bad gateway"}, {"json": {"onboarded": False}}])
-async def test_devices_kept_without_a_meter_list(hass, linked_entry, aioclient_mock, answer):
+async def test_devices_kept_without_a_meter_list(hass, linked_entry, aioclient_mock):
     aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
     aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
     await _start(hass, linked_entry)
     await hass.config_entries.async_unload(linked_entry.entry_id)
     aioclient_mock.clear_requests()
     aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
-    aioclient_mock.get(f"{API_URL}/snapshot", **answer)
+    aioclient_mock.get(f"{API_URL}/snapshot", status=502, text="Bad gateway")
     await _start(hass, linked_entry)
     assert len(_devices(hass, linked_entry)) == 3
+
+
+@pytest.mark.meters
+async def test_account_without_a_meter_removes_the_entry(hass, linked_entry, aioclient_mock):
+    """Račun porabim brez merilnega mesta (Razdeli je merilna mesta pustil drugemu računu): vnos se ob zagonu odstrani sam,
+    s preklicem ključa na porabim in obvestilom v Popravilih; naslednji vnos obvestilo pobriše."""
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, linked_entry)
+    await hass.config_entries.async_unload(linked_entry.entry_id)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
+    aioclient_mock.get(f"{API_URL}/snapshot", json={"onboarded": False, "email": "Home Assistant · •••123"})
+    aioclient_mock.post(REVOKE_URL, json={"ok": True})
+    await _start(hass, linked_entry)
+    assert hass.config_entries.async_entries(DOMAIN) == []
+    assert "daily-energy" not in hass.data.get("frontend_panels", {})
+    assert dr.async_entries_for_config_entry(dr.async_get(hass), linked_entry.entry_id) == []
+    assert sum(1 for c in aioclient_mock.mock_calls if str(c[1]) == REVOKE_URL) == 1
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, "no_meter")
+    assert issue is not None and issue.translation_key == "no_meter" and issue.is_persistent
+
+    again = MockConfigEntry(
+        domain=DOMAIN, version=3, unique_id="ha:def456", title="Porabim", data=dict(linked_entry.data), options={}
+    )
+    again.add_to_hass(hass)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{API_URL}/sensors", json=NO_SENSORS)
+    aioclient_mock.get(f"{API_URL}/snapshot", json=THREE)
+    await _start(hass, again)
+    assert ir.async_get(hass).async_get_issue(DOMAIN, "no_meter") is None
+    assert hass.config_entries.async_entries(DOMAIN) == [again]
 
 
 async def test_panel_loads_porabims_card(hass, linked_entry, hass_client):

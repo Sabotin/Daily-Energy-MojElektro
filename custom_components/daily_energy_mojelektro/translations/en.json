@@ -83,6 +83,10 @@
     "old_log_meter": {
       "title": "Day log for meter {meter} waits",
       "description": "Your Daily Energy day log from version 1 for meter {meter} is still in Home Assistant, because that meter is not in your porabim.com account. Add it with Add integration › Daily Energy for Moj Elektro (meter ID and Moj Elektro token), and the log is uploaded onto it. Added with + in the Daily Energy panel instead, it is uploaded at the next start of Home Assistant."
+    },
+    "no_meter": {
+      "title": "Daily Energy removed: the porabim.com account has no meter",
+      "description": "Your porabim.com account has no meter any more, so Daily Energy removed itself from Home Assistant (its panel, devices and entities). To connect again, go to Settings › Devices & services › Add integration › Daily Energy for Moj Elektro and enter a meter ID and Moj Elektro token. If the meter is already in another porabim.com account, join that account on the porabim.com page with Pridruži se kot gost (guest) or Pridruži se kot skrbnik (admin)."
     }
   },
   "entity": {

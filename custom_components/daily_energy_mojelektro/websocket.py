@@ -68,6 +68,10 @@ async def ws_api(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     if status == 200 and msg["method"] == "GET" and msg["path"].split("?", 1)[0] == "snapshot":
         # Vsak posnetek, ki ga plošča naloži, navede merilna mesta računa: naprave mu sledijo brez dodatne zahteve
         meters.async_apply(hass, link, data)
+    if status == 200 and msg["method"] == "POST" and msg["path"] == "meters/remove" and isinstance(data, dict):
+        # zadnje merilno mesto je odstranil uporabnik: plošča ponudi obrazec za novo, zato vnos ostane
+        if data.get("last") is True:
+            link.emptied = True
     connection.send_result(msg["id"], {"status": status, "data": data})
     if 200 <= status < 300 and msg["method"] == "POST" and msg["path"] == "delete-account":
         # Izbriši račun: računa porabim ni več, zato tudi ne njegovih vnosov (Naprave in storitve, stranska vrstica, entitete)

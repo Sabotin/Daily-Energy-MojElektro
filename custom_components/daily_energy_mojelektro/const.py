@@ -5,7 +5,7 @@
 """Konstante za Daily Energy za Moj Elektro."""
 
 DOMAIN = "daily_energy_mojelektro"
-VERSION = "3.0.8"
+VERSION = "3.0.9"
 
 PORABIM = "https://porabim.com"
 CLIENT_ID = DOMAIN
@@ -35,5 +35,7 @@ STORAGE_VERSION = 1
 ISSUE_CONNECT = "connect_porabim"
 # njegovega merilnega mesta (še) ni v računu porabim
 ISSUE_OLD_LOG = "old_log_meter"
+# račun porabim nima merilnega mesta, zato se je vnos odstranil (meters.async_apply)
+ISSUE_NO_METER = "no_meter"
 # merilno mesto vnosa iz 1.x (njegov unique id do povezave): dnevni zapis gre nanj
 CONF_OLD_METER = "old_meter"

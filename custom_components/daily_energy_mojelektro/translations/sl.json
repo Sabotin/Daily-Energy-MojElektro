@@ -83,6 +83,10 @@
     "old_log_meter": {
       "title": "Dnevnik za merilno mesto {meter} čaka",
       "description": "Vaš dnevnik Daily Energy iz različice 1 za merilno mesto {meter} je še v Home Assistantu, ker tega merilnega mesta ni v vašem računu porabim.com. Dodajte ga z Dodaj integracijo › Daily Energy for Moj Elektro (merilno mesto in žeton Moj Elektro) in dnevnik se naloži nanj. Če ga dodate z gumbom + v plošči Daily Energy, se naloži ob naslednjem zagonu Home Assistanta."
+    },
+    "no_meter": {
+      "title": "Daily Energy odstranjen: račun porabim.com nima merilnega mesta",
+      "description": "Vaš račun porabim.com nima več merilnega mesta, zato se je Daily Energy sam odstranil iz Home Assistanta (plošča, naprave in entitete). Za ponovno povezavo pojdite v Nastavitve › Naprave in storitve › Dodaj integracijo › Daily Energy for Moj Elektro in vnesite merilno mesto in žeton Moj Elektro. Če je merilno mesto že v drugem računu porabim.com, se temu računu na strani porabim.com pridružite z Pridruži se kot gost ali Pridruži se kot skrbnik."
     }
   },
   "entity": {

@@ -26,6 +26,7 @@ from .const import (
     CONF_SIDEBAR,
     DOMAIN,
     ISSUE_CONNECT,
+    ISSUE_NO_METER,
     ISSUE_OLD_LOG,
     PANEL_ELEMENT,
     PANEL_ICON,
@@ -55,6 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """En račun porabim: njegov ključ in plošča v stranski vrstici s kartico porabim."""
     hass.data.setdefault(DOMAIN, {})
     oauth.async_register(hass)
+    # nov ali znova naložen vnos: obvestilo o odstranjenem vnosu brez merilnega mesta ni več potrebno
+    ir.async_delete_issue(hass, DOMAIN, ISSUE_NO_METER)
     if "token" not in entry.data:
         # Vnos iz 1.x: dnevni zapis čaka v stari shrambi, dokler se uporabnik ne poveže s porabim.com
         ir.async_create_issue(

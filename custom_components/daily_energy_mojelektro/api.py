@@ -44,6 +44,11 @@ class PorabimLink:
     refused: bool = False
     # možnosti ob nastavitvi: vnos se znova naloži samo ob njihovi spremembi (__init__._async_reload)
     options: dict[str, Any] = field(default_factory=dict)
+    # zadnje merilno mesto je odstranila plošča (meters/remove → last): prazen račun je namenski, vnos ostane, dokler
+    # se ne naloži znova ali dokler posnetek spet ne navede merilnega mesta
+    emptied: bool = False
+    # vnos se že odstranjuje, ker račun nima merilnega mesta
+    removing: bool = False
 
 
 async def async_instance_hash(hass: HomeAssistant) -> str:

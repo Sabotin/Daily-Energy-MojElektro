@@ -8,10 +8,10 @@ from __future__ import annotations
 import aiohttp
 
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 
 from . import api
-from .const import DOMAIN
+from .const import DOMAIN, ISSUE_NO_METER
 
 
 async def async_sync(hass: HomeAssistant, link: api.PorabimLink) -> None:
@@ -40,11 +40,17 @@ def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) ->
     """Ena naprava na merilno mesto pod vnosom (ime, sicer EIMM), vnos pa z naslovom Porabim.
 
     Vnos je račun porabim, ki ima lahko več merilnih mest, zato naslov ne imenuje nobenega. Naslov, ki ga je dal uporabnik,
-    ostane. Brez seznama merilnih mest v posnetku se nič ne spremeni.
+    ostane. Brez seznama merilnih mest v posnetku se nič ne spremeni. Račun brez merilnega mesta (`onboarded: false`)
+    vnos odstrani, razen kadar je zadnje merilno mesto pravkar odstranila plošča.
     """
+    if isinstance(snapshot, dict) and snapshot.get("onboarded") is False:
+        _async_no_meter(hass, link)
+        return
     meters = api.meters(snapshot)
     if meters is None:
         return
+    if meters:
+        link.emptied = False
     entry = link.entry
     if entry.title != api.TITLE and api.auto_title(entry.title, [m["label"] for m in meters]):
         hass.config_entries.async_update_entry(entry, title=api.TITLE)
@@ -68,3 +74,23 @@ def async_apply(hass: HomeAssistant, link: api.PorabimLink, snapshot: object) ->
     # pozneje dodano merilno mesto (Dodaj integracijo, + v plošči): entitete pridejo z naslednjo osvežitvijo senzorjev, zdaj
     if new and link.sensors is not None and link.sensors.data is not None:
         hass.async_create_task(link.sensors.async_request_refresh())
+
+
+@callback
+def _async_no_meter(hass: HomeAssistant, link: api.PorabimLink) -> None:
+    """Račun porabim nima več merilnega mesta: vnos se odstrani (plošča, naprave, entitete; async_remove_entry pokliče
+    /ha/revoke), v Popravilih pa ostane obvestilo, kako se povezati znova."""
+    if link.emptied or link.removing:
+        return
+    link.removing = True
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        ISSUE_NO_METER,
+        is_fixable=False,
+        is_persistent=True,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=ISSUE_NO_METER,
+    )
+    entry_id = link.entry.entry_id
+    hass.async_create_task(hass.config_entries.async_remove(entry_id), f"{DOMAIN} remove {entry_id}")
